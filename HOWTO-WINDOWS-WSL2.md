@@ -137,10 +137,12 @@ Other options:
 
 Default install folders:
 
-- `base`: `~/wow-server-base`
-- `base-prebuilt`: `~/wow-server`
-- `playerbots`: `~/wow-server-playerbots`
-- `npcbots`: `~/wow-server-npcbots`
+- `base`: `~/wow-server-base-hybrid`
+- `base-prebuilt`: `~/wow-server-prebuilt-hybrid`
+- `playerbots`: `~/wow-server-playerbots-hybrid`
+- `npcbots`: `~/wow-server-npcbots-hybrid`
+
+These `-hybrid` defaults are intentional. They keep this lab separate from any existing AzerothCore, DadsMmoLab, Playerbots, or NPCBots installs you already have.
 
 To use a custom folder:
 
@@ -161,16 +163,16 @@ Source builds can take a long time.
 To watch logs:
 
 ```bash
-cd ~/wow-server-playerbots
+cd ~/wow-server-playerbots-hybrid
 docker compose logs -f ac-worldserver
 ```
 
 For other profiles, change the folder:
 
 ```bash
-cd ~/wow-server-base
-cd ~/wow-server-npcbots
-cd ~/wow-server
+cd ~/wow-server-base-hybrid
+cd ~/wow-server-npcbots-hybrid
+cd ~/wow-server-prebuilt-hybrid
 ```
 
 Stop watching logs with `Ctrl+C`. That does not stop the server.
@@ -187,19 +189,19 @@ cd ~/azerothcore-hybrid-lab
 Install modules into an existing source server:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots install hybrid ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog learnspells
 ```
 
 Rebuild after adding C++ modules:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots rebuild
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 ```
 
 Import module SQL after the database containers are running:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots import-sql hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
 ```
 
 Current known module keys:
@@ -274,14 +276,14 @@ Launch `wow.exe` and log in with the account you created.
 Start:
 
 ```bash
-cd ~/wow-server-playerbots
+cd ~/wow-server-playerbots-hybrid
 docker compose up -d
 ```
 
 Stop:
 
 ```bash
-cd ~/wow-server-playerbots
+cd ~/wow-server-playerbots-hybrid
 docker compose down
 ```
 
@@ -307,7 +309,7 @@ After building and starting the server:
 
    ```bash
    cd ~/azerothcore-hybrid-lab
-   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots import-sql hybrid
+   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
    ```
 
 2. Create or update a trainer NPC in the world database.
@@ -342,7 +344,7 @@ After building and starting the server:
    Open a database shell for the world database:
 
    ```bash
-   cd ~/wow-server-playerbots
+   cd ~/wow-server-playerbots-hybrid
    docker exec -it $(docker ps --format '{{.Names}}' | grep -E 'database|mysql|mariadb|db' | head -1) \
      mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world
    ```
@@ -410,7 +412,7 @@ After building and starting the server:
    The easiest option is to restart the server:
 
    ```bash
-   cd ~/wow-server-playerbots
+   cd ~/wow-server-playerbots-hybrid
    docker compose restart ac-worldserver
    ```
 
@@ -511,13 +513,13 @@ For C++ modules, rebuild:
 
 ```bash
 cd ~/azerothcore-hybrid-lab
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots rebuild
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 ```
 
 For SQL changes, import the module SQL:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots import-sql hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
 ```
 
 ### I want to update this repo on WSL2
@@ -530,6 +532,6 @@ git pull
 Then reinstall or update modules as needed:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots install hybrid
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots rebuild
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 ```

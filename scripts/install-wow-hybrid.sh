@@ -30,7 +30,7 @@ Options:
 
 Examples:
   ./scripts/install-wow-hybrid.sh --profile base
-  ./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots
+  ./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid
   ./scripts/install-wow-hybrid.sh --profile npcbots --no-build
 USAGE
 }
@@ -77,10 +77,10 @@ default_server_dir() {
   fi
 
   case "$PROFILE" in
-    base) SERVER_DIR="$INSTALL_ROOT/wow-server-base" ;;
-    base-prebuilt) SERVER_DIR="$INSTALL_ROOT/wow-server" ;;
-    playerbots) SERVER_DIR="$INSTALL_ROOT/wow-server-playerbots" ;;
-    npcbots) SERVER_DIR="$INSTALL_ROOT/wow-server-npcbots" ;;
+    base) SERVER_DIR="$INSTALL_ROOT/wow-server-base-hybrid" ;;
+    base-prebuilt) SERVER_DIR="$INSTALL_ROOT/wow-server-prebuilt-hybrid" ;;
+    playerbots) SERVER_DIR="$INSTALL_ROOT/wow-server-playerbots-hybrid" ;;
+    npcbots) SERVER_DIR="$INSTALL_ROOT/wow-server-npcbots-hybrid" ;;
     *) die "Unknown profile: $PROFILE" ;;
   esac
 }

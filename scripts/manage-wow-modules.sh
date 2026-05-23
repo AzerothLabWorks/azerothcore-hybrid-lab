@@ -21,10 +21,10 @@ Commands:
 Known modules are defined in configs/modules.conf.
 
 Examples:
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots list
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots install hybrid ahbot transmog
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots import-sql hybrid
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots rebuild
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 USAGE
 }
 
@@ -49,7 +49,7 @@ COMMAND="${COMMAND:-}"
 [[ -n "$COMMAND" ]] || { usage; exit 1; }
 
 if [[ -z "$SERVER_DIR" ]]; then
-  for candidate in "$HOME/wow-server-playerbots" "$HOME/wow-server-npcbots" "$HOME/wow-server-base" "$HOME/wow-server"; do
+  for candidate in "$HOME/wow-server-playerbots-hybrid" "$HOME/wow-server-npcbots-hybrid" "$HOME/wow-server-base-hybrid" "$HOME/wow-server-prebuilt-hybrid"; do
     if [[ -f "$candidate/docker-compose.yml" ]]; then
       SERVER_DIR="$candidate"
       break
