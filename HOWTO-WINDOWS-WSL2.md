@@ -5,7 +5,7 @@ Run a private WoW 3.3.5a AzerothCore server on Windows using Ubuntu under WSL2 a
 This guide is written for this repo:
 
 ```text
-https://github.com/ryancartmell/azerothcore-hybrid-lab
+https://github.com/AzerothLabWorks/azerothcore-hybrid-lab.git
 ```
 
 It supports these server profiles:
@@ -109,7 +109,7 @@ Inside Ubuntu:
 
 ```bash
 cd ~
-git clone https://github.com/ryancartmell/azerothcore-hybrid-lab.git
+git clone https://github.com/AzerothLabWorks/azerothcore-hybrid-lab.git
 cd azerothcore-hybrid-lab
 chmod +x scripts/*.sh
 ```
