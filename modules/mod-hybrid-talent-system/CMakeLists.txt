@@ -1,0 +1,6 @@
+CU_SET_PATH("CMAKE_MOD_HYBRID_TALENT_SYSTEM_DIR" "${CMAKE_CURRENT_LIST_DIR}")
+
+AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/mod_hybrid_talent_system.cpp")
+AC_ADD_SCRIPT_LOADER("HybridTalentSystem" "${CMAKE_CURRENT_LIST_DIR}/src/loader.h")
+
+CU_ADD_HOOK(AFTER_LOAD_CONF "${CMAKE_CURRENT_LIST_DIR}/cmake/after_load_conf.cmake")

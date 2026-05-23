@@ -1,0 +1,5 @@
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.md text eol=lf
+*.sql text eol=lf
+*.conf.dist text eol=lf

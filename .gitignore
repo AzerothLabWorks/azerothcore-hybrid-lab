@@ -1,0 +1,15 @@
+.env
+*.log
+*.tmp
+work/
+build/
+dist/
+downloads/
+*.zip
+*.tar.gz
+*.7z
+
+# Keep upstream server trees out of this control repo.
+azerothcore-wotlk/
+acore-docker/
+AzerothCore-wotlk-with-NPCBots/

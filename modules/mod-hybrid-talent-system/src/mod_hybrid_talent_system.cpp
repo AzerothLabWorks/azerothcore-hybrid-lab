@@ -1,0 +1,506 @@
+#include "Chat.h"
+#include "CommandScript.h"
+#include "Config.h"
+#include "Creature.h"
+#include "CreatureScript.h"
+#include "DatabaseEnv.h"
+#include "GossipDef.h"
+#include "Player.h"
+#include "PlayerScript.h"
+#include "ScriptedGossip.h"
+#include "ScriptMgr.h"
+#include "SpellMgr.h"
+#include "WorldScript.h"
+
+#include <algorithm>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+
+namespace
+{
+    using namespace Acore::ChatCommands;
+
+    struct HybridSpellTemplate
+    {
+        uint32 SpellId = 0;
+        uint32 ClassMask = 0;
+        uint8 RequiredLevel = 1;
+        uint16 Cost = 1;
+        std::string Category;
+        uint8 RoleMask = 0;
+        uint32 Flags = 0;
+    };
+
+    struct HybridSynergyTemplate
+    {
+        uint32 RequiredSpell1 = 0;
+        uint32 RequiredSpell2 = 0;
+        uint32 RewardSpell = 0;
+    };
+
+    bool Enabled = true;
+    uint8 MinLevel = 10;
+    uint16 PointsPerInterval = 1;
+    uint8 PointIntervalLevels = 2;
+    uint16 MaxPoints = 35;
+    uint32 ResetCostCopper = 100000;
+    uint32 TrainerNpcEntry = 190010;
+    bool RestoreOnLogin = true;
+    bool EnableSynergies = true;
+
+    std::map<uint32, HybridSpellTemplate> SpellTemplates;
+    std::vector<HybridSynergyTemplate> SynergyTemplates;
+
+    enum HybridActions : uint32
+    {
+        ACTION_STATUS = 1,
+        ACTION_BROWSE = 10,
+        ACTION_RESET_CONFIRM = 20,
+        ACTION_RESET_EXECUTE = 21,
+        ACTION_LEARN_BASE = 100000
+    };
+
+    uint16 CalculateEarnedPoints(Player const* player)
+    {
+        if (!player || player->GetLevel() < MinLevel)
+            return 0;
+
+        uint8 interval = PointIntervalLevels ? PointIntervalLevels : 1;
+        uint16 points = static_cast<uint16>(((player->GetLevel() - MinLevel) / interval + 1) * PointsPerInterval);
+        return std::min<uint16>(points, MaxPoints);
+    }
+
+    uint16 GetSpentPoints(ObjectGuid::LowType guid)
+    {
+        QueryResult result = CharacterDatabase.Query("SELECT COALESCE(SUM(hst.cost), 0) FROM character_hybrid_spell chs INNER JOIN hybrid_spell_template hst ON hst.spell_id = chs.spell_id WHERE chs.guid = {}", guid);
+        if (!result)
+            return 0;
+
+        return (*result)[0].Get<uint16>();
+    }
+
+    bool IsAllowedForPlayer(Player const* player, HybridSpellTemplate const& templ)
+    {
+        if (!player)
+            return false;
+
+        if (player->GetLevel() < templ.RequiredLevel)
+            return false;
+
+        if (templ.ClassMask && (templ.ClassMask & player->getClassMask()))
+            return false;
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
+        if (!spellInfo)
+            return false;
+
+        return true;
+    }
+
+    bool HasHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
+    {
+        QueryResult result = CharacterDatabase.Query("SELECT 1 FROM character_hybrid_spell WHERE guid = {} AND spell_id = {} LIMIT 1", guid, spellId);
+        return !!result;
+    }
+
+    void SaveHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
+    {
+        CharacterDatabase.Execute("REPLACE INTO character_hybrid_spell (guid, spell_id) VALUES ({}, {})", guid, spellId);
+    }
+
+    void DeleteHybridSpells(ObjectGuid::LowType guid)
+    {
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_spell WHERE guid = {}", guid);
+    }
+
+    std::set<uint32> GetKnownHybridSpellIds(ObjectGuid::LowType guid)
+    {
+        std::set<uint32> spellIds;
+
+        QueryResult result = CharacterDatabase.Query("SELECT spell_id FROM character_hybrid_spell WHERE guid = {}", guid);
+        if (!result)
+            return spellIds;
+
+        do
+        {
+            Field* fields = result->Fetch();
+            spellIds.insert(fields[0].Get<uint32>());
+        } while (result->NextRow());
+
+        return spellIds;
+    }
+
+    void ApplySynergies(Player* player)
+    {
+        if (!EnableSynergies || !player)
+            return;
+
+        std::set<uint32> known = GetKnownHybridSpellIds(player->GetGUID().GetCounter());
+
+        for (HybridSynergyTemplate const& synergy : SynergyTemplates)
+        {
+            bool qualifies = known.count(synergy.RequiredSpell1) && known.count(synergy.RequiredSpell2);
+
+            if (qualifies && !player->HasSpell(synergy.RewardSpell))
+                player->learnSpell(synergy.RewardSpell, false);
+            else if (!qualifies && player->HasSpell(synergy.RewardSpell))
+                player->removeSpell(synergy.RewardSpell, false, false);
+        }
+    }
+
+    void RestoreHybridSpells(Player* player)
+    {
+        if (!player)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        std::set<uint32> spellIds = GetKnownHybridSpellIds(guid);
+
+        for (uint32 spellId : spellIds)
+        {
+            if (!SpellTemplates.count(spellId))
+                continue;
+
+            if (!player->HasSpell(spellId))
+                player->learnSpell(spellId, false);
+        }
+
+        ApplySynergies(player);
+    }
+
+    void ResetHybridBuild(Player* player)
+    {
+        if (!player)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        std::set<uint32> spellIds = GetKnownHybridSpellIds(guid);
+
+        for (uint32 spellId : spellIds)
+        {
+            if (player->HasSpell(spellId))
+                player->removeSpell(spellId, false, false);
+        }
+
+        for (HybridSynergyTemplate const& synergy : SynergyTemplates)
+        {
+            if (player->HasSpell(synergy.RewardSpell))
+                player->removeSpell(synergy.RewardSpell, false, false);
+        }
+
+        DeleteHybridSpells(guid);
+    }
+
+    void LoadConfig()
+    {
+        Enabled = sConfigMgr->GetOption<bool>("HybridTalentSystem.Enable", true);
+        MinLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.MinLevel", 10));
+        PointsPerInterval = static_cast<uint16>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.PointsPerInterval", 1));
+        PointIntervalLevels = static_cast<uint8>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.PointIntervalLevels", 2));
+        MaxPoints = static_cast<uint16>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.MaxPoints", 35));
+        ResetCostCopper = sConfigMgr->GetOption<uint32>("HybridTalentSystem.ResetCostCopper", 100000);
+        TrainerNpcEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.TrainerNpcEntry", 190010);
+        RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
+        EnableSynergies = sConfigMgr->GetOption<bool>("HybridTalentSystem.EnableSynergies", true);
+    }
+
+    void LoadTemplates()
+    {
+        SpellTemplates.clear();
+        SynergyTemplates.clear();
+
+        QueryResult spellResult = WorldDatabase.Query("SELECT spell_id, class_mask, required_level, cost, category, role_mask, flags FROM hybrid_spell_template");
+        if (spellResult)
+        {
+            do
+            {
+                Field* fields = spellResult->Fetch();
+
+                HybridSpellTemplate templ;
+                templ.SpellId = fields[0].Get<uint32>();
+                templ.ClassMask = fields[1].Get<uint32>();
+                templ.RequiredLevel = fields[2].Get<uint8>();
+                templ.Cost = fields[3].Get<uint16>();
+                templ.Category = fields[4].Get<std::string>();
+                templ.RoleMask = fields[5].Get<uint8>();
+                templ.Flags = fields[6].Get<uint32>();
+
+                if (sSpellMgr->GetSpellInfo(templ.SpellId))
+                    SpellTemplates[templ.SpellId] = templ;
+            } while (spellResult->NextRow());
+        }
+
+        QueryResult synergyResult = WorldDatabase.Query("SELECT required_spell_1, required_spell_2, reward_spell FROM hybrid_synergy_template");
+        if (synergyResult)
+        {
+            do
+            {
+                Field* fields = synergyResult->Fetch();
+
+                HybridSynergyTemplate templ;
+                templ.RequiredSpell1 = fields[0].Get<uint32>();
+                templ.RequiredSpell2 = fields[1].Get<uint32>();
+                templ.RewardSpell = fields[2].Get<uint32>();
+
+                if (sSpellMgr->GetSpellInfo(templ.RewardSpell))
+                    SynergyTemplates.push_back(templ);
+            } while (synergyResult->NextRow());
+        }
+    }
+
+    void SendMainMenu(Player* player, Creature* creature)
+    {
+        ClearGossipMenuFor(player);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "View hybrid status", GOSSIP_SENDER_MAIN, ACTION_STATUS);
+        AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Learn hybrid spells", GOSSIP_SENDER_MAIN, ACTION_BROWSE);
+        AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "Reset hybrid build", GOSSIP_SENDER_MAIN, ACTION_RESET_CONFIRM);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+    }
+
+    void SendBrowseMenu(Player* player, Creature* creature)
+    {
+        ClearGossipMenuFor(player);
+
+        uint16 earned = CalculateEarnedPoints(player);
+        uint16 spent = GetSpentPoints(player->GetGUID().GetCounter());
+        uint16 available = earned > spent ? earned - spent : 0;
+
+        for (auto const& pair : SpellTemplates)
+        {
+            HybridSpellTemplate const& templ = pair.second;
+            if (!IsAllowedForPlayer(player, templ))
+                continue;
+
+            if (HasHybridSpell(player->GetGUID().GetCounter(), templ.SpellId))
+                continue;
+
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
+            std::string label = spellInfo ? spellInfo->SpellName[0] : std::to_string(templ.SpellId);
+            label += " - ";
+            label += std::to_string(templ.Cost);
+            label += " point";
+            label += templ.Cost == 1 ? "" : "s";
+
+            if (available < templ.Cost)
+                label += " (not enough points)";
+
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, label, GOSSIP_SENDER_MAIN, ACTION_LEARN_BASE + templ.SpellId);
+        }
+
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, 0);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+    }
+
+    bool TryLearnHybridSpell(Player* player, uint32 spellId)
+    {
+        auto itr = SpellTemplates.find(spellId);
+        if (itr == SpellTemplates.end())
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("That spell is not available as a hybrid spell.");
+            return false;
+        }
+
+        HybridSpellTemplate const& templ = itr->second;
+        if (!IsAllowedForPlayer(player, templ))
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You do not meet the requirements for that spell.");
+            return false;
+        }
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        if (HasHybridSpell(guid, spellId) || player->HasSpell(spellId))
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You already know that spell.");
+            return false;
+        }
+
+        uint16 earned = CalculateEarnedPoints(player);
+        uint16 spent = GetSpentPoints(guid);
+        if (earned < spent || earned - spent < templ.Cost)
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You do not have enough hybrid points.");
+            return false;
+        }
+
+        SaveHybridSpell(guid, spellId);
+        player->learnSpell(spellId, false);
+        ApplySynergies(player);
+        ChatHandler(player->GetSession()).PSendSysMessage("Hybrid spell learned.");
+        return true;
+    }
+}
+
+class HybridTalentWorldScript : public WorldScript
+{
+public:
+    HybridTalentWorldScript() : WorldScript("HybridTalentWorldScript") { }
+
+    void OnAfterConfigLoad(bool /*reload*/) override
+    {
+        LoadConfig();
+    }
+
+    void OnStartup() override
+    {
+        if (!Enabled)
+            return;
+
+        LoadTemplates();
+    }
+};
+
+class HybridTalentPlayerScript : public PlayerScript
+{
+public:
+    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript") { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        if (Enabled && RestoreOnLogin)
+            RestoreHybridSpells(player);
+    }
+
+    void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
+    {
+        if (Enabled)
+            ApplySynergies(player);
+    }
+};
+
+class HybridTalentTrainerScript : public CreatureScript
+{
+public:
+    HybridTalentTrainerScript() : CreatureScript("npc_hybrid_talent_master") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (!Enabled || creature->GetEntry() != TrainerNpcEntry)
+            return false;
+
+        if (player->GetLevel() < MinLevel)
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("Hybrid training unlocks at level {}.", MinLevel);
+            return true;
+        }
+
+        SendMainMenu(player, creature);
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        if (action == 0)
+        {
+            SendMainMenu(player, creature);
+            return true;
+        }
+
+        if (action == ACTION_STATUS)
+        {
+            uint16 earned = CalculateEarnedPoints(player);
+            uint16 spent = GetSpentPoints(player->GetGUID().GetCounter());
+            ChatHandler(player->GetSession()).PSendSysMessage("Hybrid points: {} earned, {} spent, {} available.", earned, spent, earned > spent ? earned - spent : 0);
+            SendMainMenu(player, creature);
+            return true;
+        }
+
+        if (action == ACTION_BROWSE)
+        {
+            SendBrowseMenu(player, creature);
+            return true;
+        }
+
+        if (action == ACTION_RESET_CONFIRM)
+        {
+            ClearGossipMenuFor(player);
+            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "Confirm reset", GOSSIP_SENDER_MAIN, ACTION_RESET_EXECUTE);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, 0);
+            SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+            return true;
+        }
+
+        if (action == ACTION_RESET_EXECUTE)
+        {
+            if (ResetCostCopper && !player->HasEnoughMoney(ResetCostCopper))
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage("You need {} gold to reset your hybrid build.", ResetCostCopper / 10000);
+                SendMainMenu(player, creature);
+                return true;
+            }
+
+            if (ResetCostCopper)
+                player->ModifyMoney(-static_cast<int32>(ResetCostCopper));
+
+            ResetHybridBuild(player);
+            ChatHandler(player->GetSession()).PSendSysMessage("Your hybrid build has been reset.");
+            SendMainMenu(player, creature);
+            return true;
+        }
+
+        if (action >= ACTION_LEARN_BASE)
+        {
+            TryLearnHybridSpell(player, action - ACTION_LEARN_BASE);
+            SendBrowseMenu(player, creature);
+            return true;
+        }
+
+        SendMainMenu(player, creature);
+        return true;
+    }
+};
+
+class HybridTalentCommandScript : public CommandScript
+{
+public:
+    HybridTalentCommandScript() : CommandScript("HybridTalentCommandScript") { }
+
+    ChatCommandTable GetCommands() const override
+    {
+        static ChatCommandTable hybridCommands =
+        {
+            { "reload", HandleReloadCommand, SEC_ADMINISTRATOR, Console::No },
+            { "reset",  HandleResetCommand,  SEC_ADMINISTRATOR, Console::No }
+        };
+
+        static ChatCommandTable commandTable =
+        {
+            { "hybrid", hybridCommands }
+        };
+
+        return commandTable;
+    }
+
+    static bool HandleReloadCommand(ChatHandler* handler)
+    {
+        LoadConfig();
+        LoadTemplates();
+        handler->PSendSysMessage("Hybrid Talent System templates reloaded. {} spells, {} synergies.", static_cast<uint32>(SpellTemplates.size()), static_cast<uint32>(SynergyTemplates.size()));
+        return true;
+    }
+
+    static bool HandleResetCommand(ChatHandler* handler)
+    {
+        Player* target = handler->getSelectedPlayer();
+        if (!target)
+        {
+            handler->PSendSysMessage("Select a player first.");
+            return false;
+        }
+
+        ResetHybridBuild(target);
+        handler->PSendSysMessage("Hybrid build reset for {}.", target->GetName());
+        return true;
+    }
+};
+
+void AddHybridTalentSystemScripts()
+{
+    new HybridTalentWorldScript();
+    new HybridTalentPlayerScript();
+    new HybridTalentTrainerScript();
+    new HybridTalentCommandScript();
+}

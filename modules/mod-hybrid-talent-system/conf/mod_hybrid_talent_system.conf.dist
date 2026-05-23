@@ -1,0 +1,33 @@
+#
+# Hybrid Talent System
+#
+
+# Enable the module.
+HybridTalentSystem.Enable = 1
+
+# Minimum character level required to learn hybrid spells.
+HybridTalentSystem.MinLevel = 10
+
+# Hybrid points earned per eligible interval.
+HybridTalentSystem.PointsPerInterval = 1
+
+# Level interval after MinLevel. With MinLevel 10 and Interval 2, players earn at
+# levels 10, 12, 14, etc.
+HybridTalentSystem.PointIntervalLevels = 2
+
+# Maximum hybrid points a character can earn.
+HybridTalentSystem.MaxPoints = 35
+
+# Copper cost to reset all hybrid spells.
+# 10000 copper = 1 gold.
+HybridTalentSystem.ResetCostCopper = 100000
+
+# Creature entry used as the Hybrid Talent Master NPC.
+HybridTalentSystem.TrainerNpcEntry = 190010
+
+# Restore persisted hybrid spells when players and playerbots log in.
+HybridTalentSystem.RestoreOnLogin = 1
+
+# Learn synergy reward spells when requirements are met.
+HybridTalentSystem.EnableSynergies = 1
+
