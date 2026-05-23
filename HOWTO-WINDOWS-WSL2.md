@@ -310,18 +310,155 @@ After building and starting the server:
    ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots import-sql hybrid
    ```
 
-2. Create or update a trainer NPC in the world database:
+2. Create or update a trainer NPC in the world database.
 
-   - Entry: `190010`
-   - Name: `Hybrid Talent Master`
-   - ScriptName: `npc_hybrid_talent_master`
-   - Gossip enabled
+   The Hybrid Talent System uses a normal AzerothCore creature as its trainer NPC. The important fields are:
 
-3. Spawn the NPC in game.
+   - `entry`: `190010`
+   - `name`: `Hybrid Talent Master`
+   - `npcflag`: must include gossip
+   - `ScriptName`: `npc_hybrid_talent_master`
 
-4. Level a character to 10.
+   In AzerothCore, `entry` is the creature template ID. The module config expects this value by default:
 
-5. Talk to the NPC and learn a hybrid spell.
+   ```text
+   HybridTalentSystem.TrainerNpcEntry = 190010
+   ```
+
+   `ScriptName` is what connects the creature to the C++ module. If this value is wrong or blank, the NPC may spawn but the Hybrid Talent menu will not open.
+
+   `npcflag` controls what interaction icons/features the NPC has. Gossip is flag `1`, so the safest minimum is:
+
+   ```text
+   npcflag = 1
+   ```
+
+   If you copy an existing trainer NPC, it may already have other flags. That is fine. Just make sure gossip is included.
+
+3. Recommended NPC creation method: copy an existing simple gossip NPC.
+
+   The exact `creature_template` columns can vary between AzerothCore versions and forks, so copying an existing template is safer than writing a giant insert by hand.
+
+   Open a database shell for the world database:
+
+   ```bash
+   cd ~/wow-server-playerbots
+   docker exec -it $(docker ps --format '{{.Names}}' | grep -E 'database|mysql|mariadb|db' | head -1) \
+     mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world
+   ```
+
+   Inside MySQL, find a simple NPC template to copy:
+
+   ```sql
+   SELECT entry, name, npcflag, ScriptName
+   FROM creature_template
+   WHERE npcflag & 1
+   ORDER BY entry
+   LIMIT 20;
+   ```
+
+   Pick one harmless gossip NPC from the result. Then copy it into entry `190010`.
+
+   Example using source entry `68`:
+
+   ```sql
+   CREATE TEMPORARY TABLE tmp_hybrid_npc
+   AS SELECT * FROM creature_template WHERE entry = 68;
+
+   UPDATE tmp_hybrid_npc
+   SET entry = 190010,
+       name = 'Hybrid Talent Master',
+       subname = 'Cross-Class Trainer',
+       npcflag = npcflag | 1,
+       ScriptName = 'npc_hybrid_talent_master';
+
+   DELETE FROM creature_template WHERE entry = 190010;
+   INSERT INTO creature_template SELECT * FROM tmp_hybrid_npc;
+   DROP TEMPORARY TABLE tmp_hybrid_npc;
+   ```
+
+   If your selected source NPC does not have a `subname` column, remove this line:
+
+   ```sql
+   subname = 'Cross-Class Trainer',
+   ```
+
+   Verify it:
+
+   ```sql
+   SELECT entry, name, subname, npcflag, ScriptName
+   FROM creature_template
+   WHERE entry = 190010;
+   ```
+
+4. Alternative NPC creation method: use a database editor.
+
+   If you prefer a GUI such as HeidiSQL, DBeaver, or phpMyAdmin:
+
+   - Open the `acore_world` database.
+   - Open `creature_template`.
+   - Copy an existing simple gossip NPC row.
+   - Change `entry` to `190010`.
+   - Change `name` to `Hybrid Talent Master`.
+   - Change `subname` to `Cross-Class Trainer`, if that column exists.
+   - Make sure `npcflag` includes gossip. Minimum value: `1`.
+   - Set `ScriptName` to `npc_hybrid_talent_master`.
+   - Save the row.
+
+5. Restart the worldserver or reload creature templates.
+
+   The easiest option is to restart the server:
+
+   ```bash
+   cd ~/wow-server-playerbots
+   docker compose restart ac-worldserver
+   ```
+
+   If you are attached to the worldserver console as a GM/admin, you can try:
+
+   ```text
+   reload creature_template
+   ```
+
+   A full worldserver restart is the more reliable path while setting this up.
+
+6. Spawn the NPC in game.
+
+   Log in with a GM account and go to the place where you want the trainer to stand.
+
+   Target your own location and run:
+
+   ```text
+   .npc add 190010
+   ```
+
+   The NPC should appear where your character is standing.
+
+   If you want to remove a bad spawn:
+
+   ```text
+   .npc delete
+   ```
+
+   Make sure the NPC is targeted before running `.npc delete`.
+
+7. Test the NPC.
+
+   Level a character to at least 10:
+
+   ```text
+   .levelup 9
+   ```
+
+   Or use your normal leveling flow.
+
+   Talk to the `Hybrid Talent Master`. You should see options like:
+
+   - `View hybrid status`
+   - `Learn hybrid spells`
+   - `Reset hybrid build`
+
+   Learn a spell, relog, and confirm the spell is still known.
 
 The module config is:
 
@@ -396,4 +533,3 @@ Then reinstall or update modules as needed:
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots install hybrid
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots rebuild
 ```
-
