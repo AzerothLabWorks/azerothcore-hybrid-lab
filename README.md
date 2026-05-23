@@ -21,6 +21,10 @@ Custom modules require a source build. Fast prebuilt Docker images are useful fo
 
 ## Quick Start
 
+For the full Windows + WSL2 walkthrough, start here:
+
+[HOWTO-WINDOWS-WSL2.md](HOWTO-WINDOWS-WSL2.md)
+
 Inside Ubuntu/WSL2:
 
 ```bash
