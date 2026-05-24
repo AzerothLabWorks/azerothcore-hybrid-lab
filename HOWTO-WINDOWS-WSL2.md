@@ -394,7 +394,14 @@ After building and starting the server:
 
 1. Verify or import the Hybrid module SQL.
 
-   If you already ran this earlier, you do not need to run it again. It is safe to re-run, though, because the Hybrid SQL uses `CREATE TABLE IF NOT EXISTS` and updates the starter spell templates without dropping learned character data.
+   The helper command installs the Hybrid config file, safely imports Hybrid SQL, and normalizes the trainer NPC flags:
+
+   ```bash
+   cd ~/azerothcore-hybrid-lab
+   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
+   ```
+
+   If you only want to re-import SQL, this is safe to re-run because the Hybrid SQL uses `CREATE TABLE IF NOT EXISTS` and updates the starter spell templates without dropping learned character data.
 
    ```bash
    cd ~/azerothcore-hybrid-lab
@@ -444,6 +451,13 @@ After building and starting the server:
    ```
 
    If you copy an existing trainer NPC, it may already have other flags. That is fine. Just make sure gossip is included.
+
+   If you already created entry `190010`, run this after editing it:
+
+   ```bash
+   cd ~/azerothcore-hybrid-lab
+   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
+   ```
 
 3. Recommended NPC creation method: copy an existing simple gossip NPC.
 

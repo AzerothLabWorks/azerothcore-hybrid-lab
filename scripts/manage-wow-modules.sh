@@ -17,6 +17,7 @@ Commands:
   install MODULE...     Install one or more modules into SERVER_DIR/modules.
   import-sql MODULE...  Apply module SQL files to running Docker databases.
   setup-ahbot           Create/update AHBot account, owner character, and config.
+  setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
   rebuild               Rebuild and restart Docker services.
 
 Known modules are defined in configs/modules.conf.
@@ -26,6 +27,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 USAGE
 }
@@ -38,7 +40,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|setup-ahbot|rebuild)
+    list|installed|install|import-sql|setup-ahbot|setup-hybrid|rebuild)
       COMMAND="$1"
       shift
       break
@@ -297,6 +299,49 @@ WHERE NOT EXISTS (SELECT 1 FROM characters WHERE name = @char_name);
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
+setup_hybrid() {
+  require_server_dir
+
+  local module_dir="$SERVER_DIR/modules/mod-hybrid-talent-system"
+  [[ -d "$module_dir" ]] || die "mod-hybrid-talent-system is not installed. Run: $0 --server-dir \"$SERVER_DIR\" install hybrid"
+
+  local source_conf="$module_dir/conf/mod_hybrid_talent_system.conf.dist"
+  [[ -f "$source_conf" ]] || die "Could not find $source_conf"
+
+  local etc_modules_dir="$SERVER_DIR/env/dist/etc/modules"
+  mkdir -p "$etc_modules_dir"
+  cp "$source_conf" "$etc_modules_dir/mod_hybrid_talent_system.conf"
+  log "Installed Hybrid config to $etc_modules_dir/mod_hybrid_talent_system.conf"
+
+  log "Ensuring Hybrid SQL has been imported..."
+  import_module_sql hybrid
+
+  log "Normalizing Hybrid trainer creature_template entry 190010..."
+  mysql_query acore_world "
+UPDATE creature_template
+SET
+  npcflag = 1,
+  gossip_menu_id = 0,
+  faction = 35,
+  rank = 0,
+  unit_flags = 0,
+  unit_flags2 = 0,
+  dynamicflags = 0,
+  type_flags = 0,
+  flags_extra = 0,
+  AIName = '',
+  ScriptName = 'npc_hybrid_talent_master'
+WHERE entry = 190010;
+"
+
+  local script_name
+  script_name="$(mysql_query acore_world "SELECT ScriptName FROM creature_template WHERE entry = 190010;" | tr -d '\r')"
+  [[ "$script_name" == "npc_hybrid_talent_master" ]] || die "Hybrid trainer entry 190010 was not found or could not be updated."
+
+  log "Hybrid setup complete."
+  log "Restart ac-worldserver, then delete and respawn the trainer if it was already spawned."
+}
+
 import_module_sql() {
   require_server_dir
   local key="$1"
@@ -358,6 +403,9 @@ case "$COMMAND" in
     ;;
   setup-ahbot)
     setup_ahbot
+    ;;
+  setup-hybrid)
+    setup_hybrid
     ;;
   rebuild)
     rebuild_server
