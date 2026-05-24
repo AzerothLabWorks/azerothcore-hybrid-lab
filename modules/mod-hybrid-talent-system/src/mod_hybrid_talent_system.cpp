@@ -75,11 +75,20 @@ namespace
 
     uint16 GetSpentPoints(ObjectGuid::LowType guid)
     {
-        QueryResult result = CharacterDatabase.Query("SELECT COALESCE(SUM(hst.cost), 0) FROM character_hybrid_spell chs INNER JOIN hybrid_spell_template hst ON hst.spell_id = chs.spell_id WHERE chs.guid = {}", guid);
+        QueryResult result = CharacterDatabase.Query("SELECT spell_id FROM character_hybrid_spell WHERE guid = {}", guid);
         if (!result)
             return 0;
 
-        return (*result)[0].Get<uint16>();
+        uint16 spent = 0;
+        do
+        {
+            uint32 spellId = (*result)[0].Get<uint32>();
+            auto itr = SpellTemplates.find(spellId);
+            if (itr != SpellTemplates.end())
+                spent += itr->second.Cost;
+        } while (result->NextRow());
+
+        return spent;
     }
 
     bool IsAllowedForPlayer(Player const* player, HybridSpellTemplate const& templ)
