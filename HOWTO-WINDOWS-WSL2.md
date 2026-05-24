@@ -500,6 +500,45 @@ After building and starting the server:
    WHERE entry = 190010;
    ```
 
+   Example using Lady Jaina Proudmoore as the trainer:
+
+   ```sql
+   SELECT entry, name, npcflag, ScriptName
+   FROM creature_template
+   WHERE name LIKE '%Jaina%' AND npcflag & 1
+   ORDER BY entry;
+   ```
+
+   On a typical AzerothCore WotLK database, entry `32346` is a good source template because it has gossip enabled and no special `ScriptName`.
+
+   Do not modify the original Jaina entry. Copy it into your custom trainer entry instead:
+
+   ```sql
+   CREATE TEMPORARY TABLE tmp_hybrid_npc
+   AS SELECT * FROM creature_template WHERE entry = 32346;
+
+   UPDATE tmp_hybrid_npc
+   SET entry = 190010,
+       name = 'Lady Jaina Proudmoore',
+       subname = 'Hybrid Talent Master',
+       npcflag = 1,
+       gossip_menu_id = 0,
+       AIName = '',
+       ScriptName = 'npc_hybrid_talent_master';
+
+   DELETE FROM creature_template WHERE entry = 190010;
+   INSERT INTO creature_template SELECT * FROM tmp_hybrid_npc;
+   DROP TEMPORARY TABLE tmp_hybrid_npc;
+   ```
+
+   Verify it:
+
+   ```sql
+   SELECT entry, name, subname, npcflag, gossip_menu_id, AIName, ScriptName
+   FROM creature_template
+   WHERE entry = 190010;
+   ```
+
 4. Alternative NPC creation method: use a database editor.
 
    If you prefer a GUI such as HeidiSQL, DBeaver, or phpMyAdmin:
