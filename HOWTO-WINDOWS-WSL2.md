@@ -353,7 +353,38 @@ AuctionHouseBot.GUID = CHARACTER_GUID
 
 The AHBot account does not need GM privileges. The AHBot character should not be used as a normal playable character.
 
-We plan to automate this later with a `setup-ahbot` helper command.
+Use the helper command after `ahbot` is installed, its SQL is imported, and the database container is running:
+
+```bash
+cd ~/azerothcore-hybrid-lab
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
+```
+
+Defaults:
+
+- Account: `AHBOT`
+- Character: `Auctioneer`
+
+To run non-interactively:
+
+```bash
+AHBOT_ACCOUNT=ahbot AHBOT_CHARACTER=Auctioneer \
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
+```
+
+The helper:
+
+- Creates or reuses a locked dedicated AHBot account.
+- Creates or reuses a minimal AHBot owner character.
+- Updates `mod_ahbot.conf`.
+- Enables both seller and buyer mode.
+
+Then restart worldserver:
+
+```bash
+cd ~/wow-server-playerbots-hybrid
+docker compose restart ac-worldserver
+```
 
 ## Part 11: Hybrid Talent System Setup
 

@@ -16,6 +16,7 @@ Commands:
   installed             List modules currently present in SERVER_DIR/modules.
   install MODULE...     Install one or more modules into SERVER_DIR/modules.
   import-sql MODULE...  Apply module SQL files to running Docker databases.
+  setup-ahbot           Create/update AHBot account, owner character, and config.
   rebuild               Rebuild and restart Docker services.
 
 Known modules are defined in configs/modules.conf.
@@ -24,6 +25,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 USAGE
 }
@@ -36,7 +38,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|rebuild)
+    list|installed|install|import-sql|setup-ahbot|rebuild)
       COMMAND="$1"
       shift
       break
@@ -125,6 +127,16 @@ find_db_container() {
   docker ps --format '{{.Names}}' | grep -E "$pattern" | head -1 || true
 }
 
+mysql_query() {
+  local db_name="$1"
+  local sql="$2"
+  local db_container
+  db_container="$(find_db_container 'database|mysql|mariadb|db')"
+  [[ -n "$db_container" ]] || die "Could not find a running database container."
+
+  docker exec -i "$db_container" sh -lc "mysql -N -B -uroot -p\"\$MYSQL_ROOT_PASSWORD\" $db_name" <<<"$sql"
+}
+
 mysql_exec_file() {
   local db_name="$1"
   local sql_file="$2"
@@ -134,6 +146,155 @@ mysql_exec_file() {
 
   log "Applying $(basename "$sql_file") to $db_name via $db_container"
   docker exec -i "$db_container" sh -lc "mysql -uroot -p\"\$MYSQL_ROOT_PASSWORD\" $db_name" < "$sql_file"
+}
+
+find_ahbot_config() {
+  local candidates=(
+    "$SERVER_DIR/env/dist/etc/modules/mod_ahbot.conf"
+    "$SERVER_DIR/env/dist/etc/mod_ahbot.conf"
+    "$SERVER_DIR/conf/modules/mod_ahbot.conf"
+    "$SERVER_DIR/conf/mod_ahbot.conf"
+    "$SERVER_DIR/modules/mod-ah-bot/conf/mod_ahbot.conf"
+    "$SERVER_DIR/modules/mod-ah-bot/conf/mod_ahbot.conf.dist"
+  )
+
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  find "$SERVER_DIR" -path '*/mod-ah-bot/*' -name 'mod_ahbot.conf*' -type f 2>/dev/null | head -1
+}
+
+ensure_runtime_ahbot_config() {
+  local source_file="$1"
+  local etc_dir="$SERVER_DIR/env/dist/etc"
+  local runtime_file="$etc_dir/mod_ahbot.conf"
+
+  if [[ -d "$etc_dir" ]]; then
+    if [[ ! -f "$runtime_file" ]]; then
+      cp "$source_file" "$runtime_file"
+    fi
+    printf '%s\n' "$runtime_file"
+  fi
+}
+
+set_conf_value() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  if grep -qE "^[[:space:]]*${key}[[:space:]]*=" "$file"; then
+    sed -i -E "s|^[[:space:]]*${key}[[:space:]]*=.*|${key} = ${value}|" "$file"
+  else
+    printf '\n%s = %s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+setup_ahbot() {
+  require_server_dir
+
+  local account_name="${AHBOT_ACCOUNT:-ahbot}"
+  local character_name="${AHBOT_CHARACTER:-Auctioneer}"
+
+  if [[ -t 0 ]]; then
+    read -r -p "AHBot account name [$account_name]: " input
+    account_name="${input:-$account_name}"
+    read -r -p "AHBot character name [$character_name]: " input
+    character_name="${input:-$character_name}"
+  fi
+
+  account_name="$(tr '[:lower:]' '[:upper:]' <<<"$account_name")"
+
+  [[ "$account_name" =~ ^[A-Z0-9_]{3,32}$ ]] || die "AHBot account name must be 3-32 letters/numbers/underscores."
+  [[ "$character_name" =~ ^[A-Za-z]{2,12}$ ]] || die "AHBot character name must be 2-12 letters."
+
+  local ahbot_dir="$SERVER_DIR/modules/mod-ah-bot"
+  [[ -d "$ahbot_dir" ]] || die "mod-ah-bot is not installed. Run: $0 --server-dir \"$SERVER_DIR\" install ahbot"
+
+  log "Creating or reusing AHBot account '$account_name'..."
+  mysql_query acore_auth "
+INSERT INTO account (username, salt, verifier, email, reg_mail, expansion, locked)
+SELECT '${account_name}', UNHEX(REPEAT('00', 32)), UNHEX(REPEAT('00', 32)), '', '', 2, 1
+WHERE NOT EXISTS (SELECT 1 FROM account WHERE username = '${account_name}');
+"
+
+  local account_id
+  account_id="$(mysql_query acore_auth "SELECT id FROM account WHERE username = '${account_name}' LIMIT 1;" | tr -d '\r')"
+  [[ -n "$account_id" ]] || die "Could not resolve AHBot account ID."
+
+  log "Creating or reusing AHBot owner character '$character_name'..."
+  mysql_query acore_characters "
+SET @account_id := ${account_id};
+SET @char_name := '${character_name}';
+SET @next_guid := (SELECT COALESCE(MAX(guid), 0) + 1 FROM characters);
+
+INSERT INTO characters (
+  guid, account, name, race, class, gender, level, xp, money,
+  skin, face, hairStyle, hairColor, facialStyle,
+  bankSlots, restState, playerFlags,
+  position_x, position_y, position_z, map,
+  instance_id, instance_mode_mask, orientation,
+  taximask, online, cinematic, totaltime, leveltime, logout_time,
+  is_logout_resting, rest_bonus, resettalents_cost, resettalents_time,
+  trans_x, trans_y, trans_z, trans_o, transguid,
+  extra_flags, stable_slots, at_login, zone, death_expire_time,
+  taxi_path, arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints,
+  totalKills, todayKills, yesterdayKills, chosenTitle, knownCurrencies,
+  watchedFaction, drunk, health, power1, power2, power3, power4, power5, power6, power7,
+  latency, talentGroupsCount, activeTalentGroup,
+  exploredZones, equipmentCache, ammoId, knownTitles, actionBars, grantableLevels,
+  \`order\`, deleteInfos_Account, deleteInfos_Name, deleteDate, innTriggerId, extraBonusTalentCount
+)
+SELECT
+  @next_guid, @account_id, @char_name, 1, 1, 0, 1, 0, 0,
+  0, 0, 0, 0, 0,
+  0, 0, 0,
+  -8949.95, -132.493, 83.5312, 0,
+  0, 0, 0,
+  '', 0, 1, 0, 0, UNIX_TIMESTAMP(),
+  0, 0, 0, 0,
+  0, 0, 0, 0, 0,
+  0, 0, 0, 12, 0,
+  '', 0, 0, 0, 0,
+  0, 0, 0, 0, 0,
+  0, 0, 100, 0, 0, 0, 0, 0, 0, 0,
+  0, 1, 0,
+  '', '', 0, '', 0, 0,
+  NULL, NULL, NULL, NULL, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM characters WHERE name = @char_name);
+"
+
+  local character_guid
+  character_guid="$(mysql_query acore_characters "SELECT guid FROM characters WHERE name = '${character_name}' LIMIT 1;" | tr -d '\r')"
+  [[ -n "$character_guid" ]] || die "Could not resolve AHBot character GUID."
+
+  local config_file
+  config_file="$(find_ahbot_config)"
+  [[ -n "$config_file" ]] || die "Could not find mod_ahbot.conf or mod_ahbot.conf.dist under $SERVER_DIR."
+
+  if [[ "$config_file" == *.dist ]]; then
+    local target_file="${config_file%.dist}"
+    cp "$config_file" "$target_file"
+    config_file="$target_file"
+  fi
+
+  log "Updating AHBot config: $config_file"
+  for target_config in "$config_file" $(ensure_runtime_ahbot_config "$config_file"); do
+    [[ -n "$target_config" ]] || continue
+    set_conf_value "$target_config" "AuctionHouseBot.EnableSeller" "1"
+    set_conf_value "$target_config" "AuctionHouseBot.EnableBuyer" "1"
+    set_conf_value "$target_config" "AuctionHouseBot.Account" "$account_id"
+    set_conf_value "$target_config" "AuctionHouseBot.GUID" "$character_guid"
+    log "Configured $target_config"
+  done
+
+  log "AHBot setup complete."
+  log "Account '${account_name}' id: $account_id"
+  log "Character '${character_name}' guid: $character_guid"
+  log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
 import_module_sql() {
@@ -194,6 +355,9 @@ case "$COMMAND" in
   import-sql)
     [[ $# -gt 0 ]] || die "Specify at least one module key."
     for module in "$@"; do import_module_sql "$module"; done
+    ;;
+  setup-ahbot)
+    setup_ahbot
     ;;
   rebuild)
     rebuild_server
