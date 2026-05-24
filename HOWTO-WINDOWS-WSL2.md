@@ -392,12 +392,33 @@ The installer copies the Hybrid Talent System module into the server source tree
 
 After building and starting the server:
 
-1. Import the module SQL if it was not imported automatically:
+1. Verify or import the Hybrid module SQL.
+
+   If you already ran this earlier, you do not need to run it again. It is safe to re-run, though, because the Hybrid SQL uses `CREATE TABLE IF NOT EXISTS` and updates the starter spell templates without dropping learned character data.
 
    ```bash
    cd ~/azerothcore-hybrid-lab
    ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
    ```
+
+   To check manually whether the table already exists:
+
+   ```bash
+   cd ~/wow-server-playerbots-hybrid
+   docker exec -it ac-database sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world -e "SHOW TABLES LIKE '\''hybrid_spell_template'\'';"'
+   ```
+
+   You do not need to know the MySQL root password when using the command above. It reads `MYSQL_ROOT_PASSWORD` from inside the database container.
+
+   If you connect from outside the container, AzerothCore's Docker default is:
+
+   ```text
+   username: root
+   password: password
+   database: acore_world
+   ```
+
+   That default changes if `DOCKER_DB_ROOT_PASSWORD` is set in your server environment.
 
 2. Create or update a trainer NPC in the world database.
 
@@ -432,8 +453,7 @@ After building and starting the server:
 
    ```bash
    cd ~/wow-server-playerbots-hybrid
-   docker exec -it $(docker ps --format '{{.Names}}' | grep -E 'database|mysql|mariadb|db' | head -1) \
-     mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world
+   docker exec -it ac-database sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world'
    ```
 
    Inside MySQL, find a simple NPC template to copy:
