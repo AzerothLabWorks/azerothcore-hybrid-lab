@@ -598,6 +598,14 @@ After building and starting the server:
 
    The NPC should appear where your character is standing.
 
+   Quality-of-life tip: GM commands can be placed in normal in-game macros if your account has permission to run them. Create a macro named `Hybrid Trainer` with:
+
+   ```text
+   .npc add 190010
+   ```
+
+   Put the macro on your action bar while testing so you do not have to remember the trainer entry ID.
+
    If you want to remove a bad spawn:
 
    ```text
