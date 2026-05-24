@@ -56,11 +56,11 @@ namespace
 
     enum HybridActions : uint32
     {
-        ACTION_STATUS = 1,
-        ACTION_BROWSE = 10,
-        ACTION_RESET_CONFIRM = 20,
-        ACTION_RESET_EXECUTE = 21,
-        ACTION_LEARN_BASE = 100000
+        ACTION_STATUS = GOSSIP_ACTION_INFO_DEF + 1,
+        ACTION_BROWSE = GOSSIP_ACTION_INFO_DEF + 2,
+        ACTION_RESET_CONFIRM = GOSSIP_ACTION_INFO_DEF + 3,
+        ACTION_RESET_EXECUTE = GOSSIP_ACTION_INFO_DEF + 4,
+        ACTION_LEARN_BASE = GOSSIP_ACTION_INFO_DEF + 100000
     };
 
     uint16 CalculateEarnedPoints(Player const* player)
@@ -275,6 +275,7 @@ namespace
         uint16 spent = GetSpentPoints(player->GetGUID().GetCounter());
         uint16 available = earned > spent ? earned - spent : 0;
 
+        bool foundSpell = false;
         for (auto const& pair : SpellTemplates)
         {
             HybridSpellTemplate const& templ = pair.second;
@@ -295,7 +296,11 @@ namespace
                 label += " (not enough points)";
 
             AddGossipItemFor(player, GOSSIP_ICON_TRAINER, label, GOSSIP_SENDER_MAIN, ACTION_LEARN_BASE + templ.SpellId);
+            foundSpell = true;
         }
+
+        if (!foundSpell)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "No hybrid spells are currently available.", GOSSIP_SENDER_MAIN, 0);
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, 0);
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
@@ -393,6 +398,7 @@ public:
             return true;
         }
 
+        player->TalkedToCreature(creature->GetEntry(), creature->GetGUID());
         SendMainMenu(player, creature);
         return true;
     }
