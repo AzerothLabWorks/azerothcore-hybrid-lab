@@ -5,6 +5,7 @@
 #include "CreatureScript.h"
 #include "DatabaseEnv.h"
 #include "GossipDef.h"
+#include "Log.h"
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptedGossip.h"
@@ -210,6 +211,13 @@ namespace
     {
         SpellTemplates.clear();
         SynergyTemplates.clear();
+
+        QueryResult tableResult = WorldDatabase.Query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'hybrid_spell_template' LIMIT 1");
+        if (!tableResult)
+        {
+            LOG_WARN("module.hybridtalents", "Hybrid Talent System tables are missing. Import the module SQL or enable DB updates before using the module.");
+            return;
+        }
 
         QueryResult spellResult = WorldDatabase.Query("SELECT spell_id, class_mask, required_level, cost, category, role_mask, flags FROM hybrid_spell_template");
         if (spellResult)

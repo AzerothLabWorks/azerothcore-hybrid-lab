@@ -82,4 +82,3 @@ REPLACE INTO `hybrid_spell_template`
 
 -- Synergy rewards should use custom passive spell IDs that exist in your DBC.
 -- Leave this table empty until those custom spells are created.
-

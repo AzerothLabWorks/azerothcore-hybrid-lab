@@ -522,6 +522,28 @@ For SQL changes, import the module SQL:
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
 ```
 
+### `hybrid_spell_template` table does not exist
+
+If worldserver logs this:
+
+```text
+Table 'acore_world.hybrid_spell_template' doesn't exist
+Your database structure is not up to date.
+```
+
+The Hybrid Talent System module loaded before its SQL was imported.
+
+From the lab repo, import the Hybrid SQL and restart worldserver:
+
+```bash
+cd ~/azerothcore-hybrid-lab
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
+cd ~/wow-server-playerbots-hybrid
+docker compose restart ac-worldserver
+```
+
+Newer versions of this repo also place Hybrid SQL under `modules/mod-hybrid-talent-system/data/sql/` so AzerothCore's DB updater can discover it automatically on fresh builds.
+
 ### I want to update this repo on WSL2
 
 ```bash

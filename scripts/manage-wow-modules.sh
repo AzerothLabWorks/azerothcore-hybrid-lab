@@ -152,12 +152,21 @@ import_module_sql() {
 
   while IFS= read -r -d '' sql_file; do
     case "$sql_file" in
-      */sql/world/*|*/sql/db_world/*) mysql_exec_file acore_world "$sql_file"; applied=true ;;
-      */sql/characters/*|*/sql/db_characters/*) mysql_exec_file acore_characters "$sql_file"; applied=true ;;
-      */sql/auth/*|*/sql/db_auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
+      */sql/world/*|*/sql/db_world/*|*/sql/db-world/*) mysql_exec_file acore_world "$sql_file"; applied=true ;;
+      */sql/characters/*|*/sql/db_characters/*|*/sql/db-characters/*) mysql_exec_file acore_characters "$sql_file"; applied=true ;;
+      */sql/auth/*|*/sql/db_auth/*|*/sql/db-auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
       *) warn "Skipping SQL with unknown target: $sql_file" ;;
     esac
   done < <(find "$module_dir/sql" -type f -name '*.sql' -print0 2>/dev/null || true)
+
+  while IFS= read -r -d '' sql_file; do
+    case "$sql_file" in
+      */data/sql/db-world/*) mysql_exec_file acore_world "$sql_file"; applied=true ;;
+      */data/sql/db-characters/*) mysql_exec_file acore_characters "$sql_file"; applied=true ;;
+      */data/sql/db-auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
+      *) warn "Skipping SQL with unknown target: $sql_file" ;;
+    esac
+  done < <(find "$module_dir/data/sql" -type f -name '*.sql' -print0 2>/dev/null || true)
 
   if [[ "$applied" == false ]]; then
     warn "No SQL files applied for $name."
