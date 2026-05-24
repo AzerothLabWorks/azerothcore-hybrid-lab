@@ -390,6 +390,8 @@ docker compose restart ac-worldserver
 
 The installer copies the Hybrid Talent System module into the server source tree for source-build profiles.
 
+The current MVP is an NPC-first hybrid spell system. Players spend level-based hybrid points to learn cross-class spells from an allowlist. Cross-class talent support is planned as a later iteration after the spell flow is stable.
+
 After building and starting the server:
 
 1. Verify or import the Hybrid module SQL.
@@ -622,6 +624,18 @@ After building and starting the server:
 
    Learn a spell, relog, and confirm the spell is still known.
 
+   Recommended first validation path:
+
+   ```text
+   1. Use a level 10 character.
+   2. Click View hybrid status and confirm earned/spent/available points appear in chat.
+   3. Click Learn hybrid spells and learn one 1-point spell.
+   4. Cast the learned spell.
+   5. Relog and confirm the spell is still known.
+   6. Level to 12 and confirm available points increases by 1.
+   7. Test Reset hybrid build when the character has enough gold.
+   ```
+
 The module config is:
 
 ```text
@@ -631,6 +645,7 @@ modules/mod-hybrid-talent-system/conf/mod_hybrid_talent_system.conf.dist
 Important defaults:
 
 - Unlock level: `10`
+- Point curve: `1` point every `2` levels starting at level `10`
 - Max points: `35`
 - Reset cost: `100000` copper, or 10 gold
 - NPC entry: `190010`
@@ -703,6 +718,22 @@ docker compose restart ac-worldserver
 ```
 
 Newer versions of this repo also place Hybrid SQL under `modules/mod-hybrid-talent-system/data/sql/` so AzerothCore's DB updater can discover it automatically on fresh builds.
+
+If you see an older error like this:
+
+```text
+Table 'acore_characters.hybrid_spell_template' doesn't exist
+```
+
+Update the lab repo and rebuild. Current versions calculate spent hybrid points from the character table plus the world template data loaded by the module.
+
+```bash
+cd ~/azerothcore-hybrid-lab
+git pull
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
 
 ### I want to update this repo on WSL2
 
