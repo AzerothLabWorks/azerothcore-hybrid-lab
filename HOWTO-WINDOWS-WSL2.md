@@ -177,39 +177,34 @@ cd ~/wow-server-prebuilt-hybrid
 
 Stop watching logs with `Ctrl+C`. That does not stop the server.
 
-## Part 6: Install or Update Modules
+## Part 6: Confirm the Server Is Running
 
-List known modules:
+Before adding or testing more modules, confirm the base server path works.
 
-```bash
-cd ~/azerothcore-hybrid-lab
-./scripts/manage-wow-modules.sh list
-```
-
-Install modules into an existing source server:
+Check container status:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog learnspells
+cd ~/wow-server-playerbots-hybrid
+docker compose ps
 ```
 
-Rebuild after adding C++ modules:
+For the Playerbots profile, it is normal to see noisy runtime messages while bots are created and logged in. Messages like these are usually warnings, not build failures:
+
+```text
+Random Bots Stats: 122 online
+Arena: Player ... already has an arena team
+Bot ... failed to join guild ...
+```
+
+What matters is that `ac-worldserver` stays `Up` and does not continually exit/restart.
+
+Watch logs:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+docker compose logs -f ac-worldserver
 ```
 
-Import module SQL after the database containers are running:
-
-```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
-```
-
-Current known module keys:
-
-- `hybrid`: Hybrid Talent System from this repo.
-- `ahbot`: Auction House Bot.
-- `transmog`: Transmog.
-- `learnspells`: Auto Learn Spells.
+Stop watching logs with `Ctrl+C`.
 
 ## Part 7: Create Your Game Account
 
@@ -271,6 +266,16 @@ set realmlist 172.24.144.1
 
 Launch `wow.exe` and log in with the account you created.
 
+Do this before continuing. A successful login proves:
+
+- Docker networking is working.
+- Authserver is working.
+- Worldserver is working.
+- The Windows client can reach the WSL2 server.
+- Your account and realm configuration are good.
+
+After you can log into the world, continue with module setup.
+
 ## Part 9: Start and Stop the Server
 
 Start:
@@ -299,7 +304,58 @@ Watch logs:
 docker compose logs -f ac-worldserver
 ```
 
-## Part 10: Hybrid Talent System Setup
+## Part 10: Install or Update Modules
+
+List known modules:
+
+```bash
+cd ~/azerothcore-hybrid-lab
+./scripts/manage-wow-modules.sh list
+```
+
+Install modules into an existing source server:
+
+```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog learnspells
+```
+
+Import module SQL after the database containers are running:
+
+```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid ahbot transmog learnspells
+```
+
+Rebuild after adding C++ modules:
+
+```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+Current known module keys:
+
+- `hybrid`: Hybrid Talent System from this repo.
+- `ahbot`: Auction House Bot.
+- `transmog`: Transmog.
+- `learnspells`: Auto Learn Spells.
+
+### AHBot Account Note
+
+Installing `ahbot` only adds the module source and SQL. AHBot still needs its config pointed at an account ID and character GUID.
+
+The AHBot config values are:
+
+```ini
+AuctionHouseBot.EnableSeller = 1
+AuctionHouseBot.EnableBuyer = 1
+AuctionHouseBot.Account = ACCOUNT_ID
+AuctionHouseBot.GUID = CHARACTER_GUID
+```
+
+The AHBot account does not need GM privileges. The AHBot character should not be used as a normal playable character.
+
+We plan to automate this later with a `setup-ahbot` helper command.
+
+## Part 11: Hybrid Talent System Setup
 
 The installer copies the Hybrid Talent System module into the server source tree for source-build profiles.
 
