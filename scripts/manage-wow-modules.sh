@@ -323,7 +323,7 @@ SET
   npcflag = 1,
   gossip_menu_id = 0,
   faction = 35,
-  rank = 0,
+  \`rank\` = 0,
   unit_flags = 0,
   unit_flags2 = 0,
   dynamicflags = 0,
