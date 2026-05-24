@@ -50,6 +50,7 @@ namespace
     uint32 TrainerNpcEntry = 190010;
     bool RestoreOnLogin = true;
     bool EnableSynergies = true;
+    bool AutoUpgradeRanks = true;
 
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
@@ -109,10 +110,45 @@ namespace
         return true;
     }
 
-    bool HasHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
+    uint32 GetFirstRankSpellId(uint32 spellId)
     {
-        QueryResult result = CharacterDatabase.Query("SELECT 1 FROM character_hybrid_spell WHERE guid = {} AND spell_id = {} LIMIT 1", guid, spellId);
-        return !!result;
+        if (uint32 firstRank = sSpellMgr->GetFirstSpellInChain(spellId))
+            return firstRank;
+
+        return spellId;
+    }
+
+    bool IsSameSpellChain(uint32 leftSpellId, uint32 rightSpellId)
+    {
+        return GetFirstRankSpellId(leftSpellId) == GetFirstRankSpellId(rightSpellId);
+    }
+
+    bool HasHybridSpellInChain(ObjectGuid::LowType guid, uint32 spellId)
+    {
+        QueryResult result = CharacterDatabase.Query("SELECT spell_id FROM character_hybrid_spell WHERE guid = {}", guid);
+        if (!result)
+            return false;
+
+        do
+        {
+            if (IsSameSpellChain((*result)[0].Get<uint32>(), spellId))
+                return true;
+        } while (result->NextRow());
+
+        return false;
+    }
+
+    bool PlayerHasSpellInChain(Player const* player, uint32 spellId)
+    {
+        if (!player)
+            return false;
+
+        uint32 firstRank = GetFirstRankSpellId(spellId);
+        for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
+            if (player->HasSpell(currentSpellId))
+                return true;
+
+        return player->HasSpell(spellId);
     }
 
     void SaveHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
@@ -140,6 +176,63 @@ namespace
         } while (result->NextRow());
 
         return spellIds;
+    }
+
+    uint32 GetBestHybridSpellRankForPlayer(Player const* player, uint32 spellId)
+    {
+        if (!player)
+            return spellId;
+
+        uint32 bestSpellId = spellId;
+        for (uint32 nextSpellId = sSpellMgr->GetNextSpellInChain(bestSpellId); nextSpellId; nextSpellId = sSpellMgr->GetNextSpellInChain(bestSpellId))
+        {
+            SpellInfo const* nextSpellInfo = sSpellMgr->GetSpellInfo(nextSpellId);
+            if (!nextSpellInfo)
+                break;
+
+            if (nextSpellInfo->SpellLevel && player->GetLevel() < nextSpellInfo->SpellLevel)
+                break;
+
+            bestSpellId = nextSpellId;
+        }
+
+        return bestSpellId;
+    }
+
+    void RemoveHybridSpellRanks(Player* player, uint32 spellId, uint32 exceptSpellId = 0)
+    {
+        if (!player)
+            return;
+
+        uint32 firstRank = GetFirstRankSpellId(spellId);
+        for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
+        {
+            if (currentSpellId == exceptSpellId)
+                continue;
+
+            if (player->HasSpell(currentSpellId))
+                player->removeSpell(currentSpellId, false, false);
+        }
+
+        if (firstRank == spellId)
+            return;
+
+        if (!sSpellMgr->GetSpellInfo(firstRank) && player->HasSpell(spellId) && spellId != exceptSpellId)
+            player->removeSpell(spellId, false, false);
+    }
+
+    uint32 LearnBestHybridSpellRank(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return spellId;
+
+        uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
+        RemoveHybridSpellRanks(player, spellId, bestSpellId);
+
+        if (!player->HasSpell(bestSpellId))
+            player->learnSpell(bestSpellId, false);
+
+        return bestSpellId;
     }
 
     void ApplySynergies(Player* player)
@@ -173,8 +266,7 @@ namespace
             if (!SpellTemplates.count(spellId))
                 continue;
 
-            if (!player->HasSpell(spellId))
-                player->learnSpell(spellId, false);
+            LearnBestHybridSpellRank(player, spellId);
         }
 
         ApplySynergies(player);
@@ -190,8 +282,7 @@ namespace
 
         for (uint32 spellId : spellIds)
         {
-            if (player->HasSpell(spellId))
-                player->removeSpell(spellId, false, false);
+            RemoveHybridSpellRanks(player, spellId);
         }
 
         for (HybridSynergyTemplate const& synergy : SynergyTemplates)
@@ -214,6 +305,7 @@ namespace
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.TrainerNpcEntry", 190010);
         RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
         EnableSynergies = sConfigMgr->GetOption<bool>("HybridTalentSystem.EnableSynergies", true);
+        AutoUpgradeRanks = sConfigMgr->GetOption<bool>("HybridTalentSystem.AutoUpgradeRanks", true);
     }
 
     void LoadTemplates()
@@ -291,7 +383,7 @@ namespace
             if (!IsAllowedForPlayer(player, templ))
                 continue;
 
-            if (HasHybridSpell(player->GetGUID().GetCounter(), templ.SpellId))
+            if (HasHybridSpellInChain(player->GetGUID().GetCounter(), templ.SpellId))
                 continue;
 
             SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
@@ -332,7 +424,13 @@ namespace
         }
 
         ObjectGuid::LowType guid = player->GetGUID().GetCounter();
-        if (HasHybridSpell(guid, spellId) || player->HasSpell(spellId))
+        if (HasHybridSpellInChain(guid, spellId))
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You already know that spell.");
+            return false;
+        }
+
+        if (PlayerHasSpellInChain(player, spellId))
         {
             ChatHandler(player->GetSession()).PSendSysMessage("You already know that spell.");
             return false;
@@ -347,9 +445,13 @@ namespace
         }
 
         SaveHybridSpell(guid, spellId);
-        player->learnSpell(spellId, false);
+        uint32 learnedSpellId = LearnBestHybridSpellRank(player, spellId);
         ApplySynergies(player);
-        ChatHandler(player->GetSession()).PSendSysMessage("Hybrid spell learned.");
+        SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(learnedSpellId);
+        if (learnedSpellId != spellId && learnedSpellInfo)
+            ChatHandler(player->GetSession()).PSendSysMessage("Hybrid spell learned and upgraded to {}.", learnedSpellInfo->SpellName[0]);
+        else
+            ChatHandler(player->GetSession()).PSendSysMessage("Hybrid spell learned.");
         return true;
     }
 }
@@ -387,7 +489,7 @@ public:
     void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
     {
         if (Enabled)
-            ApplySynergies(player);
+            RestoreHybridSpells(player);
     }
 };
 

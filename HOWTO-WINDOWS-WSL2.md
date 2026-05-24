@@ -641,7 +641,8 @@ After building and starting the server:
    4. Cast the learned spell.
    5. Relog and confirm the spell is still known.
    6. Level to 12 and confirm available points increases by 1.
-   7. Test Reset hybrid build when the character has enough gold.
+   7. Continue leveling and confirm purchased hybrid spells automatically upgrade to the best rank available for the character's level.
+   8. Test Reset hybrid build when the character has enough gold.
    ```
 
 The module config is:
@@ -657,6 +658,7 @@ Important defaults:
 - Max points: `35`
 - Reset cost: `100000` copper, or 10 gold
 - NPC entry: `190010`
+- Auto-upgrade purchased hybrid spell ranks on login and level-up: enabled
 
 ## Troubleshooting
 

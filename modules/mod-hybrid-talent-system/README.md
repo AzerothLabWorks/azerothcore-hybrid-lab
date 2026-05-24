@@ -8,6 +8,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
 - Players buy cross-class spells with hybrid points.
 - Hybrid points are calculated from level, not manually stored.
 - Learned hybrid spells persist across logout.
+- Purchased hybrid spells can automatically upgrade to the best rank for the player's level on login and level-up.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
 - Spell choices come from an explicit allowlist in `hybrid_spell_template`.
@@ -56,4 +57,3 @@ The `class_mask` column is a disallow mask. For example, Mage spells use `128`, 
 - Add playerbot AI tuning so bots deliberately choose and cast hybrid spells.
 - Add a Lua addon UI after the server rules are stable.
 - Add custom passive spells for synergies.
-

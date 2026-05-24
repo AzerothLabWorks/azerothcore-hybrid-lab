@@ -28,6 +28,9 @@ HybridTalentSystem.TrainerNpcEntry = 190010
 # Restore persisted hybrid spells when players and playerbots log in.
 HybridTalentSystem.RestoreOnLogin = 1
 
+# Automatically upgrade purchased hybrid spells to the best known rank for the
+# player's level on login and level-up.
+HybridTalentSystem.AutoUpgradeRanks = 1
+
 # Learn synergy reward spells when requirements are met.
 HybridTalentSystem.EnableSynergies = 1
-
