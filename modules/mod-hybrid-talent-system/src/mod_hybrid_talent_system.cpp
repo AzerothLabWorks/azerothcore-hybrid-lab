@@ -223,12 +223,19 @@ namespace
 
     void UpdateHybridActionButtons(Player* player, uint32 spellId, uint32 bestSpellId)
     {
-        if (!player || spellId == bestSpellId)
+        if (!player)
             return;
 
         bool changed = false;
+        std::set<uint32> chainSpellIds;
         uint32 firstRank = GetFirstRankSpellId(spellId);
         for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
+            chainSpellIds.insert(currentSpellId);
+
+        if (chainSpellIds.empty())
+            chainSpellIds.insert(spellId);
+
+        for (uint32 currentSpellId : chainSpellIds)
         {
             if (currentSpellId == bestSpellId)
                 continue;
@@ -242,6 +249,29 @@ namespace
                 if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
                     changed = true;
             }
+        }
+
+        QueryResult result = CharacterDatabase.Query("SELECT button, action FROM character_action WHERE guid = {} AND spec = {} AND type = {}",
+            player->GetGUID().GetCounter(), player->GetActiveSpec(), ACTION_BUTTON_SPELL);
+
+        if (result)
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                uint8 button = fields[0].Get<uint8>();
+                uint32 action = fields[1].Get<uint32>();
+
+                if (!chainSpellIds.count(action))
+                    continue;
+
+                ActionButton const* actionButton = player->GetActionButton(button);
+                if (actionButton && actionButton->GetType() == ACTION_BUTTON_SPELL && actionButton->GetAction() == bestSpellId)
+                    continue;
+
+                if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
+                    changed = true;
+            } while (result->NextRow());
         }
 
         if (changed)
