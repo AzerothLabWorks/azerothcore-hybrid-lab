@@ -263,6 +263,16 @@ namespace
             player->removeSpell(spellId, SPEC_MASK_ALL, false);
     }
 
+    void DeletePersistedHybridSpellRanks(ObjectGuid::LowType guid, uint32 spellId)
+    {
+        uint32 firstRank = GetFirstRankSpellId(spellId);
+        for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
+            CharacterDatabase.Execute("DELETE FROM character_spell WHERE guid = {} AND spell = {}", guid, currentSpellId);
+
+        if (firstRank != spellId && !sSpellMgr->GetSpellInfo(firstRank))
+            CharacterDatabase.Execute("DELETE FROM character_spell WHERE guid = {} AND spell = {}", guid, spellId);
+    }
+
     void UpdateHybridActionButtons(Player* player, uint32 spellId, uint32 bestSpellId)
     {
         if (!player)
@@ -355,7 +365,10 @@ namespace
         uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
 
         if (!player->HasSpell(bestSpellId))
+        {
+            DeletePersistedHybridSpellRanks(player->GetGUID().GetCounter(), spellId);
             player->learnSpell(bestSpellId, false);
+        }
 
         UpdateHybridActionButtons(player, spellId, bestSpellId);
         RemoveHybridSpellRanks(player, spellId, bestSpellId);
