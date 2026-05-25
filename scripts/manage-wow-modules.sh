@@ -172,15 +172,15 @@ find_ahbot_config() {
 
 ensure_runtime_ahbot_config() {
   local source_file="$1"
-  local etc_dir="$SERVER_DIR/env/dist/etc"
+  local etc_dir="$SERVER_DIR/env/dist/etc/modules"
   local runtime_file="$etc_dir/mod_ahbot.conf"
 
-  if [[ -d "$etc_dir" ]]; then
-    if [[ ! -f "$runtime_file" ]]; then
-      cp "$source_file" "$runtime_file"
-    fi
-    printf '%s\n' "$runtime_file"
+  mkdir -p "$etc_dir"
+  if [[ ! -f "$runtime_file" ]]; then
+    cp "$source_file" "$runtime_file"
   fi
+
+  printf '%s\n' "$runtime_file"
 }
 
 set_conf_value() {
