@@ -60,6 +60,7 @@ namespace
 
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
+    std::map<ObjectGuid::LowType, uint32> PendingHybridActionRestoreMs;
 
     enum HybridActions : uint32
     {
@@ -75,6 +76,7 @@ namespace
     constexpr uint32 HybridBrowsePageSize = 12;
     constexpr uint32 HybridPageActionStride = 100;
     constexpr uint32 HybridLearnActionStride = 1000;
+    constexpr uint32 HybridActionRestoreDelayMs = 1500;
 
     std::vector<HybridClassFilter> const HybridClasses =
     {
@@ -356,17 +358,25 @@ namespace
 
         ObjectGuid::LowType guid = player->GetGUID().GetCounter();
         uint8 spec = player->GetActiveSpec();
-        CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {}", guid, spec);
 
         for (uint8 button = 0; button < MAX_ACTION_BUTTONS; ++button)
         {
             ActionButton const* actionButton = player->GetActionButton(button);
-            if (!actionButton || actionButton->GetType() != ACTION_BUTTON_SPELL)
+            if (!actionButton)
                 continue;
+
+            if (actionButton->GetType() != ACTION_BUTTON_SPELL)
+            {
+                CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, spec, button);
+                continue;
+            }
 
             uint32 baseSpellId = 0;
             if (!IsKnownHybridActionSpell(guid, actionButton->GetAction(), baseSpellId))
+            {
+                CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, spec, button);
                 continue;
+            }
 
             CharacterDatabase.Execute("REPLACE INTO character_hybrid_action (guid, spec, button, spell_id) VALUES ({}, {}, {}, {})",
                 guid, spec, button, baseSpellId);
@@ -409,6 +419,35 @@ namespace
 
         if (changed)
             player->SendActionButtons(1);
+    }
+
+    void ScheduleHybridActionRestore(Player* player)
+    {
+        if (!player)
+            return;
+
+        PendingHybridActionRestoreMs[player->GetGUID().GetCounter()] = HybridActionRestoreDelayMs;
+    }
+
+    void ProcessHybridActionRestore(Player* player, uint32 diff)
+    {
+        if (!player)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        auto itr = PendingHybridActionRestoreMs.find(guid);
+        if (itr == PendingHybridActionRestoreMs.end())
+            return;
+
+        if (itr->second > diff)
+        {
+            itr->second -= diff;
+            return;
+        }
+
+        PendingHybridActionRestoreMs.erase(itr);
+        RestoreHybridActionButtons(player);
+        player->SendActionButtons(1);
     }
 
     void RemoveHybridActionButtons(Player* player, uint32 spellId)
@@ -754,6 +793,7 @@ namespace
         uint32 learnedSpellId = LearnBestHybridSpellRank(player, spellId);
         ApplySynergies(player);
         RestoreHybridActionButtons(player);
+        ScheduleHybridActionRestore(player);
         SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(learnedSpellId);
         if (learnedSpellId != spellId && learnedSpellInfo)
             ChatHandler(player->GetSession()).PSendSysMessage("Hybrid spell learned and upgraded to {}.", learnedSpellInfo->SpellName[0]);
@@ -791,13 +831,25 @@ public:
     void OnPlayerLogin(Player* player) override
     {
         if (Enabled && RestoreOnLogin)
+        {
             RestoreHybridSpells(player);
+            ScheduleHybridActionRestore(player);
+        }
     }
 
     void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
     {
         if (Enabled)
+        {
             RestoreHybridSpells(player);
+            ScheduleHybridActionRestore(player);
+        }
+    }
+
+    void OnPlayerUpdate(Player* player, uint32 diff) override
+    {
+        if (Enabled)
+            ProcessHybridActionRestore(player, diff);
     }
 
     void OnPlayerSave(Player* player) override
