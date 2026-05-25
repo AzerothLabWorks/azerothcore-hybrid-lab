@@ -35,8 +35,13 @@ REPLACE INTO `hybrid_spell_template`
 -- Paladin
 (633,   2,    10, 4, 'Paladin - Cooldown',    10, 0), -- Lay on Hands
 (853,   2,    10, 3, 'Paladin - Control',      8, 0), -- Hammer of Justice
+(465,   2,    10, 2, 'Paladin - Aura',         8, 0), -- Devotion Aura
+(635,   2,    10, 1, 'Paladin - Heal',         2, 0), -- Holy Light
 (19740, 2,    10, 2, 'Paladin - Buff',         8, 0), -- Blessing of Might
-(20271, 2,    10, 1, 'Paladin - Strike',       1, 0), -- Judgement of Light
+(20271, 2,    10, 1, 'Paladin - Judgement',    1, 0), -- Judgement of Light
+(53408, 2,    12, 1, 'Paladin - Judgement',    8, 0), -- Judgement of Wisdom
+(20154, 2,    16, 1, 'Paladin - Seal',         1, 0), -- Seal of Righteousness
+(53407, 2,    28, 1, 'Paladin - Judgement',    8, 0), -- Judgement of Justice
 
 -- Hunter
 (2973,  4,    10, 1, 'Hunter - Shot',          1, 0), -- Raptor Strike
@@ -49,6 +54,13 @@ REPLACE INTO `hybrid_spell_template`
 (2098,  8,    10, 2, 'Rogue - Finisher',       1, 0), -- Eviscerate
 (5277,  8,    10, 3, 'Rogue - Defensive',      4, 0), -- Evasion
 (1784,  8,    10, 3, 'Rogue - Stealth',        8, 0), -- Stealth
+(2842,  8,    10, 1, 'Rogue - Poison',         8, 0), -- Poisons
+(8681,  8,    10, 1, 'Rogue - Poison',         1, 0), -- Instant Poison
+(2823,  8,    20, 1, 'Rogue - Poison',         1, 0), -- Deadly Poison
+(3408,  8,    20, 1, 'Rogue - Poison',         8, 0), -- Crippling Poison
+(5761,  8,    24, 1, 'Rogue - Poison',         8, 0), -- Mind-numbing Poison
+(13218, 8,    32, 1, 'Rogue - Poison',         1, 0), -- Wound Poison
+(26786, 8,    68, 1, 'Rogue - Poison',         8, 0), -- Anesthetic Poison
 
 -- Priest
 (17,    16,   10, 2, 'Priest - Defensive',     6, 0), -- Power Word: Shield
@@ -59,8 +71,14 @@ REPLACE INTO `hybrid_spell_template`
 -- Shaman
 (331,   64,   10, 1, 'Shaman - Heal',          2, 0), -- Healing Wave
 (403,   64,   10, 1, 'Shaman - Nature',        1, 0), -- Lightning Bolt
+(8017,  64,   10, 1, 'Shaman - Weapon',        1, 0), -- Rockbiter Weapon
+(8024,  64,   10, 1, 'Shaman - Weapon',        1, 0), -- Flametongue Weapon
 (8042,  64,   10, 2, 'Shaman - Shock',         1, 0), -- Earth Shock
 (8075,  64,   10, 2, 'Shaman - Buff',          8, 0), -- Strength of Earth Totem
+(324,   64,   10, 1, 'Shaman - Shield',        4, 0), -- Lightning Shield
+(546,   64,   16, 2, 'Shaman - Utility',       8, 0), -- Ghost Wolf
+(8033,  64,   20, 1, 'Shaman - Weapon',        1, 0), -- Frostbrand Weapon
+(8232,  64,   30, 1, 'Shaman - Weapon',        1, 0), -- Windfury Weapon
 
 -- Mage
 (116,   128,  10, 1, 'Mage - Frost',           1, 0), -- Frostbolt
@@ -82,4 +100,3 @@ REPLACE INTO `hybrid_spell_template`
 
 -- Synergy rewards should use custom passive spell IDs that exist in your DBC.
 -- Leave this table empty until those custom spells are created.
-

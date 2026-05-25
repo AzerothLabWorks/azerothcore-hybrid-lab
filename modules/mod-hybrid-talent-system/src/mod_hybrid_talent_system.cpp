@@ -211,14 +211,14 @@ namespace
                 continue;
 
             if (player->HasSpell(currentSpellId))
-                player->removeSpell(currentSpellId, false, false);
+                player->removeSpell(currentSpellId, SPEC_MASK_ALL, false);
         }
 
         if (firstRank == spellId)
             return;
 
         if (!sSpellMgr->GetSpellInfo(firstRank) && player->HasSpell(spellId) && spellId != exceptSpellId)
-            player->removeSpell(spellId, false, false);
+            player->removeSpell(spellId, SPEC_MASK_ALL, false);
     }
 
     void UpdateHybridActionButtons(Player* player, uint32 spellId, uint32 bestSpellId)
@@ -278,6 +278,33 @@ namespace
             player->SendActionButtons(1);
     }
 
+    void RemoveHybridActionButtons(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return;
+
+        bool changed = false;
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        uint32 firstRank = GetFirstRankSpellId(spellId);
+        for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
+        {
+            for (uint8 button = 0; button < MAX_ACTION_BUTTONS; ++button)
+            {
+                ActionButton const* actionButton = player->GetActionButton(button);
+                if (!actionButton || actionButton->GetType() != ACTION_BUTTON_SPELL || actionButton->GetAction() != currentSpellId)
+                    continue;
+
+                player->removeActionButton(button);
+                changed = true;
+            }
+
+            CharacterDatabase.Execute("DELETE FROM character_action WHERE guid = {} AND type = {} AND action = {}", guid, ACTION_BUTTON_SPELL, currentSpellId);
+        }
+
+        if (changed)
+            player->SendActionButtons(1);
+    }
+
     uint32 LearnBestHybridSpellRank(Player* player, uint32 spellId)
     {
         if (!player)
@@ -308,7 +335,7 @@ namespace
             if (qualifies && !player->HasSpell(synergy.RewardSpell))
                 player->learnSpell(synergy.RewardSpell, false);
             else if (!qualifies && player->HasSpell(synergy.RewardSpell))
-                player->removeSpell(synergy.RewardSpell, false, false);
+                player->removeSpell(synergy.RewardSpell, SPEC_MASK_ALL, false);
         }
     }
 
@@ -341,13 +368,15 @@ namespace
 
         for (uint32 spellId : spellIds)
         {
+            RemoveHybridActionButtons(player, spellId);
             RemoveHybridSpellRanks(player, spellId);
         }
 
         for (HybridSynergyTemplate const& synergy : SynergyTemplates)
         {
+            RemoveHybridActionButtons(player, synergy.RewardSpell);
             if (player->HasSpell(synergy.RewardSpell))
-                player->removeSpell(synergy.RewardSpell, false, false);
+                player->removeSpell(synergy.RewardSpell, SPEC_MASK_ALL, false);
         }
 
         DeleteHybridSpells(guid);
