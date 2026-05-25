@@ -410,6 +410,9 @@ namespace
         }
 
         ApplySynergies(player);
+
+        if (!spellIds.empty())
+            player->SendActionButtons(1);
     }
 
     void ResetHybridBuild(Player* player)
