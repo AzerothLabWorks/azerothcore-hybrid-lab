@@ -221,16 +221,45 @@ namespace
             player->removeSpell(spellId, false, false);
     }
 
+    void UpdateHybridActionButtons(Player* player, uint32 spellId, uint32 bestSpellId)
+    {
+        if (!player || spellId == bestSpellId)
+            return;
+
+        bool changed = false;
+        uint32 firstRank = GetFirstRankSpellId(spellId);
+        for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
+        {
+            if (currentSpellId == bestSpellId)
+                continue;
+
+            for (uint8 button = 0; button < MAX_ACTION_BUTTONS; ++button)
+            {
+                ActionButton const* actionButton = player->GetActionButton(button);
+                if (!actionButton || actionButton->GetType() != ACTION_BUTTON_SPELL || actionButton->GetAction() != currentSpellId)
+                    continue;
+
+                if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
+                    changed = true;
+            }
+        }
+
+        if (changed)
+            player->SendActionButtons(1);
+    }
+
     uint32 LearnBestHybridSpellRank(Player* player, uint32 spellId)
     {
         if (!player)
             return spellId;
 
         uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
-        RemoveHybridSpellRanks(player, spellId, bestSpellId);
 
         if (!player->HasSpell(bestSpellId))
             player->learnSpell(bestSpellId, false);
+
+        UpdateHybridActionButtons(player, spellId, bestSpellId);
+        RemoveHybridSpellRanks(player, spellId, bestSpellId);
 
         return bestSpellId;
     }
