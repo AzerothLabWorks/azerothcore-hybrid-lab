@@ -41,6 +41,12 @@ namespace
         uint32 RewardSpell = 0;
     };
 
+    struct HybridClassFilter
+    {
+        uint32 ClassMask = 0;
+        char const* Name = "";
+    };
+
     bool Enabled = true;
     uint8 MinLevel = 10;
     uint16 PointsPerInterval = 1;
@@ -61,11 +67,44 @@ namespace
         ACTION_BROWSE = GOSSIP_ACTION_INFO_DEF + 2,
         ACTION_RESET_CONFIRM = GOSSIP_ACTION_INFO_DEF + 3,
         ACTION_RESET_EXECUTE = GOSSIP_ACTION_INFO_DEF + 4,
-        ACTION_BROWSE_PAGE_BASE = GOSSIP_ACTION_INFO_DEF + 100,
-        ACTION_LEARN_BASE = GOSSIP_ACTION_INFO_DEF + 1000
+        ACTION_CLASS_BASE = GOSSIP_ACTION_INFO_DEF + 100,
+        ACTION_BROWSE_PAGE_BASE = GOSSIP_ACTION_INFO_DEF + 1000,
+        ACTION_LEARN_BASE = GOSSIP_ACTION_INFO_DEF + 20000
     };
 
     constexpr uint32 HybridBrowsePageSize = 12;
+    constexpr uint32 HybridPageActionStride = 100;
+    constexpr uint32 HybridLearnActionStride = 1000;
+
+    std::vector<HybridClassFilter> const HybridClasses =
+    {
+        { 1, "Warrior" },
+        { 2, "Paladin" },
+        { 4, "Hunter" },
+        { 8, "Rogue" },
+        { 16, "Priest" },
+        { 32, "Death Knight" },
+        { 64, "Shaman" },
+        { 128, "Mage" },
+        { 256, "Warlock" },
+        { 1024, "Druid" }
+    };
+
+    uint32 GetHybridClassMask(uint32 classIndex)
+    {
+        if (classIndex >= HybridClasses.size())
+            return 0;
+
+        return HybridClasses[classIndex].ClassMask;
+    }
+
+    std::string GetHybridClassName(uint32 classIndex)
+    {
+        if (classIndex >= HybridClasses.size())
+            return "Hybrid";
+
+        return HybridClasses[classIndex].Name;
+    }
 
     uint16 CalculateEarnedPoints(Player const* player)
     {
@@ -459,7 +498,7 @@ namespace
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
     }
 
-    std::vector<uint32> GetAvailableHybridSpellIds(Player* player)
+    std::vector<uint32> GetAvailableHybridSpellIds(Player* player, uint32 sourceClassMask)
     {
         std::vector<uint32> spellIds;
         if (!player)
@@ -472,6 +511,9 @@ namespace
             if (!IsAllowedForPlayer(player, templ))
                 continue;
 
+            if (sourceClassMask && templ.ClassMask != sourceClassMask)
+                continue;
+
             if (HasHybridSpellInChain(guid, templ.SpellId))
                 continue;
 
@@ -481,20 +523,43 @@ namespace
         return spellIds;
     }
 
-    void SendBrowseMenu(Player* player, Creature* creature, uint32 page = 0)
+    void SendClassMenu(Player* player, Creature* creature)
+    {
+        ClearGossipMenuFor(player);
+
+        bool foundClass = false;
+        for (uint32 classIndex = 0; classIndex < HybridClasses.size(); ++classIndex)
+        {
+            std::vector<uint32> spellIds = GetAvailableHybridSpellIds(player, HybridClasses[classIndex].ClassMask);
+            if (spellIds.empty())
+                continue;
+
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, std::string(HybridClasses[classIndex].Name) + " spells (" + std::to_string(spellIds.size()) + ")", GOSSIP_SENDER_MAIN, ACTION_CLASS_BASE + classIndex);
+            foundClass = true;
+        }
+
+        if (!foundClass)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "No hybrid spells are currently available.", GOSSIP_SENDER_MAIN, 0);
+
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, 0);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+    }
+
+    void SendBrowseMenu(Player* player, Creature* creature, uint32 classIndex, uint32 page = 0)
     {
         ClearGossipMenuFor(player);
 
         uint16 earned = CalculateEarnedPoints(player);
         uint16 spent = GetSpentPoints(player->GetGUID().GetCounter());
         uint16 available = earned > spent ? earned - spent : 0;
-        std::vector<uint32> spellIds = GetAvailableHybridSpellIds(player);
+        uint32 sourceClassMask = GetHybridClassMask(classIndex);
+        std::vector<uint32> spellIds = GetAvailableHybridSpellIds(player, sourceClassMask);
 
         uint32 pageCount = spellIds.empty() ? 1 : static_cast<uint32>((spellIds.size() + HybridBrowsePageSize - 1) / HybridBrowsePageSize);
         page = std::min(page, pageCount - 1);
 
         if (pageCount > 1)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Hybrid spells page " + std::to_string(page + 1) + " of " + std::to_string(pageCount), GOSSIP_SENDER_MAIN, ACTION_BROWSE_PAGE_BASE + page);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GetHybridClassName(classIndex) + " page " + std::to_string(page + 1) + " of " + std::to_string(pageCount), GOSSIP_SENDER_MAIN, ACTION_BROWSE_PAGE_BASE + classIndex * HybridPageActionStride + page);
 
         uint32 start = page * HybridBrowsePageSize;
         uint32 end = std::min<uint32>(start + HybridBrowsePageSize, static_cast<uint32>(spellIds.size()));
@@ -515,19 +580,19 @@ namespace
             if (available < templ.Cost)
                 label += " (not enough points)";
 
-            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, label, GOSSIP_SENDER_MAIN, ACTION_LEARN_BASE + index);
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, label, GOSSIP_SENDER_MAIN, ACTION_LEARN_BASE + classIndex * HybridLearnActionStride + index);
         }
 
         if (spellIds.empty())
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "No hybrid spells are currently available.", GOSSIP_SENDER_MAIN, 0);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "No " + GetHybridClassName(classIndex) + " spells are currently available.", GOSSIP_SENDER_MAIN, ACTION_BROWSE);
 
         if (page > 0)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Previous page", GOSSIP_SENDER_MAIN, ACTION_BROWSE_PAGE_BASE + page - 1);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Previous page", GOSSIP_SENDER_MAIN, ACTION_BROWSE_PAGE_BASE + classIndex * HybridPageActionStride + page - 1);
 
         if (page + 1 < pageCount)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Next page", GOSSIP_SENDER_MAIN, ACTION_BROWSE_PAGE_BASE + page + 1);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Next page", GOSSIP_SENDER_MAIN, ACTION_BROWSE_PAGE_BASE + classIndex * HybridPageActionStride + page + 1);
 
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, 0);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, ACTION_BROWSE);
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
     }
 
@@ -659,13 +724,22 @@ public:
 
         if (action == ACTION_BROWSE)
         {
-            SendBrowseMenu(player, creature);
+            SendClassMenu(player, creature);
+            return true;
+        }
+
+        if (action >= ACTION_CLASS_BASE && action < ACTION_BROWSE_PAGE_BASE)
+        {
+            SendBrowseMenu(player, creature, action - ACTION_CLASS_BASE);
             return true;
         }
 
         if (action >= ACTION_BROWSE_PAGE_BASE && action < ACTION_LEARN_BASE)
         {
-            SendBrowseMenu(player, creature, action - ACTION_BROWSE_PAGE_BASE);
+            uint32 payload = action - ACTION_BROWSE_PAGE_BASE;
+            uint32 classIndex = payload / HybridPageActionStride;
+            uint32 page = payload % HybridPageActionStride;
+            SendBrowseMenu(player, creature, classIndex, page);
             return true;
         }
 
@@ -698,14 +772,16 @@ public:
 
         if (action >= ACTION_LEARN_BASE)
         {
-            uint32 index = action - ACTION_LEARN_BASE;
-            std::vector<uint32> spellIds = GetAvailableHybridSpellIds(player);
+            uint32 payload = action - ACTION_LEARN_BASE;
+            uint32 classIndex = payload / HybridLearnActionStride;
+            uint32 index = payload % HybridLearnActionStride;
+            std::vector<uint32> spellIds = GetAvailableHybridSpellIds(player, GetHybridClassMask(classIndex));
             if (index < spellIds.size())
                 TryLearnHybridSpell(player, spellIds[index]);
             else
                 ChatHandler(player->GetSession()).PSendSysMessage("That hybrid spell option is no longer available.");
 
-            SendBrowseMenu(player, creature, index / HybridBrowsePageSize);
+            SendBrowseMenu(player, creature, classIndex, index / HybridBrowsePageSize);
             return true;
         }
 
