@@ -31,6 +31,9 @@ REPLACE INTO `hybrid_spell_template`
 (100,   1,    10, 2, 'Warrior - Mobility',     8, 0), -- Charge
 (772,   1,    10, 1, 'Warrior - Bleed',        1, 0), -- Rend
 (6673,  1,    10, 2, 'Warrior - Buff',         8, 0), -- Battle Shout
+(1715,  1,    10, 1, 'Warrior - Control',      8, 0), -- Hamstring
+(7384,  1,    12, 1, 'Warrior - Strike',       1, 0), -- Overpower
+(6343,  1,    10, 1, 'Warrior - AoE',          1, 0), -- Thunder Clap
 
 -- Paladin
 (633,   2,    10, 4, 'Paladin - Cooldown',    10, 0), -- Lay on Hands
@@ -42,12 +45,18 @@ REPLACE INTO `hybrid_spell_template`
 (53408, 2,    12, 1, 'Paladin - Judgement',    8, 0), -- Judgement of Wisdom
 (20154, 2,    16, 1, 'Paladin - Seal',         1, 0), -- Seal of Righteousness
 (53407, 2,    28, 1, 'Paladin - Judgement',    8, 0), -- Judgement of Justice
+(498,   2,    10, 2, 'Paladin - Defensive',    4, 0), -- Divine Protection
+(1044,  2,    18, 2, 'Paladin - Utility',      8, 0), -- Hand of Freedom
+(4987,  2,    18, 2, 'Paladin - Cleanse',      8, 0), -- Cleanse
 
 -- Hunter
 (2973,  4,    10, 1, 'Hunter - Shot',          1, 0), -- Raptor Strike
 (3044,  4,    10, 2, 'Hunter - Shot',          1, 0), -- Arcane Shot
 (13163, 4,    10, 2, 'Hunter - Aspect',        8, 0), -- Aspect of the Monkey
 (1494,  4,    10, 1, 'Hunter - Utility',       8, 0), -- Track Beasts
+(5116,  4,    10, 1, 'Hunter - Control',       8, 0), -- Concussive Shot
+(13165, 4,    10, 2, 'Hunter - Aspect',        8, 0), -- Aspect of the Hawk
+(781,   4,    14, 2, 'Hunter - Mobility',      8, 0), -- Disengage
 
 -- Rogue
 (1752,  8,    10, 1, 'Rogue - Strike',         1, 0), -- Sinister Strike
@@ -67,6 +76,17 @@ REPLACE INTO `hybrid_spell_template`
 (139,   16,   10, 1, 'Priest - Heal',          2, 0), -- Renew
 (589,   16,   10, 1, 'Priest - Shadow',        1, 0), -- Shadow Word: Pain
 (1243,  16,   10, 2, 'Priest - Buff',          8, 0), -- Power Word: Fortitude
+(527,   16,   18, 2, 'Priest - Dispel',        8, 0), -- Dispel Magic
+(586,   16,   22, 2, 'Priest - Utility',       8, 0), -- Fade
+(8092,  16,   10, 1, 'Priest - Shadow',        1, 0), -- Mind Blast
+
+-- Death Knight
+(45477, 32,   10, 1, 'Death Knight - Frost',   1, 0), -- Icy Touch
+(45462, 32,   10, 1, 'Death Knight - Disease', 1, 0), -- Plague Strike
+(47541, 32,   10, 2, 'Death Knight - Runic',   1, 0), -- Death Coil
+(49576, 32,   10, 3, 'Death Knight - Grip',    8, 0), -- Death Grip
+(48266, 32,   10, 2, 'Death Knight - Presence',4, 0), -- Blood Presence
+(48707, 32,   10, 3, 'Death Knight - Defensive',4,0), -- Anti-Magic Shell
 
 -- Shaman
 (331,   64,   10, 1, 'Shaman - Heal',          2, 0), -- Healing Wave
@@ -79,24 +99,36 @@ REPLACE INTO `hybrid_spell_template`
 (546,   64,   16, 2, 'Shaman - Utility',       8, 0), -- Ghost Wolf
 (8033,  64,   20, 1, 'Shaman - Weapon',        1, 0), -- Frostbrand Weapon
 (8232,  64,   30, 1, 'Shaman - Weapon',        1, 0), -- Windfury Weapon
+(370,   64,   12, 2, 'Shaman - Purge',         8, 0), -- Purge
+(526,   64,   16, 2, 'Shaman - Cleanse',       8, 0), -- Cure Toxins
 
 -- Mage
 (116,   128,  10, 1, 'Mage - Frost',           1, 0), -- Frostbolt
 (133,   128,  10, 1, 'Mage - Fire',            1, 0), -- Fireball
 (1459,  128,  10, 2, 'Mage - Buff',            8, 0), -- Arcane Intellect
 (2136,  128,  10, 2, 'Mage - Fire',            1, 0), -- Fire Blast
+(130,   128,  10, 1, 'Mage - Utility',         8, 0), -- Slow Fall
+(475,   128,  18, 2, 'Mage - Cleanse',         8, 0), -- Remove Curse
+(1953,  128,  20, 2, 'Mage - Mobility',        8, 0), -- Blink
+(122,   128,  10, 2, 'Mage - Control',         8, 0), -- Frost Nova
 
 -- Warlock
 (172,   256,  10, 1, 'Warlock - Shadow',       1, 0), -- Corruption
 (348,   256,  10, 1, 'Warlock - Fire',         1, 0), -- Immolate
 (1454,  256,  10, 2, 'Warlock - Utility',      8, 0), -- Life Tap
 (5782,  256,  10, 3, 'Warlock - Control',      8, 0), -- Fear
+(702,   256,  10, 1, 'Warlock - Curse',        1, 0), -- Curse of Weakness
+(688,   256,  10, 3, 'Warlock - Summon',       8, 0), -- Summon Imp
+(5697,  256,  16, 2, 'Warlock - Utility',      8, 0), -- Unending Breath
 
 -- Druid
 (774,   1024, 10, 1, 'Druid - Heal',           2, 0), -- Rejuvenation
 (8921,  1024, 10, 1, 'Druid - Arcane',         1, 0), -- Moonfire
 (467,   1024, 10, 2, 'Druid - Buff',           8, 0), -- Thorns
-(5176,  1024, 10, 1, 'Druid - Nature',         1, 0); -- Wrath
+(5176,  1024, 10, 1, 'Druid - Nature',         1, 0), -- Wrath
+(8946,  1024, 14, 2, 'Druid - Cleanse',        8, 0), -- Cure Poison
+(2782,  1024, 24, 2, 'Druid - Cleanse',        8, 0), -- Remove Curse
+(5215,  1024, 20, 3, 'Druid - Stealth',        8, 0); -- Prowl
 
 -- Synergy rewards should use custom passive spell IDs that exist in your DBC.
 -- Leave this table empty until those custom spells are created.
