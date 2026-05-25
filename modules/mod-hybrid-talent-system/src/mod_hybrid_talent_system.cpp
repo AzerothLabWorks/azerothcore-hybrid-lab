@@ -371,7 +371,6 @@ namespace
         }
 
         UpdateHybridActionButtons(player, spellId, bestSpellId);
-        RemoveHybridSpellRanks(player, spellId, bestSpellId);
 
         return bestSpellId;
     }
