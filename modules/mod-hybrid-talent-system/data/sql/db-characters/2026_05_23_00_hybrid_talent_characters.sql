@@ -5,3 +5,10 @@ CREATE TABLE IF NOT EXISTS `character_hybrid_spell` (
   PRIMARY KEY (`guid`, `spell_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `character_hybrid_action` (
+  `guid` INT UNSIGNED NOT NULL,
+  `spec` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `button` TINYINT UNSIGNED NOT NULL,
+  `spell_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`guid`, `spec`, `button`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -201,6 +201,7 @@ namespace
     void DeleteHybridSpells(ObjectGuid::LowType guid)
     {
         CharacterDatabase.Execute("DELETE FROM character_hybrid_spell WHERE guid = {}", guid);
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {}", guid);
     }
 
     std::set<uint32> GetKnownHybridSpellIds(ObjectGuid::LowType guid)
@@ -330,6 +331,86 @@ namespace
             player->SendActionButtons(1);
     }
 
+    bool IsKnownHybridActionSpell(ObjectGuid::LowType guid, uint32 actionSpellId, uint32& baseSpellId)
+    {
+        std::set<uint32> knownSpellIds = GetKnownHybridSpellIds(guid);
+        for (uint32 knownSpellId : knownSpellIds)
+        {
+            if (!SpellTemplates.count(knownSpellId))
+                continue;
+
+            if (IsSameSpellChain(knownSpellId, actionSpellId))
+            {
+                baseSpellId = knownSpellId;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void SaveHybridActionButtons(Player* player)
+    {
+        if (!player)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        uint8 spec = player->GetActiveSpec();
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {}", guid, spec);
+
+        for (uint8 button = 0; button < MAX_ACTION_BUTTONS; ++button)
+        {
+            ActionButton const* actionButton = player->GetActionButton(button);
+            if (!actionButton || actionButton->GetType() != ACTION_BUTTON_SPELL)
+                continue;
+
+            uint32 baseSpellId = 0;
+            if (!IsKnownHybridActionSpell(guid, actionButton->GetAction(), baseSpellId))
+                continue;
+
+            CharacterDatabase.Execute("REPLACE INTO character_hybrid_action (guid, spec, button, spell_id) VALUES ({}, {}, {}, {})",
+                guid, spec, button, baseSpellId);
+        }
+    }
+
+    void RestoreHybridActionButtons(Player* player)
+    {
+        if (!player)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        QueryResult result = CharacterDatabase.Query("SELECT button, spell_id FROM character_hybrid_action WHERE guid = {} AND spec = {}",
+            guid, player->GetActiveSpec());
+
+        if (!result)
+            return;
+
+        bool changed = false;
+        do
+        {
+            Field* fields = result->Fetch();
+            uint8 button = fields[0].Get<uint8>();
+            uint32 spellId = fields[1].Get<uint32>();
+
+            if (!HasHybridSpellInChain(guid, spellId))
+                continue;
+
+            uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
+            if (!player->HasSpell(bestSpellId))
+                continue;
+
+            ActionButton const* actionButton = player->GetActionButton(button);
+            if (actionButton && actionButton->GetType() == ACTION_BUTTON_SPELL && actionButton->GetAction() == bestSpellId)
+                continue;
+
+            if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
+                changed = true;
+        } while (result->NextRow());
+
+        if (changed)
+            player->SendActionButtons(1);
+    }
+
     void RemoveHybridActionButtons(Player* player, uint32 spellId)
     {
         if (!player)
@@ -352,6 +433,8 @@ namespace
 
             CharacterDatabase.Execute("DELETE FROM character_action WHERE guid = {} AND type = {} AND action = {}", guid, ACTION_BUTTON_SPELL, currentSpellId);
         }
+
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spell_id = {}", guid, spellId);
 
         if (changed)
             player->SendActionButtons(1);
@@ -410,6 +493,7 @@ namespace
         }
 
         ApplySynergies(player);
+        RestoreHybridActionButtons(player);
 
         if (!spellIds.empty())
             player->SendActionButtons(1);
@@ -451,6 +535,24 @@ namespace
         RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
         EnableSynergies = sConfigMgr->GetOption<bool>("HybridTalentSystem.EnableSynergies", true);
         AutoUpgradeRanks = sConfigMgr->GetOption<bool>("HybridTalentSystem.AutoUpgradeRanks", true);
+    }
+
+    void EnsureCharacterTables()
+    {
+        CharacterDatabase.Execute("CREATE TABLE IF NOT EXISTS `character_hybrid_spell` ("
+            "`guid` INT UNSIGNED NOT NULL,"
+            "`spell_id` INT UNSIGNED NOT NULL,"
+            "`learned_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "PRIMARY KEY (`guid`, `spell_id`)"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        CharacterDatabase.Execute("CREATE TABLE IF NOT EXISTS `character_hybrid_action` ("
+            "`guid` INT UNSIGNED NOT NULL,"
+            "`spec` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+            "`button` TINYINT UNSIGNED NOT NULL,"
+            "`spell_id` INT UNSIGNED NOT NULL,"
+            "PRIMARY KEY (`guid`, `spec`, `button`)"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     void LoadTemplates()
@@ -651,6 +753,7 @@ namespace
         SaveHybridSpell(guid, spellId);
         uint32 learnedSpellId = LearnBestHybridSpellRank(player, spellId);
         ApplySynergies(player);
+        RestoreHybridActionButtons(player);
         SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(learnedSpellId);
         if (learnedSpellId != spellId && learnedSpellInfo)
             ChatHandler(player->GetSession()).PSendSysMessage("Hybrid spell learned and upgraded to {}.", learnedSpellInfo->SpellName[0]);
@@ -675,6 +778,7 @@ public:
         if (!Enabled)
             return;
 
+        EnsureCharacterTables();
         LoadTemplates();
     }
 };
@@ -694,6 +798,12 @@ public:
     {
         if (Enabled)
             RestoreHybridSpells(player);
+    }
+
+    void OnPlayerSave(Player* player) override
+    {
+        if (Enabled)
+            SaveHybridActionButtons(player);
     }
 };
 
