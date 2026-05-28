@@ -316,13 +316,13 @@ cd ~/azerothcore-hybrid-lab
 Install modules into an existing source server:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster ahbot transmog learnspells
 ```
 
 Import module SQL after the database containers are running:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid professionmaster ahbot transmog learnspells
 ```
 
 Rebuild after adding C++ modules:
@@ -334,6 +334,7 @@ Rebuild after adding C++ modules:
 Current known module keys:
 
 - `hybrid`: Hybrid Talent System from this repo.
+- `professionmaster`: Profession Master from this repo.
 - `ahbot`: Auction House Bot.
 - `transmog`: Transmog.
 - `learnspells`: Auto Learn Spells.
@@ -659,6 +660,47 @@ Important defaults:
 - Reset cost: `100000` copper, or 10 gold
 - NPC entry: `190010`
 - Auto-upgrade purchased hybrid spell ranks on login and level-up: enabled
+
+## Part 12: Profession Master Setup
+
+The Profession Master is an optional NPC module for learning professions, buying profession skill-ups, and learning recipes/abilities available at your current profession skill.
+
+Install and prepare it after your database containers are running:
+
+```bash
+cd ~/azerothcore-hybrid-lab
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install professionmaster
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+The setup command automates the NPC template creation:
+
+- Entry: `190020`
+- Name: `Artisan Nexus-Weaver`
+- Subname: `Profession Master`
+- ScriptName: `npc_profession_master`
+
+After the rebuild, spawn the NPC where you want it:
+
+```text
+.npc add 190020
+```
+
+The module config is:
+
+```text
+modules/mod-profession-master/conf/mod_profession_master.conf.dist
+```
+
+Important defaults:
+
+- Profession cap: `450`
+- Skill-up step: `25`
+- Learn profession cost: `10000` copper, or 1 gold
+- Skill-up cost: `50000` copper, or 5 gold
+- Learn recipes cost: `100000` copper, or 10 gold
+- Primary profession limit bypass: enabled
 
 ## Troubleshooting
 

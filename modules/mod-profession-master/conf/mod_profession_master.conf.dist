@@ -1,0 +1,27 @@
+#
+# Profession Master
+#
+# Adds a configurable gossip NPC for learning professions, buying profession
+# skill-ups, and learning recipes/abilities available at the player's current
+# profession skill.
+#
+
+ProfessionMaster.Enable = 1
+
+# Creature template entry used by setup-profession-master.
+ProfessionMaster.TrainerNpcEntry = 190020
+
+# WotLK profession cap.
+ProfessionMaster.MaxSkill = 450
+
+# Skill points bought each time "Increase skill" is selected.
+ProfessionMaster.SkillStep = 25
+
+# Costs are in copper. 10000 copper = 1 gold.
+ProfessionMaster.LearnProfessionCostCopper = 10000
+ProfessionMaster.SkillStepCostCopper = 50000
+ProfessionMaster.LearnRecipesCostCopper = 100000
+
+# If enabled, the NPC can teach every primary profession instead of enforcing
+# the normal two-primary-profession gameplay limit.
+ProfessionMaster.AllowPrimaryProfessionLimitBypass = 1

@@ -1,0 +1,6 @@
+CU_SET_PATH("CMAKE_MOD_PROFESSION_MASTER_DIR" "${CMAKE_CURRENT_LIST_DIR}")
+
+AC_ADD_SCRIPT("${CMAKE_CURRENT_LIST_DIR}/src/mod_profession_master.cpp")
+AC_ADD_SCRIPT_LOADER("ProfessionMaster" "${CMAKE_CURRENT_LIST_DIR}/src/loader.h")
+
+CU_ADD_HOOK(AFTER_LOAD_CONF "${CMAKE_CURRENT_LIST_DIR}/cmake/after_load_conf.cmake")

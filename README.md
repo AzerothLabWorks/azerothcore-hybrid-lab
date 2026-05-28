@@ -5,6 +5,7 @@ Personal AzerothCore lab for building a WotLK 3.3.5a private server with optiona
 This repo owns the custom work:
 
 - `modules/mod-hybrid-talent-system`
+- `modules/mod-profession-master`
 - WSL2/Docker installer scripts
 - Module management scripts
 - Documentation and example configuration
@@ -17,7 +18,7 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 - `playerbots`: Playerbot fork plus `mod-playerbots`.
 - `npcbots`: NPCBots fork.
 
-Custom modules require a source build. Fast prebuilt Docker images are useful for a clean first install, but they cannot include local custom C++ modules like the Hybrid Talent System.
+Custom modules require a source build. Fast prebuilt Docker images are useful for a clean first install, but they cannot include local custom C++ modules like the Hybrid Talent System or Profession Master.
 
 ## Quick Start
 
@@ -38,7 +39,7 @@ After installation, use:
 
 ```bash
 ./scripts/manage-wow-modules.sh list
-./scripts/manage-wow-modules.sh install hybrid
+./scripts/manage-wow-modules.sh install hybrid professionmaster
 ./scripts/manage-wow-modules.sh rebuild
 ```
 

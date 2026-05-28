@@ -18,6 +18,8 @@ Commands:
   import-sql MODULE...  Apply module SQL files to running Docker databases.
   setup-ahbot           Create/update AHBot account, owner character, and config.
   setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
+  setup-profession-master
+                         Install Profession Master config and create trainer NPC.
   rebuild               Rebuild and restart Docker services.
 
 Known modules are defined in configs/modules.conf.
@@ -28,6 +30,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 USAGE
 }
@@ -40,7 +43,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|setup-ahbot|setup-hybrid|rebuild)
+    list|installed|install|import-sql|setup-ahbot|setup-hybrid|setup-profession-master|rebuild)
       COMMAND="$1"
       shift
       break
@@ -342,6 +345,51 @@ WHERE entry = 190010;
   log "Restart ac-worldserver, then delete and respawn the trainer if it was already spawned."
 }
 
+setup_profession_master() {
+  require_server_dir
+
+  local module_dir="$SERVER_DIR/modules/mod-profession-master"
+  [[ -d "$module_dir" ]] || die "mod-profession-master is not installed. Run: $0 --server-dir \"$SERVER_DIR\" install professionmaster"
+
+  local source_conf="$module_dir/conf/mod_profession_master.conf.dist"
+  [[ -f "$source_conf" ]] || die "Could not find $source_conf"
+
+  local etc_modules_dir="$SERVER_DIR/env/dist/etc/modules"
+  mkdir -p "$etc_modules_dir"
+  cp "$source_conf" "$etc_modules_dir/mod_profession_master.conf"
+  log "Installed Profession Master config to $etc_modules_dir/mod_profession_master.conf"
+
+  log "Ensuring Profession Master SQL has been imported..."
+  import_module_sql professionmaster
+
+  log "Normalizing Profession Master creature_template entry 190020..."
+  mysql_query acore_world "
+UPDATE creature_template
+SET
+  name = 'Artisan Nexus-Weaver',
+  subname = 'Profession Master',
+  npcflag = 1,
+  gossip_menu_id = 0,
+  faction = 35,
+  \`rank\` = 0,
+  unit_flags = 0,
+  unit_flags2 = 0,
+  dynamicflags = 0,
+  type_flags = 0,
+  flags_extra = 0,
+  AIName = '',
+  ScriptName = 'npc_profession_master'
+WHERE entry = 190020;
+"
+
+  local script_name
+  script_name="$(mysql_query acore_world "SELECT ScriptName FROM creature_template WHERE entry = 190020;" | tr -d '\r')"
+  [[ "$script_name" == "npc_profession_master" ]] || die "Profession Master entry 190020 was not found or could not be updated."
+
+  log "Profession Master setup complete."
+  log "Restart ac-worldserver after rebuilding, then spawn the NPC with: .npc add 190020"
+}
+
 import_module_sql() {
   require_server_dir
   local key="$1"
@@ -406,6 +454,9 @@ case "$COMMAND" in
     ;;
   setup-hybrid)
     setup_hybrid
+    ;;
+  setup-profession-master)
+    setup_profession_master
     ;;
   rebuild)
     rebuild_server
