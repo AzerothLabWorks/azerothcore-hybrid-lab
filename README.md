@@ -1,6 +1,6 @@
-# WoW Hybrid Server Lab
+# AzerothCore Hybrid Lab
 
-Personal AzerothCore lab for building a WotLK 3.3.5a private server with optional module profiles and a custom Hybrid Talent System.
+Personal AzerothCore lab for building a WotLK 3.3.5a private server with optional module profiles, NPC-driven quality-of-life systems, and an Ascension-inspired Hybrid Talent System.
 
 This repo owns the custom work:
 
@@ -11,6 +11,14 @@ This repo owns the custom work:
 - Documentation and example configuration
 
 It does not vendor the full AzerothCore source tree. Installer scripts clone the upstream server source that matches the selected profile.
+
+## Features
+
+- **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, and action-bar preservation for learned hybrid spells.
+- **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, and learning recipes/abilities available at the player's current profession skill.
+- **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
+- **Supported module set**: Hybrid Talent System, Profession Master, Auction House Bot, Transmog, and Auto Learn Spells.
+- **Safer install directories**: Hybrid installs use `-hybrid` directory names such as `wow-server-playerbots-hybrid` so testing does not collide with existing server installs.
 
 ## Profiles
 
@@ -38,14 +46,29 @@ chmod +x scripts/*.sh
 After installation, use:
 
 ```bash
-./scripts/manage-wow-modules.sh list
-./scripts/manage-wow-modules.sh install hybrid professionmaster
-./scripts/manage-wow-modules.sh rebuild
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+## Custom NPCs
+
+- Hybrid trainer: `190010`, `Hybrid Talent Master`, script `npc_hybrid_talent_master`
+- Profession trainer: `190020`, `Artisan Nexus-Weaver`, script `npc_profession_master`
+
+The setup commands create or normalize the database templates. You still choose the final in-game placement with GM commands such as:
+
+```text
+.npc add 190010
+.npc add 190020
 ```
 
 ## Current Status
 
-The repo is scaffolded locally. The installer and module manager are first-pass scripts intended for WSL2 Ubuntu and Docker Compose. They are designed to be readable and adjustable before we run them against your live virtual server.
+The repo is an active MVP lab. The Hybrid Talent System and Profession Master are playable and being tested through normal progression. The next larger design phase is cross-class talent support with a more visual talent browsing experience.
 
 ## References
 

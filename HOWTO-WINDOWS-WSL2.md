@@ -680,6 +680,7 @@ The setup command automates the NPC template creation:
 - Name: `Artisan Nexus-Weaver`
 - Subname: `Profession Master`
 - ScriptName: `npc_profession_master`
+- Model row in `creature_template_model`
 
 After the rebuild, spawn the NPC where you want it:
 
@@ -701,6 +702,18 @@ Important defaults:
 - Skill-up cost: `50000` copper, or 5 gold
 - Learn recipes cost: `100000` copper, or 10 gold
 - Primary profession limit bypass: enabled
+
+Recommended first validation path:
+
+```text
+1. Use a new character with no professions.
+2. Learn two primary professions and two secondary professions.
+3. Drag the profession buttons to the action bar.
+4. Log out and back in, then confirm the professions and action-bar buttons remain.
+5. Increase one profession skill.
+6. Use Learn available recipes for that profession.
+7. Confirm the profession window shows the new recipes.
+```
 
 ## Troubleshooting
 
@@ -746,7 +759,30 @@ cd ~/azerothcore-hybrid-lab
 For SQL changes, import the module SQL:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid professionmaster
+```
+
+### Profession Master NPC says it does not exist
+
+If `.npc add 190020` fails after setup, check the creature template and model rows:
+
+```bash
+docker exec -it ac-database sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world -e "
+SELECT entry, name, subname, npcflag, faction, ScriptName
+FROM creature_template
+WHERE entry = 190020;
+
+SELECT *
+FROM creature_template_model
+WHERE CreatureID = 190020;
+"'
+```
+
+If the rows exist, restart the worldserver:
+
+```bash
+cd ~/wow-server-playerbots-hybrid
+docker compose restart ac-worldserver
 ```
 
 ### `hybrid_spell_template` table does not exist
