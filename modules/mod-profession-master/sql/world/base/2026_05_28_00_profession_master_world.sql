@@ -1,6 +1,7 @@
 SET @ENTRY := 190020;
 
 DELETE FROM `creature_template` WHERE `entry` = @ENTRY;
+DELETE FROM `creature_template_model` WHERE `CreatureID` = @ENTRY;
 
 CREATE TEMPORARY TABLE `tmp_profession_master_template`
 SELECT *
@@ -31,3 +32,14 @@ SELECT *
 FROM `tmp_profession_master_template`;
 
 DROP TEMPORARY TABLE `tmp_profession_master_template`;
+
+SET @MODEL_SOURCE := COALESCE(
+    (SELECT `CreatureID` FROM `creature_template_model` WHERE `CreatureID` = 190010 LIMIT 1),
+    (SELECT `CreatureID` FROM `creature_template_model` WHERE `CreatureID` = 4968 LIMIT 1),
+    (SELECT `CreatureID` FROM `creature_template_model` WHERE `CreatureID` = 68 LIMIT 1)
+);
+
+INSERT INTO `creature_template_model` (`CreatureID`, `Idx`, `CreatureDisplayID`, `DisplayScale`, `Probability`, `VerifiedBuild`)
+SELECT @ENTRY, `Idx`, `CreatureDisplayID`, `DisplayScale`, `Probability`, `VerifiedBuild`
+FROM `creature_template_model`
+WHERE `CreatureID` = @MODEL_SOURCE;

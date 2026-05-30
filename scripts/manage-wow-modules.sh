@@ -380,11 +380,29 @@ SET
   AIName = '',
   ScriptName = 'npc_profession_master'
 WHERE entry = 190020;
+
+DELETE FROM creature_template_model
+WHERE CreatureID = 190020;
+
+SET @model_source := COALESCE(
+  (SELECT CreatureID FROM creature_template_model WHERE CreatureID = 190010 LIMIT 1),
+  (SELECT CreatureID FROM creature_template_model WHERE CreatureID = 4968 LIMIT 1),
+  (SELECT CreatureID FROM creature_template_model WHERE CreatureID = 68 LIMIT 1)
+);
+
+INSERT INTO creature_template_model (CreatureID, Idx, CreatureDisplayID, DisplayScale, Probability, VerifiedBuild)
+SELECT 190020, Idx, CreatureDisplayID, DisplayScale, Probability, VerifiedBuild
+FROM creature_template_model
+WHERE CreatureID = @model_source;
 "
 
   local script_name
   script_name="$(mysql_query acore_world "SELECT ScriptName FROM creature_template WHERE entry = 190020;" | tr -d '\r')"
   [[ "$script_name" == "npc_profession_master" ]] || die "Profession Master entry 190020 was not found or could not be updated."
+
+  local model_count
+  model_count="$(mysql_query acore_world "SELECT COUNT(*) FROM creature_template_model WHERE CreatureID = 190020;" | tr -d '\r')"
+  [[ "$model_count" != "0" ]] || die "Profession Master entry 190020 has no creature_template_model rows."
 
   log "Profession Master setup complete."
   log "Restart ac-worldserver after rebuilding, then spawn the NPC with: .npc add 190020"
