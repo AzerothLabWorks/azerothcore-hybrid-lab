@@ -16,6 +16,7 @@ Commands:
   installed             List modules currently present in SERVER_DIR/modules.
   install MODULE...     Install one or more modules into SERVER_DIR/modules.
   import-sql MODULE...  Apply module SQL files to running Docker databases.
+  apply-core-patches    Apply Hybrid Lab AzerothCore core patches.
   setup-ahbot           Create/update AHBot account, owner character, and config.
   setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
   setup-profession-master
@@ -28,6 +29,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
@@ -43,7 +45,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|setup-ahbot|setup-hybrid|setup-profession-master|rebuild)
+    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-hybrid|setup-profession-master|rebuild)
       COMMAND="$1"
       shift
       break
@@ -452,6 +454,30 @@ rebuild_server() {
   docker compose up -d --build
 }
 
+apply_core_patches() {
+  require_server_dir
+
+  local patch_dir="$REPO_ROOT/patches/core"
+  [[ -d "$patch_dir" ]] || die "No core patch directory found: $patch_dir"
+
+  shopt -s nullglob
+  local patches=("$patch_dir"/*.patch)
+  shopt -u nullglob
+
+  [[ ${#patches[@]} -gt 0 ]] || die "No core patches found in: $patch_dir"
+
+  for patch_file in "${patches[@]}"; do
+    if (cd "$SERVER_DIR" && git apply --check "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply "$patch_file")
+      log "Applied $(basename "$patch_file")."
+    elif (cd "$SERVER_DIR" && git apply --reverse --check "$patch_file"); then
+      warn "Already applied: $(basename "$patch_file")"
+    else
+      die "Could not apply core patch: $patch_file"
+    fi
+  done
+}
+
 case "$COMMAND" in
   list)
     list_modules
@@ -466,6 +492,9 @@ case "$COMMAND" in
   import-sql)
     [[ $# -gt 0 ]] || die "Specify at least one module key."
     for module in "$@"; do import_module_sql "$module"; done
+    ;;
+  apply-core-patches)
+    apply_core_patches
     ;;
   setup-ahbot)
     setup_ahbot

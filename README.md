@@ -6,6 +6,7 @@ This repo owns the custom work:
 
 - `modules/mod-hybrid-talent-system`
 - `modules/mod-profession-master`
+- `patches/core` AzerothCore source patches
 - WSL2/Docker installer scripts
 - Module management scripts
 - Documentation and example configuration
@@ -16,6 +17,7 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 
 - **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, and action-bar preservation for learned hybrid spells.
 - **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, and learning recipes/abilities available at the player's current profession skill.
+- **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
 - **Supported module set**: Hybrid Talent System, Profession Master, Auction House Bot, Transmog, and Auto Learn Spells.
 - **Safer install directories**: Hybrid installs use `-hybrid` directory names such as `wow-server-playerbots-hybrid` so testing does not collide with existing server installs.
@@ -47,6 +49,7 @@ After installation, use:
 
 ```bash
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster ahbot transmog learnspells
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master

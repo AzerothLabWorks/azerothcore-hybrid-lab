@@ -1,0 +1,167 @@
+diff --git a/src/server/apps/worldserver/worldserver.conf.dist b/src/server/apps/worldserver/worldserver.conf.dist
+index 5ee8464a0..26997d502 100644
+--- a/src/server/apps/worldserver/worldserver.conf.dist
++++ b/src/server/apps/worldserver/worldserver.conf.dist
+@@ -1734,6 +1734,15 @@ PlayerStart.AllReputation = 0
+ 
+ PlayerStart.CustomSpells = 0
+ 
++#
++#    ComboPoints.CarryOver
++#        Description: Allows player combo points to remain when changing targets or when the
++#                     previous combo target dies, matching later WoW behavior.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, WotLK target-bound behavior)
++
++ComboPoints.CarryOver = 1
++
+ #
+ #    PlayerStart.MapsExplored
+ #        Description: Characters start with all maps explored.
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 3e65e30cb..bb1d1a3e6 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -11499,6 +11499,17 @@ void Player::SetSelection(ObjectGuid guid)
+ {
+     SetGuidValue(UNIT_FIELD_TARGET, guid);
+ 
++    if (sWorld->getBoolConfig(CONFIG_COMBO_POINTS_CARRY_OVER) && GetComboPoints())
++    {
++        if (Unit* target = ObjectAccessor::GetUnit(*this, guid))
++        {
++            if (target->IsAlive() && !IsFriendlyTo(target) && target->isTargetableForAttack(true, this))
++            {
++                RebindComboPoints(target);
++            }
++        }
++    }
++
+     if (NeedSendSpectatorData())
+         ArenaSpectator::SendCommand_GUID(FindMap(), GetGUID(), "TRG", guid);
+ }
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+index 8300ca203..f6b12f992 100644
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -13239,7 +13239,15 @@ void Unit::AddComboPoints(Unit* target, int8 count)
+         }
+ 
+         m_comboTarget = target;
+-        m_comboPoints = count;
++        if (IsPlayer() && sWorld->getBoolConfig(CONFIG_COMBO_POINTS_CARRY_OVER))
++        {
++            m_comboPoints = std::max<int8>(std::min<int8>(m_comboPoints + count, 5), 0);
++        }
++        else
++        {
++            m_comboPoints = count;
++        }
++
+         target->AddComboPointHolder(this);
+     }
+     else
+@@ -13267,6 +13275,35 @@ void Unit::ClearComboPoints()
+     m_comboTarget = nullptr;
+ }
+ 
++void Unit::DetachComboPoints()
++{
++    if (!m_comboTarget)
++    {
++        return;
++    }
++
++    m_comboTarget->RemoveComboPointHolder(this);
++    m_comboTarget = nullptr;
++    SendComboPoints();
++}
++
++void Unit::RebindComboPoints(Unit* target)
++{
++    if (!target || target == m_comboTarget || !m_comboPoints)
++    {
++        return;
++    }
++
++    if (m_comboTarget)
++    {
++        m_comboTarget->RemoveComboPointHolder(this);
++    }
++
++    m_comboTarget = target;
++    m_comboTarget->AddComboPointHolder(this);
++    SendComboPoints();
++}
++
+ void Unit::SendComboPoints()
+ {
+     if (m_cleanupDone)
+@@ -13309,7 +13346,15 @@ void Unit::ClearComboPointHolders()
+ {
+     while (!m_ComboPointHolders.empty())
+     {
+-        (*m_ComboPointHolders.begin())->ClearComboPoints(); // this also removes it from m_comboPointHolders
++        Unit* holder = *m_ComboPointHolders.begin();
++        if (holder->IsPlayer() && sWorld->getBoolConfig(CONFIG_COMBO_POINTS_CARRY_OVER))
++        {
++            holder->DetachComboPoints(); // this also removes it from m_ComboPointHolders
++        }
++        else
++        {
++            holder->ClearComboPoints(); // this also removes it from m_ComboPointHolders
++        }
+     }
+ }
+ 
+diff --git a/src/server/game/Entities/Unit/Unit.h b/src/server/game/Entities/Unit/Unit.h
+index 4144c9ecd..99667bdac 100644
+--- a/src/server/game/Entities/Unit/Unit.h
++++ b/src/server/game/Entities/Unit/Unit.h
+@@ -1019,6 +1019,8 @@ public:
+     void AddComboPoints(Unit* target, int8 count);
+     void AddComboPoints(int8 count) { AddComboPoints(nullptr, count); }
+     void ClearComboPoints();
++    void DetachComboPoints();
++    void RebindComboPoints(Unit* target);
+ 
+     void AddComboPointHolder(Unit* unit) { m_ComboPointHolders.insert(unit); }
+     void RemoveComboPointHolder(Unit* unit) { m_ComboPointHolders.erase(unit); }
+diff --git a/src/server/game/Spells/Spell.cpp b/src/server/game/Spells/Spell.cpp
+index a7304d2cd..10523a4d3 100644
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -6762,7 +6762,8 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* /*param1*/, uint32* /*para
+     {
+         if (m_spellInfo->NeedsExplicitUnitTarget())
+         {
+-            if (!m_caster->GetComboPoints(m_targets.GetUnitTarget()))
++            if (!m_caster->GetComboPoints(m_targets.GetUnitTarget()) &&
++                (!m_caster->IsPlayer() || !sWorld->getBoolConfig(CONFIG_COMBO_POINTS_CARRY_OVER) || !m_caster->GetComboPoints()))
+             {
+                 return SPELL_FAILED_NO_COMBO_POINTS;
+             }
+diff --git a/src/server/game/World/WorldConfig.cpp b/src/server/game/World/WorldConfig.cpp
+index f1d872c0a..df140cae3 100644
+--- a/src/server/game/World/WorldConfig.cpp
++++ b/src/server/game/World/WorldConfig.cpp
+@@ -532,6 +532,7 @@ void WorldConfig::BuildConfigCache()
+     SetConfigValue<bool>(CONFIG_VMAP_BLIZZLIKE_LOS_OPEN_WORLD, "vmap.BlizzlikeLOSInOpenWorld", true);
+ 
+     SetConfigValue<bool>(CONFIG_START_CUSTOM_SPELLS, "PlayerStart.CustomSpells", false);
++    SetConfigValue<bool>(CONFIG_COMBO_POINTS_CARRY_OVER, "ComboPoints.CarryOver", true);
+     SetConfigValue<uint32>(CONFIG_HONOR_AFTER_DUEL, "HonorPointsAfterDuel", 0);
+     SetConfigValue<bool>(CONFIG_START_ALL_EXPLORED, "PlayerStart.MapsExplored", false);
+     SetConfigValue<bool>(CONFIG_START_ALL_REP, "PlayerStart.AllReputation", false);
+diff --git a/src/server/game/World/WorldConfig.h b/src/server/game/World/WorldConfig.h
+index a4b70c61b..c942fb22c 100644
+--- a/src/server/game/World/WorldConfig.h
++++ b/src/server/game/World/WorldConfig.h
+@@ -80,6 +80,7 @@ enum ServerConfigs
+     CONFIG_VMAP_ENABLE_HEIGHT,
+     CONFIG_PET_LOS,
+     CONFIG_START_CUSTOM_SPELLS,
++    CONFIG_COMBO_POINTS_CARRY_OVER,
+     CONFIG_START_ALL_EXPLORED,
+     CONFIG_START_ALL_REP,
+     CONFIG_ALWAYS_MAXSKILL,

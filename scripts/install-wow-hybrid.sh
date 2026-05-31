@@ -171,6 +171,31 @@ install_hybrid_module() {
   log "Installed local Hybrid Talent System module."
 }
 
+apply_core_patches() {
+  [[ "$PROFILE" != "base-prebuilt" ]] || return 0
+
+  local patch_dir="$REPO_ROOT/patches/core"
+  [[ -d "$patch_dir" ]] || return 0
+
+  shopt -s nullglob
+  local patches=("$patch_dir"/*.patch)
+  shopt -u nullglob
+
+  [[ ${#patches[@]} -gt 0 ]] || return 0
+
+  log "Applying Hybrid Lab core patches..."
+  for patch_file in "${patches[@]}"; do
+    if (cd "$SERVER_DIR" && git apply --check "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply "$patch_file")
+      log "Applied $(basename "$patch_file")."
+    elif (cd "$SERVER_DIR" && git apply --reverse --check "$patch_file"); then
+      warn "Already applied: $(basename "$patch_file")"
+    else
+      die "Could not apply core patch: $patch_file"
+    fi
+  done
+}
+
 build_and_start() {
   [[ "$BUILD_NOW" == "true" ]] || return 0
 
@@ -191,6 +216,7 @@ main() {
   check_system
   confirm_target
   clone_profile
+  apply_core_patches
   install_hybrid_module
   build_and_start
 

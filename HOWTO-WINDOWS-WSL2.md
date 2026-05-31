@@ -313,6 +313,13 @@ cd ~/azerothcore-hybrid-lab
 ./scripts/manage-wow-modules.sh list
 ```
 
+Apply Hybrid Lab core patches, including combo point carry-over:
+
+```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
 Install modules into an existing source server:
 
 ```bash
