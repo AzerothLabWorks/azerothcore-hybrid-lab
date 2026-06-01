@@ -1,5 +1,16 @@
-UPDATE `item_template`
+SET @PROFESSION_BEACON := 65020;
+
+DELETE FROM `item_template` WHERE `entry` = @PROFESSION_BEACON;
+
+CREATE TEMPORARY TABLE `tmp_profession_beacon_item_fix`
+SELECT *
+FROM `item_template`
+WHERE `entry` = 6948
+LIMIT 1;
+
+UPDATE `tmp_profession_beacon_item_fix`
 SET
+    `entry` = @PROFESSION_BEACON,
     `name` = 'Profession Master Beacon',
     `displayid` = 8026,
     `Quality` = 3,
@@ -47,5 +58,10 @@ SET
     `bonding` = 1,
     `description` = 'Summons the Profession Master to your location.',
     `ScriptName` = 'item_profession_master_beacon',
-    `VerifiedBuild` = 0
-WHERE `entry` = 900020;
+    `VerifiedBuild` = 0;
+
+INSERT INTO `item_template`
+SELECT *
+FROM `tmp_profession_beacon_item_fix`;
+
+DROP TEMPORARY TABLE `tmp_profession_beacon_item_fix`;

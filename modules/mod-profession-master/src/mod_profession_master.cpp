@@ -11,6 +11,7 @@
 #include "PlayerScript.h"
 #include "ScriptMgr.h"
 #include "ScriptedGossip.h"
+#include "Spell.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
@@ -55,9 +56,10 @@ std::array<ProfessionTemplate, 14> const Professions =
     { SKILL_FISHING,       7620,  "Fishing",       false }
 }};
 
+constexpr uint32 LegacyBeaconItemEntry = 900020;
 bool Enabled = true;
 uint32 TrainerNpcEntry = 190020;
-uint32 BeaconItemEntry = 900020;
+uint32 BeaconItemEntry = 65020;
 bool GrantBeaconOnLogin = true;
 uint32 BeaconSummonDurationSeconds = 300;
 uint32 MaxSkill = 450;
@@ -214,6 +216,9 @@ void GrantProfessionBeacon(Player* player)
     if (!player || !GrantBeaconOnLogin || !BeaconItemEntry)
         return;
 
+    if (BeaconItemEntry == 65020 && player->HasItemCount(LegacyBeaconItemEntry, 1, true))
+        player->DestroyItemCount(LegacyBeaconItemEntry, player->GetItemCount(LegacyBeaconItemEntry, true), true);
+
     if (!player->HasItemCount(BeaconItemEntry, 1, true))
         player->AddItem(BeaconItemEntry, 1);
 }
@@ -368,7 +373,7 @@ public:
     {
         Enabled = sConfigMgr->GetOption<bool>("ProfessionMaster.Enable", true);
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.TrainerNpcEntry", 190020);
-        BeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconItemEntry", 900020);
+        BeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconItemEntry", 65020);
         GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("ProfessionMaster.GrantBeaconOnLogin", true);
         BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconSummonDurationSeconds", 300);
         MaxSkill = std::min<uint32>(sConfigMgr->GetOption<uint32>("ProfessionMaster.MaxSkill", 450), 450);
@@ -471,13 +476,16 @@ class item_profession_master_beacon : public ItemScript
 public:
     item_profession_master_beacon() : ItemScript("item_profession_master_beacon") { }
 
-    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
     {
         if (!Enabled)
             return true;
 
         SummonProfessionMaster(player);
-        player->InterruptNonMeleeSpells(false);
+        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(item->GetTemplate()->Spells[0].SpellId))
+            Spell::SendCastResult(player, spellInfo, 0, SPELL_FAILED_INTERRUPTED);
+
+        player->CastStop();
         return true;
     }
 };

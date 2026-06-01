@@ -42,7 +42,7 @@ You can also change `HybridTalentSystem.TrainerNpcEntry` in the config if you wa
 
 ## Beacon Item
 
-The world SQL creates item `900010`, `Hybrid Talent Beacon`, with `ScriptName` set to `item_hybrid_talent_beacon`.
+The world SQL creates item `65010`, `Hybrid Talent Beacon`, with `ScriptName` set to `item_hybrid_talent_beacon`.
 
 By default, the module grants the item to players on login. Using the item summons a temporary Hybrid Talent Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
 

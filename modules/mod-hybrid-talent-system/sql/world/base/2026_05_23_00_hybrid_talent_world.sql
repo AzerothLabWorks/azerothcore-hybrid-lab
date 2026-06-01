@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `hybrid_synergy_template` (
   PRIMARY KEY (`synergy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SET @HYBRID_BEACON := 900010;
+SET @HYBRID_BEACON := 65010;
 
 DELETE FROM `item_template` WHERE `entry` = @HYBRID_BEACON;
 

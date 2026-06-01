@@ -1,5 +1,5 @@
 SET @ENTRY := 190020;
-SET @PROFESSION_BEACON := 900020;
+SET @PROFESSION_BEACON := 65020;
 
 DELETE FROM `creature_template` WHERE `entry` = @ENTRY;
 DELETE FROM `creature_template_model` WHERE `CreatureID` = @ENTRY;

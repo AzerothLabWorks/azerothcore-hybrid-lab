@@ -606,7 +606,7 @@ After building and starting the server:
 
    The NPC should appear where your character is standing.
 
-   Quality-of-life tip: current versions also create item `900010`, `Hybrid Talent Beacon`, which is granted on login by default and summons a temporary trainer near you.
+   Quality-of-life tip: current versions also create item `65010`, `Hybrid Talent Beacon`, which is granted on login by default and summons a temporary trainer near you.
 
    GM commands can still be placed in normal in-game macros if your account has permission to run them. Create a macro named `Hybrid Trainer` with:
 
@@ -668,7 +668,7 @@ Important defaults:
 - Max points: `35`
 - Reset cost: `100000` copper, or 10 gold
 - NPC entry: `190010`
-- Beacon item entry: `900010`
+- Beacon item entry: `65010`
 - Auto-upgrade purchased hybrid spell ranks on login and level-up: enabled
 
 ## Part 12: Profession Master Setup
@@ -698,7 +698,7 @@ After the rebuild, spawn the NPC where you want it:
 .npc add 190020
 ```
 
-Current versions also create item `900020`, `Profession Master Beacon`, which is granted on login by default and summons a temporary Profession Master near you.
+Current versions also create item `65020`, `Profession Master Beacon`, which is granted on login by default and summons a temporary Profession Master near you.
 
 The module config is:
 
@@ -714,7 +714,7 @@ Important defaults:
 - Skill-up cost: `50000` copper, or 5 gold
 - Learn recipes cost: `100000` copper, or 10 gold
 - Primary profession limit bypass: enabled
-- Beacon item entry: `900020`
+- Beacon item entry: `65020`
 
 Recommended first validation path:
 

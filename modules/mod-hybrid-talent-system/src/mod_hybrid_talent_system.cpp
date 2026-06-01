@@ -12,6 +12,7 @@
 #include "PlayerScript.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
+#include "Spell.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "WorldScript.h"
@@ -57,7 +58,8 @@ namespace
     uint16 MaxPoints = 35;
     uint32 ResetCostCopper = 100000;
     uint32 TrainerNpcEntry = 190010;
-    uint32 BeaconItemEntry = 900010;
+    constexpr uint32 LegacyBeaconItemEntry = 900010;
+    uint32 BeaconItemEntry = 65010;
     bool GrantBeaconOnLogin = true;
     uint32 BeaconSummonDurationSeconds = 300;
     bool RestoreOnLogin = true;
@@ -578,7 +580,7 @@ namespace
         MaxPoints = static_cast<uint16>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.MaxPoints", 35));
         ResetCostCopper = sConfigMgr->GetOption<uint32>("HybridTalentSystem.ResetCostCopper", 100000);
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.TrainerNpcEntry", 190010);
-        BeaconItemEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconItemEntry", 900010);
+        BeaconItemEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconItemEntry", 65010);
         GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.GrantBeaconOnLogin", true);
         BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconSummonDurationSeconds", 300);
         RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
@@ -690,6 +692,9 @@ namespace
     {
         if (!player || !GrantBeaconOnLogin || !BeaconItemEntry)
             return;
+
+        if (BeaconItemEntry == 65010 && player->HasItemCount(LegacyBeaconItemEntry, 1, true))
+            player->DestroyItemCount(LegacyBeaconItemEntry, player->GetItemCount(LegacyBeaconItemEntry, true), true);
 
         if (!player->HasItemCount(BeaconItemEntry, 1, true))
             player->AddItem(BeaconItemEntry, 1);
@@ -1062,13 +1067,16 @@ class HybridTalentBeaconItemScript : public ItemScript
 public:
     HybridTalentBeaconItemScript() : ItemScript("item_hybrid_talent_beacon") { }
 
-    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
     {
         if (!Enabled)
             return true;
 
         SummonHybridTrainer(player);
-        player->InterruptNonMeleeSpells(false);
+        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(item->GetTemplate()->Spells[0].SpellId))
+            Spell::SendCastResult(player, spellInfo, 0, SPELL_FAILED_INTERRUPTED);
+
+        player->CastStop();
         return true;
     }
 };

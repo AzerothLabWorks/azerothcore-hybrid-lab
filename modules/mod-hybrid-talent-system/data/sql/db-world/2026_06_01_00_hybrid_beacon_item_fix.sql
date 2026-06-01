@@ -1,5 +1,16 @@
-UPDATE `item_template`
+SET @HYBRID_BEACON := 65010;
+
+DELETE FROM `item_template` WHERE `entry` = @HYBRID_BEACON;
+
+CREATE TEMPORARY TABLE `tmp_hybrid_beacon_item_fix`
+SELECT *
+FROM `item_template`
+WHERE `entry` = 6948
+LIMIT 1;
+
+UPDATE `tmp_hybrid_beacon_item_fix`
 SET
+    `entry` = @HYBRID_BEACON,
     `name` = 'Hybrid Talent Beacon',
     `displayid` = 6418,
     `Quality` = 3,
@@ -47,5 +58,10 @@ SET
     `bonding` = 1,
     `description` = 'Summons the Hybrid Talent Master to your location.',
     `ScriptName` = 'item_hybrid_talent_beacon',
-    `VerifiedBuild` = 0
-WHERE `entry` = 900010;
+    `VerifiedBuild` = 0;
+
+INSERT INTO `item_template`
+SELECT *
+FROM `tmp_hybrid_beacon_item_fix`;
+
+DROP TEMPORARY TABLE `tmp_hybrid_beacon_item_fix`;
