@@ -477,6 +477,7 @@ public:
             return true;
 
         SummonProfessionMaster(player);
+        player->InterruptNonMeleeSpells(false);
         return true;
     }
 };

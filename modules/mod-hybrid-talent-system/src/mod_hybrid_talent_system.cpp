@@ -1068,6 +1068,7 @@ public:
             return true;
 
         SummonHybridTrainer(player);
+        player->InterruptNonMeleeSpells(false);
         return true;
     }
 };
