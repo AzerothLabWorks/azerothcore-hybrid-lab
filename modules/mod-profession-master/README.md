@@ -15,6 +15,7 @@ The NPC can:
 - Increase known profession skill in configurable steps.
 - Learn profession abilities and recipes available at the player's current skill.
 - Optionally bypass the normal two-primary-profession limit.
+- Grant a beacon item that summons a temporary Profession Master near the player.
 
 Install with:
 
@@ -29,6 +30,10 @@ After the rebuild, spawn the NPC where you want it:
 ```text
 .npc add 190020
 ```
+
+The world SQL also creates item `900020`, `Profession Master Beacon`, with `ScriptName` set to `item_profession_master_beacon`.
+
+By default, the module grants the item to players on login. Using the item summons a temporary Profession Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
 
 If the database row exists but `.npc add 190020` says the creature does not exist, verify that the model row exists and restart `ac-worldserver`:
 

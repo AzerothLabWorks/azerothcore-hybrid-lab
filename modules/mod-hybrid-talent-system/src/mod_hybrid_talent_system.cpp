@@ -5,12 +5,15 @@
 #include "CreatureScript.h"
 #include "DatabaseEnv.h"
 #include "GossipDef.h"
+#include "Item.h"
+#include "ItemScript.h"
 #include "Log.h"
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
 #include "SpellMgr.h"
+#include "TemporarySummon.h"
 #include "WorldScript.h"
 
 #include <algorithm>
@@ -54,6 +57,9 @@ namespace
     uint16 MaxPoints = 35;
     uint32 ResetCostCopper = 100000;
     uint32 TrainerNpcEntry = 190010;
+    uint32 BeaconItemEntry = 900010;
+    bool GrantBeaconOnLogin = true;
+    uint32 BeaconSummonDurationSeconds = 300;
     bool RestoreOnLogin = true;
     bool EnableSynergies = true;
     bool AutoUpgradeRanks = true;
@@ -68,6 +74,7 @@ namespace
         ACTION_BROWSE = GOSSIP_ACTION_INFO_DEF + 2,
         ACTION_RESET_CONFIRM = GOSSIP_ACTION_INFO_DEF + 3,
         ACTION_RESET_EXECUTE = GOSSIP_ACTION_INFO_DEF + 4,
+        ACTION_DISMISS = GOSSIP_ACTION_INFO_DEF + 5,
         ACTION_CLASS_BASE = GOSSIP_ACTION_INFO_DEF + 100,
         ACTION_BROWSE_PAGE_BASE = GOSSIP_ACTION_INFO_DEF + 1000,
         ACTION_LEARN_BASE = GOSSIP_ACTION_INFO_DEF + 20000
@@ -571,6 +578,9 @@ namespace
         MaxPoints = static_cast<uint16>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.MaxPoints", 35));
         ResetCostCopper = sConfigMgr->GetOption<uint32>("HybridTalentSystem.ResetCostCopper", 100000);
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.TrainerNpcEntry", 190010);
+        BeaconItemEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconItemEntry", 900010);
+        GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.GrantBeaconOnLogin", true);
+        BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconSummonDurationSeconds", 300);
         RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
         EnableSynergies = sConfigMgr->GetOption<bool>("HybridTalentSystem.EnableSynergies", true);
         AutoUpgradeRanks = sConfigMgr->GetOption<bool>("HybridTalentSystem.AutoUpgradeRanks", true);
@@ -651,7 +661,67 @@ namespace
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "View hybrid status", GOSSIP_SENDER_MAIN, ACTION_STATUS);
         AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Learn hybrid spells", GOSSIP_SENDER_MAIN, ACTION_BROWSE);
         AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "Reset hybrid build", GOSSIP_SENDER_MAIN, ACTION_RESET_CONFIRM);
+        if (creature->IsSummon())
+            if (TempSummon* summon = creature->ToTempSummon())
+                if (summon->GetSummonerGUID() == player->GetGUID())
+                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Dismiss summoned trainer", GOSSIP_SENDER_MAIN, ACTION_DISMISS);
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+    }
+
+    bool IsPlayerSummonedTrainer(Player* player, Creature* creature)
+    {
+        if (!player || !creature || !creature->IsSummon())
+            return false;
+
+        if (TempSummon* summon = creature->ToTempSummon())
+            return summon->GetSummonerGUID() == player->GetGUID();
+
+        return false;
+    }
+
+    void SendDismissMenu(Player* player, Creature* creature)
+    {
+        ClearGossipMenuFor(player);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Dismiss summoned trainer", GOSSIP_SENDER_MAIN, ACTION_DISMISS);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+    }
+
+    void GrantHybridBeacon(Player* player)
+    {
+        if (!player || !GrantBeaconOnLogin || !BeaconItemEntry)
+            return;
+
+        if (!player->HasItemCount(BeaconItemEntry, 1, true))
+            player->AddItem(BeaconItemEntry, 1);
+    }
+
+    bool SummonHybridTrainer(Player* player)
+    {
+        if (!player || !TrainerNpcEntry)
+            return false;
+
+        if (Creature* existing = player->FindNearestCreature(TrainerNpcEntry, 15.0f, true))
+            if (existing->IsSummon())
+                if (TempSummon* summon = existing->ToTempSummon())
+                    if (summon->GetSummonerGUID() == player->GetGUID())
+                        existing->DespawnOrUnsummon();
+
+        float x = player->GetPositionX();
+        float y = player->GetPositionY();
+        float z = player->GetPositionZ();
+        player->GetClosePoint(x, y, z, player->GetObjectSize(), 2.0f);
+        float orientation = player->GetOrientation() + 3.14159f;
+        uint32 durationMs = BeaconSummonDurationSeconds * 1000;
+
+        Creature* summon = player->SummonCreature(TrainerNpcEntry, x, y, z, orientation, TEMPSUMMON_TIMED_DESPAWN, durationMs);
+        if (!summon)
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("The Hybrid Talent Master could not be summoned.");
+            return false;
+        }
+
+        ChatHandler(player->GetSession()).PSendSysMessage("Hybrid Talent Master summoned.");
+        return true;
     }
 
     std::vector<uint32> GetAvailableHybridSpellIds(Player* player, uint32 sourceClassMask)
@@ -830,6 +900,9 @@ public:
 
     void OnPlayerLogin(Player* player) override
     {
+        if (Enabled)
+            GrantHybridBeacon(player);
+
         if (Enabled && RestoreOnLogin)
         {
             RestoreHybridSpells(player);
@@ -872,6 +945,8 @@ public:
         if (player->GetLevel() < MinLevel)
         {
             ChatHandler(player->GetSession()).PSendSysMessage("Hybrid training unlocks at level {}.", MinLevel);
+            if (IsPlayerSummonedTrainer(player, creature))
+                SendDismissMenu(player, creature);
             return true;
         }
 
@@ -929,6 +1004,21 @@ public:
             return true;
         }
 
+        if (action == ACTION_DISMISS)
+        {
+            if (creature->IsSummon())
+                if (TempSummon* summon = creature->ToTempSummon())
+                    if (summon->GetSummonerGUID() == player->GetGUID())
+                    {
+                        CloseGossipMenuFor(player);
+                        creature->DespawnOrUnsummon();
+                        return true;
+                    }
+
+            SendMainMenu(player, creature);
+            return true;
+        }
+
         if (action == ACTION_RESET_EXECUTE)
         {
             if (ResetCostCopper && !player->HasEnoughMoney(ResetCostCopper))
@@ -963,6 +1053,21 @@ public:
         }
 
         SendMainMenu(player, creature);
+        return true;
+    }
+};
+
+class HybridTalentBeaconItemScript : public ItemScript
+{
+public:
+    HybridTalentBeaconItemScript() : ItemScript("item_hybrid_talent_beacon") { }
+
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
+    {
+        if (!Enabled)
+            return true;
+
+        SummonHybridTrainer(player);
         return true;
     }
 };
@@ -1016,5 +1121,6 @@ void AddHybridTalentSystemScripts()
     new HybridTalentWorldScript();
     new HybridTalentPlayerScript();
     new HybridTalentTrainerScript();
+    new HybridTalentBeaconItemScript();
     new HybridTalentCommandScript();
 }

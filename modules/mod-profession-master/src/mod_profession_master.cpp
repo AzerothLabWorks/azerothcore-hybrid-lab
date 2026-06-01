@@ -5,11 +5,15 @@
 #include "DBCEnums.h"
 #include "DBCStores.h"
 #include "GossipDef.h"
+#include "Item.h"
+#include "ItemScript.h"
 #include "Player.h"
+#include "PlayerScript.h"
 #include "ScriptMgr.h"
 #include "ScriptedGossip.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "TemporarySummon.h"
 #include "WorldScript.h"
 
 #include <algorithm>
@@ -23,6 +27,7 @@ constexpr uint32 ACTION_LEARN_PROFESSION = 1000;
 constexpr uint32 ACTION_SKILL_UP = 2000;
 constexpr uint32 ACTION_LEARN_RECIPES = 3000;
 constexpr uint32 ACTION_BACK = 9000;
+constexpr uint32 ACTION_DISMISS = 9001;
 
 struct ProfessionTemplate
 {
@@ -52,6 +57,9 @@ std::array<ProfessionTemplate, 14> const Professions =
 
 bool Enabled = true;
 uint32 TrainerNpcEntry = 190020;
+uint32 BeaconItemEntry = 900020;
+bool GrantBeaconOnLogin = true;
+uint32 BeaconSummonDurationSeconds = 300;
 uint32 MaxSkill = 450;
 uint32 SkillStep = 25;
 uint32 LearnProfessionCost = 10000;
@@ -194,7 +202,49 @@ void ShowMainMenu(Player* player, Creature* creature)
     AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Learn a profession (" + MoneyText(LearnProfessionCost) + ")", GOSSIP_SENDER_MAIN, ACTION_LEARN_PROFESSION);
     AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Increase profession skill (" + MoneyText(SkillStepCost) + ")", GOSSIP_SENDER_MAIN, ACTION_SKILL_UP);
     AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Learn available recipes (" + MoneyText(LearnRecipesCost) + ")", GOSSIP_SENDER_MAIN, ACTION_LEARN_RECIPES);
+    if (creature->IsSummon())
+        if (TempSummon* summon = creature->ToTempSummon())
+            if (summon->GetSummonerGUID() == player->GetGUID())
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Dismiss summoned trainer", GOSSIP_SENDER_MAIN, ACTION_DISMISS);
     SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+}
+
+void GrantProfessionBeacon(Player* player)
+{
+    if (!player || !GrantBeaconOnLogin || !BeaconItemEntry)
+        return;
+
+    if (!player->HasItemCount(BeaconItemEntry, 1, true))
+        player->AddItem(BeaconItemEntry, 1);
+}
+
+bool SummonProfessionMaster(Player* player)
+{
+    if (!player || !TrainerNpcEntry)
+        return false;
+
+    if (Creature* existing = player->FindNearestCreature(TrainerNpcEntry, 15.0f, true))
+        if (existing->IsSummon())
+            if (TempSummon* summon = existing->ToTempSummon())
+                if (summon->GetSummonerGUID() == player->GetGUID())
+                    existing->DespawnOrUnsummon();
+
+    float x = player->GetPositionX();
+    float y = player->GetPositionY();
+    float z = player->GetPositionZ();
+    player->GetClosePoint(x, y, z, player->GetObjectSize(), 2.0f);
+    float orientation = player->GetOrientation() + 3.14159f;
+    uint32 durationMs = BeaconSummonDurationSeconds * 1000;
+
+    Creature* summon = player->SummonCreature(TrainerNpcEntry, x, y, z, orientation, TEMPSUMMON_TIMED_DESPAWN, durationMs);
+    if (!summon)
+    {
+        Notify(player, "The Profession Master could not be summoned.");
+        return false;
+    }
+
+    Notify(player, "Profession Master summoned.");
+    return true;
 }
 
 void ShowProfessionMenu(Player* player, Creature* creature, uint32 actionBase)
@@ -318,12 +368,27 @@ public:
     {
         Enabled = sConfigMgr->GetOption<bool>("ProfessionMaster.Enable", true);
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.TrainerNpcEntry", 190020);
+        BeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconItemEntry", 900020);
+        GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("ProfessionMaster.GrantBeaconOnLogin", true);
+        BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconSummonDurationSeconds", 300);
         MaxSkill = std::min<uint32>(sConfigMgr->GetOption<uint32>("ProfessionMaster.MaxSkill", 450), 450);
         SkillStep = std::max<uint32>(sConfigMgr->GetOption<uint32>("ProfessionMaster.SkillStep", 25), 1);
         LearnProfessionCost = sConfigMgr->GetOption<uint32>("ProfessionMaster.LearnProfessionCostCopper", 10000);
         SkillStepCost = sConfigMgr->GetOption<uint32>("ProfessionMaster.SkillStepCostCopper", 50000);
         LearnRecipesCost = sConfigMgr->GetOption<uint32>("ProfessionMaster.LearnRecipesCostCopper", 100000);
         AllowPrimaryProfessionLimitBypass = sConfigMgr->GetOption<bool>("ProfessionMaster.AllowPrimaryProfessionLimitBypass", true);
+    }
+};
+
+class profession_master_playerscript : public PlayerScript
+{
+public:
+    profession_master_playerscript() : PlayerScript("profession_master_playerscript") { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        if (Enabled)
+            GrantProfessionBeacon(player);
     }
 };
 
@@ -362,6 +427,18 @@ public:
             case ACTION_BACK:
                 ShowMainMenu(player, creature);
                 return true;
+            case ACTION_DISMISS:
+                if (creature->IsSummon())
+                    if (TempSummon* summon = creature->ToTempSummon())
+                        if (summon->GetSummonerGUID() == player->GetGUID())
+                        {
+                            CloseGossipMenuFor(player);
+                            creature->DespawnOrUnsummon();
+                            return true;
+                        }
+
+                ShowMainMenu(player, creature);
+                return true;
             default:
                 break;
         }
@@ -389,8 +466,25 @@ public:
     }
 };
 
+class item_profession_master_beacon : public ItemScript
+{
+public:
+    item_profession_master_beacon() : ItemScript("item_profession_master_beacon") { }
+
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
+    {
+        if (!Enabled)
+            return true;
+
+        SummonProfessionMaster(player);
+        return true;
+    }
+};
+
 void AddProfessionMasterScripts()
 {
     new profession_master_worldscript();
+    new profession_master_playerscript();
     new npc_profession_master();
+    new item_profession_master_beacon();
 }

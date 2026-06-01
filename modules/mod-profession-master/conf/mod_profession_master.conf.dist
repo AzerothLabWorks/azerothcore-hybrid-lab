@@ -11,6 +11,11 @@ ProfessionMaster.Enable = 1
 # Creature template entry used by setup-profession-master.
 ProfessionMaster.TrainerNpcEntry = 190020
 
+# Optional quality-of-life item that summons the Profession Master near the player.
+ProfessionMaster.BeaconItemEntry = 900020
+ProfessionMaster.GrantBeaconOnLogin = 1
+ProfessionMaster.BeaconSummonDurationSeconds = 300
+
 # WotLK profession cap.
 ProfessionMaster.MaxSkill = 450
 

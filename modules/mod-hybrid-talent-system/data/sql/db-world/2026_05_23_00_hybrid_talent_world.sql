@@ -17,6 +17,35 @@ CREATE TABLE IF NOT EXISTS `hybrid_synergy_template` (
   PRIMARY KEY (`synergy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+SET @HYBRID_BEACON := 900010;
+
+DELETE FROM `item_template` WHERE `entry` = @HYBRID_BEACON;
+
+CREATE TEMPORARY TABLE `tmp_hybrid_beacon_item`
+SELECT *
+FROM `item_template`
+WHERE `entry` = 6948
+LIMIT 1;
+
+UPDATE `tmp_hybrid_beacon_item`
+SET
+    `entry` = @HYBRID_BEACON,
+    `name` = 'Hybrid Talent Beacon',
+    `Quality` = 3,
+    `RequiredLevel` = 1,
+    `maxcount` = 1,
+    `stackable` = 1,
+    `spellcooldown_1` = 60000,
+    `description` = 'Summons the Hybrid Talent Master to your location.',
+    `ScriptName` = 'item_hybrid_talent_beacon',
+    `VerifiedBuild` = 0;
+
+INSERT INTO `item_template`
+SELECT *
+FROM `tmp_hybrid_beacon_item`;
+
+DROP TEMPORARY TABLE `tmp_hybrid_beacon_item`;
+
 -- Class masks:
 -- Warrior 1, Paladin 2, Hunter 4, Rogue 8, Priest 16, Death Knight 32,
 -- Shaman 64, Mage 128, Warlock 256, Druid 1024.

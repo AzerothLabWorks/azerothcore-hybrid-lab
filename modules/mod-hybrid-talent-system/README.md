@@ -12,6 +12,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
 - Spell choices come from an explicit allowlist in `hybrid_spell_template`.
+- `Hybrid Talent Beacon` item can summon a temporary trainer near the player.
 
 ## Install
 
@@ -23,7 +24,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
    - `sql/world/base/2026_05_23_00_hybrid_talent_world.sql` into the world database.
    - `sql/characters/base/2026_05_23_00_hybrid_talent_characters.sql` into the characters database.
 6. Create or reuse an NPC with entry `190010` and set its `ScriptName` to `npc_hybrid_talent_master`.
-7. Spawn the NPC in game.
+7. Spawn the NPC in game, or use the `Hybrid Talent Beacon` item created by the SQL.
 
 ## NPC Setup
 
@@ -38,6 +39,12 @@ Recommended workflow:
 5. Set `ScriptName` to `npc_hybrid_talent_master`.
 
 You can also change `HybridTalentSystem.TrainerNpcEntry` in the config if you want to use a different creature entry.
+
+## Beacon Item
+
+The world SQL creates item `900010`, `Hybrid Talent Beacon`, with `ScriptName` set to `item_hybrid_talent_beacon`.
+
+By default, the module grants the item to players on login. Using the item summons a temporary Hybrid Talent Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
 
 ## Admin Commands
 

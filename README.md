@@ -15,8 +15,8 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 
 ## Features
 
-- **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, and action-bar preservation for learned hybrid spells.
-- **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, and learning recipes/abilities available at the player's current profession skill.
+- **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, action-bar preservation for learned hybrid spells, and a summon beacon item.
+- **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
 - **Supported module set**: Hybrid Talent System, Profession Master, Auction House Bot, Transmog, and Auto Learn Spells.
@@ -61,8 +61,10 @@ After installation, use:
 
 - Hybrid trainer: `190010`, `Hybrid Talent Master`, script `npc_hybrid_talent_master`
 - Profession trainer: `190020`, `Artisan Nexus-Weaver`, script `npc_profession_master`
+- Hybrid beacon item: `900010`, `Hybrid Talent Beacon`
+- Profession beacon item: `900020`, `Profession Master Beacon`
 
-The setup commands create or normalize the database templates. You still choose the final in-game placement with GM commands such as:
+The setup commands create or normalize the database templates and beacon items. Beacon items are granted on login by default and summon temporary trainers near the player. You can still choose permanent in-game placement with GM commands such as:
 
 ```text
 .npc add 190010

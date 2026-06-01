@@ -1,7 +1,9 @@
 SET @ENTRY := 190020;
+SET @PROFESSION_BEACON := 900020;
 
 DELETE FROM `creature_template` WHERE `entry` = @ENTRY;
 DELETE FROM `creature_template_model` WHERE `CreatureID` = @ENTRY;
+DELETE FROM `item_template` WHERE `entry` = @PROFESSION_BEACON;
 
 CREATE TEMPORARY TABLE `tmp_profession_master_template`
 SELECT *
@@ -43,3 +45,28 @@ INSERT INTO `creature_template_model` (`CreatureID`, `Idx`, `CreatureDisplayID`,
 SELECT @ENTRY, `Idx`, `CreatureDisplayID`, `DisplayScale`, `Probability`, `VerifiedBuild`
 FROM `creature_template_model`
 WHERE `CreatureID` = @MODEL_SOURCE;
+
+CREATE TEMPORARY TABLE `tmp_profession_beacon_item`
+SELECT *
+FROM `item_template`
+WHERE `entry` = 6948
+LIMIT 1;
+
+UPDATE `tmp_profession_beacon_item`
+SET
+    `entry` = @PROFESSION_BEACON,
+    `name` = 'Profession Master Beacon',
+    `Quality` = 3,
+    `RequiredLevel` = 1,
+    `maxcount` = 1,
+    `stackable` = 1,
+    `spellcooldown_1` = 60000,
+    `description` = 'Summons the Profession Master to your location.',
+    `ScriptName` = 'item_profession_master_beacon',
+    `VerifiedBuild` = 0;
+
+INSERT INTO `item_template`
+SELECT *
+FROM `tmp_profession_beacon_item`;
+
+DROP TEMPORARY TABLE `tmp_profession_beacon_item`;

@@ -25,6 +25,11 @@ HybridTalentSystem.ResetCostCopper = 100000
 # Creature entry used as the Hybrid Talent Master NPC.
 HybridTalentSystem.TrainerNpcEntry = 190010
 
+# Optional quality-of-life item that summons the Hybrid Talent Master near the player.
+HybridTalentSystem.BeaconItemEntry = 900010
+HybridTalentSystem.GrantBeaconOnLogin = 1
+HybridTalentSystem.BeaconSummonDurationSeconds = 300
+
 # Restore persisted hybrid spells when players and playerbots log in.
 HybridTalentSystem.RestoreOnLogin = 1
 
