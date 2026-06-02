@@ -61,8 +61,8 @@ After installation, use:
 
 - Hybrid trainer: `190010`, `Hybrid Talent Master`, script `npc_hybrid_talent_master`
 - Profession trainer: `190020`, `Artisan Nexus-Weaver`, script `npc_profession_master`
-- Hybrid beacon item: `1854`, `Hybrid Talent Beacon`
-- Profession beacon item: `1912`, `Profession Master Beacon`
+- Hybrid beacon item: `1915`, `Hybrid Talent Beacon`
+- Profession beacon item: `3500`, `Profession Master Beacon`
 
 The setup commands create or normalize the database templates and beacon items. Beacon items are granted on login by default and summon temporary trainers near the player. You can still choose permanent in-game placement with GM commands such as:
 

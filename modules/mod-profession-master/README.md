@@ -31,7 +31,7 @@ After the rebuild, spawn the NPC where you want it:
 .npc add 190020
 ```
 
-The world SQL also creates item `1912`, `Profession Master Beacon`, with `ScriptName` set to `item_profession_master_beacon`.
+The world SQL also creates item `3500`, `Profession Master Beacon`, with `ScriptName` set to `item_profession_master_beacon`.
 
 By default, the module grants the item to players on login. Using the item summons a temporary Profession Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
 

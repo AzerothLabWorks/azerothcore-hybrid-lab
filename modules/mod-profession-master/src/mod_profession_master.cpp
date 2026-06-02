@@ -58,9 +58,10 @@ std::array<ProfessionTemplate, 14> const Professions =
 
 constexpr uint32 LegacyBeaconItemEntry1 = 900020;
 constexpr uint32 LegacyBeaconItemEntry2 = 65020;
+constexpr uint32 LegacyBeaconItemEntry3 = 1912;
 bool Enabled = true;
 uint32 TrainerNpcEntry = 190020;
-uint32 BeaconItemEntry = 1912;
+uint32 BeaconItemEntry = 3500;
 bool GrantBeaconOnLogin = true;
 uint32 BeaconSummonDurationSeconds = 300;
 uint32 MaxSkill = 450;
@@ -217,11 +218,14 @@ void GrantProfessionBeacon(Player* player)
     if (!player || !GrantBeaconOnLogin || !BeaconItemEntry)
         return;
 
-    if (BeaconItemEntry == 1912 && player->HasItemCount(LegacyBeaconItemEntry1, 1, true))
+    if (BeaconItemEntry == 3500 && player->HasItemCount(LegacyBeaconItemEntry1, 1, true))
         player->DestroyItemCount(LegacyBeaconItemEntry1, player->GetItemCount(LegacyBeaconItemEntry1, true), true);
 
-    if (BeaconItemEntry == 1912 && player->HasItemCount(LegacyBeaconItemEntry2, 1, true))
+    if (BeaconItemEntry == 3500 && player->HasItemCount(LegacyBeaconItemEntry2, 1, true))
         player->DestroyItemCount(LegacyBeaconItemEntry2, player->GetItemCount(LegacyBeaconItemEntry2, true), true);
+
+    if (BeaconItemEntry == 3500 && player->HasItemCount(LegacyBeaconItemEntry3, 1, true))
+        player->DestroyItemCount(LegacyBeaconItemEntry3, player->GetItemCount(LegacyBeaconItemEntry3, true), true);
 
     if (!player->HasItemCount(BeaconItemEntry, 1, true))
         player->AddItem(BeaconItemEntry, 1);
@@ -377,7 +381,7 @@ public:
     {
         Enabled = sConfigMgr->GetOption<bool>("ProfessionMaster.Enable", true);
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.TrainerNpcEntry", 190020);
-        BeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconItemEntry", 1912);
+        BeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconItemEntry", 3500);
         GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("ProfessionMaster.GrantBeaconOnLogin", true);
         BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconSummonDurationSeconds", 300);
         MaxSkill = std::min<uint32>(sConfigMgr->GetOption<uint32>("ProfessionMaster.MaxSkill", 450), 450);

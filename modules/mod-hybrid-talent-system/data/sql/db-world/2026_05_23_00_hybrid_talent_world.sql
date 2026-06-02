@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `hybrid_synergy_template` (
   PRIMARY KEY (`synergy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SET @HYBRID_BEACON := 1854;
+SET @HYBRID_BEACON := 1915;
 
 DELETE FROM `item_template` WHERE `entry` = @HYBRID_BEACON;
 
@@ -30,13 +30,16 @@ LIMIT 1;
 UPDATE `tmp_hybrid_beacon_item`
 SET
     `entry` = @HYBRID_BEACON,
+    `class` = 15,
+    `subclass` = 0,
     `name` = 'Hybrid Talent Beacon',
-    `displayid` = 6497,
+    `displayid` = 1183,
     `Quality` = 3,
     `Flags` = 64,
     `FlagsExtra` = 0,
     `ItemLevel` = 1,
     `RequiredLevel` = 1,
+    `InventoryType` = 0,
     `maxcount` = 1,
     `stackable` = 1,
     `spellid_1` = 439,

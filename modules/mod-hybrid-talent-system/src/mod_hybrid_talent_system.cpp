@@ -60,7 +60,8 @@ namespace
     uint32 TrainerNpcEntry = 190010;
     constexpr uint32 LegacyBeaconItemEntry1 = 900010;
     constexpr uint32 LegacyBeaconItemEntry2 = 65010;
-    uint32 BeaconItemEntry = 1854;
+    constexpr uint32 LegacyBeaconItemEntry3 = 1854;
+    uint32 BeaconItemEntry = 1915;
     bool GrantBeaconOnLogin = true;
     uint32 BeaconSummonDurationSeconds = 300;
     bool RestoreOnLogin = true;
@@ -581,7 +582,7 @@ namespace
         MaxPoints = static_cast<uint16>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.MaxPoints", 35));
         ResetCostCopper = sConfigMgr->GetOption<uint32>("HybridTalentSystem.ResetCostCopper", 100000);
         TrainerNpcEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.TrainerNpcEntry", 190010);
-        BeaconItemEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconItemEntry", 1854);
+        BeaconItemEntry = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconItemEntry", 1915);
         GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.GrantBeaconOnLogin", true);
         BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("HybridTalentSystem.BeaconSummonDurationSeconds", 300);
         RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
@@ -694,11 +695,14 @@ namespace
         if (!player || !GrantBeaconOnLogin || !BeaconItemEntry)
             return;
 
-        if (BeaconItemEntry == 1854 && player->HasItemCount(LegacyBeaconItemEntry1, 1, true))
+        if (BeaconItemEntry == 1915 && player->HasItemCount(LegacyBeaconItemEntry1, 1, true))
             player->DestroyItemCount(LegacyBeaconItemEntry1, player->GetItemCount(LegacyBeaconItemEntry1, true), true);
 
-        if (BeaconItemEntry == 1854 && player->HasItemCount(LegacyBeaconItemEntry2, 1, true))
+        if (BeaconItemEntry == 1915 && player->HasItemCount(LegacyBeaconItemEntry2, 1, true))
             player->DestroyItemCount(LegacyBeaconItemEntry2, player->GetItemCount(LegacyBeaconItemEntry2, true), true);
+
+        if (BeaconItemEntry == 1915 && player->HasItemCount(LegacyBeaconItemEntry3, 1, true))
+            player->DestroyItemCount(LegacyBeaconItemEntry3, player->GetItemCount(LegacyBeaconItemEntry3, true), true);
 
         if (!player->HasItemCount(BeaconItemEntry, 1, true))
             player->AddItem(BeaconItemEntry, 1);

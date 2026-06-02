@@ -1,4 +1,4 @@
-SET @PROFESSION_BEACON := 1912;
+SET @PROFESSION_BEACON := 3500;
 
 DELETE FROM `item_template` WHERE `entry` = @PROFESSION_BEACON;
 
@@ -11,13 +11,16 @@ LIMIT 1;
 UPDATE `tmp_profession_beacon_item_fix`
 SET
     `entry` = @PROFESSION_BEACON,
+    `class` = 15,
+    `subclass` = 0,
     `name` = 'Profession Master Beacon',
-    `displayid` = 6509,
+    `displayid` = 1046,
     `Quality` = 3,
     `Flags` = 64,
     `FlagsExtra` = 0,
     `ItemLevel` = 1,
     `RequiredLevel` = 1,
+    `InventoryType` = 0,
     `maxcount` = 1,
     `stackable` = 1,
     `spellid_1` = 439,

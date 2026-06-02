@@ -12,7 +12,7 @@ ProfessionMaster.Enable = 1
 ProfessionMaster.TrainerNpcEntry = 190020
 
 # Optional quality-of-life item that summons the Profession Master near the player.
-ProfessionMaster.BeaconItemEntry = 1912
+ProfessionMaster.BeaconItemEntry = 3500
 ProfessionMaster.GrantBeaconOnLogin = 1
 ProfessionMaster.BeaconSummonDurationSeconds = 300
 
