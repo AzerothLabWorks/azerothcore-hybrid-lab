@@ -1,4 +1,4 @@
-SET @HYBRID_BEACON := 65010;
+SET @HYBRID_BEACON := 1854;
 
 DELETE FROM `item_template` WHERE `entry` = @HYBRID_BEACON;
 
@@ -12,7 +12,7 @@ UPDATE `tmp_hybrid_beacon_item_fix`
 SET
     `entry` = @HYBRID_BEACON,
     `name` = 'Hybrid Talent Beacon',
-    `displayid` = 6418,
+    `displayid` = 6497,
     `Quality` = 3,
     `Flags` = 64,
     `FlagsExtra` = 0,
@@ -20,7 +20,7 @@ SET
     `RequiredLevel` = 1,
     `maxcount` = 1,
     `stackable` = 1,
-    `spellid_1` = 483,
+    `spellid_1` = 439,
     `spelltrigger_1` = 0,
     `spellcharges_1` = 0,
     `spellppmRate_1` = 0,

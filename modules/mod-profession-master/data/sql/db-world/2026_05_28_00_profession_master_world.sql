@@ -1,5 +1,5 @@
 SET @ENTRY := 190020;
-SET @PROFESSION_BEACON := 65020;
+SET @PROFESSION_BEACON := 1912;
 
 DELETE FROM `creature_template` WHERE `entry` = @ENTRY;
 DELETE FROM `creature_template_model` WHERE `CreatureID` = @ENTRY;
@@ -56,7 +56,7 @@ UPDATE `tmp_profession_beacon_item`
 SET
     `entry` = @PROFESSION_BEACON,
     `name` = 'Profession Master Beacon',
-    `displayid` = 8026,
+    `displayid` = 6509,
     `Quality` = 3,
     `Flags` = 64,
     `FlagsExtra` = 0,
@@ -64,7 +64,7 @@ SET
     `RequiredLevel` = 1,
     `maxcount` = 1,
     `stackable` = 1,
-    `spellid_1` = 483,
+    `spellid_1` = 439,
     `spelltrigger_1` = 0,
     `spellcharges_1` = 0,
     `spellppmRate_1` = 0,
