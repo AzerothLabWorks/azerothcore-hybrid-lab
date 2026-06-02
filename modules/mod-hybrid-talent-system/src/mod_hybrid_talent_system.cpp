@@ -12,7 +12,6 @@
 #include "PlayerScript.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
-#include "Spell.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "WorldScript.h"
@@ -1075,15 +1074,12 @@ class HybridTalentBeaconItemScript : public ItemScript
 public:
     HybridTalentBeaconItemScript() : ItemScript("item_hybrid_talent_beacon") { }
 
-    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
     {
         if (!Enabled)
             return true;
 
         SummonHybridTrainer(player);
-        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(item->GetTemplate()->Spells[0].SpellId))
-            Spell::SendCastResult(player, spellInfo, 0, SPELL_FAILED_INTERRUPTED);
-
         player->CastStop();
         return true;
     }

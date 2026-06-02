@@ -11,7 +11,6 @@
 #include "PlayerScript.h"
 #include "ScriptMgr.h"
 #include "ScriptedGossip.h"
-#include "Spell.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
@@ -484,15 +483,12 @@ class item_profession_master_beacon : public ItemScript
 public:
     item_profession_master_beacon() : ItemScript("item_profession_master_beacon") { }
 
-    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
     {
         if (!Enabled)
             return true;
 
         SummonProfessionMaster(player);
-        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(item->GetTemplate()->Spells[0].SpellId))
-            Spell::SendCastResult(player, spellInfo, 0, SPELL_FAILED_INTERRUPTED);
-
         player->CastStop();
         return true;
     }
