@@ -177,20 +177,27 @@ REPLACE INTO `hybrid_spell_template`
 (116,   128,  10, 1, 'Mage - Frost',           1, 0), -- Frostbolt
 (133,   128,  10, 1, 'Mage - Fire',            1, 0), -- Fireball
 (1459,  128,  10, 2, 'Mage - Buff',            8, 0), -- Arcane Intellect
+(168,   128,  10, 2, 'Mage - Armor',           4, 0), -- Frost Armor
 (2136,  128,  10, 2, 'Mage - Fire',            1, 0), -- Fire Blast
 (130,   128,  10, 1, 'Mage - Utility',         8, 0), -- Slow Fall
 (475,   128,  18, 2, 'Mage - Cleanse',         8, 0), -- Remove Curse
 (1953,  128,  20, 2, 'Mage - Mobility',        8, 0), -- Blink
 (122,   128,  10, 2, 'Mage - Control',         8, 0), -- Frost Nova
+(7302,  128,  30, 2, 'Mage - Armor',           4, 0), -- Ice Armor
+(6117,  128,  34, 2, 'Mage - Armor',           4, 0), -- Mage Armor
+(30482, 128,  62, 2, 'Mage - Armor',           4, 0), -- Molten Armor
 
 -- Warlock
 (172,   256,  10, 1, 'Warlock - Shadow',       1, 0), -- Corruption
 (348,   256,  10, 1, 'Warlock - Fire',         1, 0), -- Immolate
 (1454,  256,  10, 2, 'Warlock - Utility',      8, 0), -- Life Tap
+(687,   256,  10, 2, 'Warlock - Armor',        4, 0), -- Demon Skin
 (5782,  256,  10, 3, 'Warlock - Control',      8, 0), -- Fear
 (702,   256,  10, 1, 'Warlock - Curse',        1, 0), -- Curse of Weakness
 (688,   256,  10, 3, 'Warlock - Summon',       8, 0), -- Summon Imp
 (5697,  256,  16, 2, 'Warlock - Utility',      8, 0), -- Unending Breath
+(706,   256,  20, 2, 'Warlock - Armor',        4, 0), -- Demon Armor
+(28176, 256,  62, 2, 'Warlock - Armor',        4, 0), -- Fel Armor
 
 -- Druid
 (774,   1024, 10, 1, 'Druid - Heal',           2, 0), -- Rejuvenation
