@@ -810,7 +810,11 @@ namespace
             HybridSpellTemplate const& templ = itr->second;
             SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
             std::string label = spellInfo ? spellInfo->SpellName[0] : std::to_string(templ.SpellId);
-            label += " - ";
+            label += " [";
+            label += templ.Category;
+            label += ", lvl ";
+            label += std::to_string(templ.RequiredLevel);
+            label += "] - ";
             label += std::to_string(templ.Cost);
             label += " point";
             label += templ.Cost == 1 ? "" : "s";

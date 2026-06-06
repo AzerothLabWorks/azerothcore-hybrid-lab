@@ -11,7 +11,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
 - Purchased hybrid spells can automatically upgrade to the best rank for the player's level on login and level-up.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
-- Spell choices come from an explicit allowlist in `hybrid_spell_template`.
+- Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
 - `Hybrid Talent Beacon` item can summon a temporary trainer near the player.
 
 ## Install
@@ -51,9 +51,9 @@ By default, the module grants the item to players on login. Using the item summo
 - `.hybrid reload` reloads config and DB templates.
 - `.hybrid reset` resets the selected player's hybrid build.
 
-## Starter Spell Pool
+## Spell Pool
 
-The starter SQL intentionally uses low-level spells. That keeps the first test pass manageable.
+The starter SQL includes curated low-level spells and then fills gaps from AzerothCore's class trainer tables. Curated rows keep their hand-tuned cost/category values; imported trainer spells default to cost `2` and category `<Class> - Trainer`.
 
 The `class_mask` column is a disallow mask. For example, Mage spells use `128`, which prevents mages from buying their own mage spells from the hybrid trainer while allowing other classes to buy them.
 
