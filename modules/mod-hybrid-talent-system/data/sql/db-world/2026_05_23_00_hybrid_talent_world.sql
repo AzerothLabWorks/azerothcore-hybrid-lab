@@ -103,6 +103,7 @@ REPLACE INTO `hybrid_spell_template`
 (772,   1,    10, 1, 'Warrior - Bleed',        1, 0), -- Rend
 (6673,  1,    10, 2, 'Warrior - Buff',         8, 0), -- Battle Shout
 (1715,  1,    10, 1, 'Warrior - Control',      8, 0), -- Hamstring
+(72,    1,    12, 2, 'Warrior - Interrupt',    8, 0), -- Shield Bash
 (7384,  1,    12, 1, 'Warrior - Strike',       1, 0), -- Overpower
 (6343,  1,    10, 1, 'Warrior - AoE',          1, 0), -- Thunder Clap
 
@@ -132,6 +133,7 @@ REPLACE INTO `hybrid_spell_template`
 -- Rogue
 (1752,  8,    10, 1, 'Rogue - Strike',         1, 0), -- Sinister Strike
 (2098,  8,    10, 2, 'Rogue - Finisher',       1, 0), -- Eviscerate
+(1766,  8,    12, 2, 'Rogue - Interrupt',      8, 0), -- Kick
 (5277,  8,    10, 3, 'Rogue - Defensive',      4, 0), -- Evasion
 (1784,  8,    10, 3, 'Rogue - Stealth',        8, 0), -- Stealth
 (2842,  8,    10, 1, 'Rogue - Poison',         8, 0), -- Poisons
@@ -158,6 +160,8 @@ REPLACE INTO `hybrid_spell_template`
 (49576, 32,   10, 3, 'Death Knight - Grip',    8, 0), -- Death Grip
 (48266, 32,   10, 2, 'Death Knight - Presence',4, 0), -- Blood Presence
 (48707, 32,   10, 3, 'Death Knight - Defensive',4,0), -- Anti-Magic Shell
+(47528, 32,   55, 2, 'Death Knight - Interrupt',8, 0), -- Mind Freeze
+(47476, 32,   59, 3, 'Death Knight - Silence', 8, 0), -- Strangulate
 
 -- Shaman
 (331,   64,   10, 1, 'Shaman - Heal',          2, 0), -- Healing Wave
@@ -168,6 +172,7 @@ REPLACE INTO `hybrid_spell_template`
 (8075,  64,   10, 2, 'Shaman - Buff',          8, 0), -- Strength of Earth Totem
 (324,   64,   10, 1, 'Shaman - Shield',        4, 0), -- Lightning Shield
 (546,   64,   16, 2, 'Shaman - Utility',       8, 0), -- Ghost Wolf
+(57994, 64,   16, 2, 'Shaman - Interrupt',     8, 0), -- Wind Shear
 (8033,  64,   20, 1, 'Shaman - Weapon',        1, 0), -- Frostbrand Weapon
 (8232,  64,   30, 1, 'Shaman - Weapon',        1, 0), -- Windfury Weapon
 (370,   64,   12, 2, 'Shaman - Purge',         8, 0), -- Purge
@@ -182,6 +187,7 @@ REPLACE INTO `hybrid_spell_template`
 (130,   128,  10, 1, 'Mage - Utility',         8, 0), -- Slow Fall
 (475,   128,  18, 2, 'Mage - Cleanse',         8, 0), -- Remove Curse
 (1953,  128,  20, 2, 'Mage - Mobility',        8, 0), -- Blink
+(2139,  128,  24, 2, 'Mage - Interrupt',       8, 0), -- Counterspell
 (122,   128,  10, 2, 'Mage - Control',         8, 0), -- Frost Nova
 (7302,  128,  30, 2, 'Mage - Armor',           4, 0), -- Ice Armor
 (6117,  128,  34, 2, 'Mage - Armor',           4, 0), -- Mage Armor
