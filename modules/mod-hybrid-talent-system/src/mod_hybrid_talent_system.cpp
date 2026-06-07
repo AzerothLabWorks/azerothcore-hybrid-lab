@@ -17,6 +17,7 @@
 #include "WorldScript.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <map>
 #include <set>
 #include <string>
@@ -33,6 +34,7 @@ namespace
         uint8 RequiredLevel = 1;
         uint16 Cost = 1;
         std::string Category;
+        std::string Description;
         uint8 RoleMask = 0;
         uint32 Flags = 0;
     };
@@ -619,7 +621,11 @@ namespace
             return;
         }
 
-        QueryResult spellResult = WorldDatabase.Query("SELECT spell_id, class_mask, required_level, cost, category, role_mask, flags FROM hybrid_spell_template");
+        QueryResult descriptionColumnResult = WorldDatabase.Query("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'hybrid_spell_template' AND column_name = 'description' LIMIT 1");
+        bool hasDescriptionColumn = !!descriptionColumnResult;
+        QueryResult spellResult = WorldDatabase.Query(hasDescriptionColumn
+            ? "SELECT spell_id, class_mask, required_level, cost, category, COALESCE(description, ''), role_mask, flags FROM hybrid_spell_template"
+            : "SELECT spell_id, class_mask, required_level, cost, category, '', role_mask, flags FROM hybrid_spell_template");
         if (spellResult)
         {
             do
@@ -632,8 +638,9 @@ namespace
                 templ.RequiredLevel = fields[2].Get<uint8>();
                 templ.Cost = fields[3].Get<uint16>();
                 templ.Category = fields[4].Get<std::string>();
-                templ.RoleMask = fields[5].Get<uint8>();
-                templ.Flags = fields[6].Get<uint32>();
+                templ.Description = fields[5].Get<std::string>();
+                templ.RoleMask = fields[6].Get<uint8>();
+                templ.Flags = fields[7].Get<uint32>();
 
                 if (sSpellMgr->GetSpellInfo(templ.SpellId))
                     SpellTemplates[templ.SpellId] = templ;
@@ -761,6 +768,28 @@ namespace
         return spellIds;
     }
 
+    std::string GetHybridSpellDescription(HybridSpellTemplate const& templ)
+    {
+        if (!templ.Description.empty())
+            return templ.Description;
+
+        if (!templ.Category.empty())
+            return templ.Category;
+
+        return "Hybrid spell";
+    }
+
+    std::string TruncateHybridText(std::string text, std::size_t maxLength)
+    {
+        if (text.length() <= maxLength)
+            return text;
+
+        if (maxLength <= 3)
+            return text.substr(0, maxLength);
+
+        return text.substr(0, maxLength - 3) + "...";
+    }
+
     void SendClassMenu(Player* player, Creature* creature)
     {
         ClearGossipMenuFor(player);
@@ -810,14 +839,15 @@ namespace
             HybridSpellTemplate const& templ = itr->second;
             SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
             std::string label = spellInfo ? spellInfo->SpellName[0] : std::to_string(templ.SpellId);
-            label += " [";
-            label += templ.Category;
-            label += ", lvl ";
+            label += " - ";
+            label += TruncateHybridText(GetHybridSpellDescription(templ), 86);
+            label += " (lvl ";
             label += std::to_string(templ.RequiredLevel);
-            label += "] - ";
+            label += ", ";
             label += std::to_string(templ.Cost);
             label += " point";
             label += templ.Cost == 1 ? "" : "s";
+            label += ")";
 
             if (available < templ.Cost)
                 label += " (not enough points)";

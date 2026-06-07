@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `hybrid_spell_template` (
   `required_level` TINYINT UNSIGNED NOT NULL DEFAULT 10,
   `cost` SMALLINT UNSIGNED NOT NULL DEFAULT 1,
   `category` VARCHAR(64) NOT NULL DEFAULT '',
+  `description` TEXT NULL,
   `role_mask` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Reserved: 1 damage, 2 healing, 4 tank, 8 utility, 16 passive.',
   `flags` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Reserved for future restrictions.',
   PRIMARY KEY (`spell_id`)
