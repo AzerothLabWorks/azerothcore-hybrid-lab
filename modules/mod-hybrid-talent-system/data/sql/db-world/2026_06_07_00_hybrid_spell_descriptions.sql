@@ -1,8 +1,23 @@
 -- Add player-facing descriptions for the hybrid trainer menu.
 -- Imported trainer rows may leave this blank until they are curated.
 
-ALTER TABLE `hybrid_spell_template`
-  ADD COLUMN IF NOT EXISTS `description` TEXT NULL AFTER `category`;
+SET @hybrid_description_column_exists := (
+  SELECT COUNT(*)
+  FROM `information_schema`.`columns`
+  WHERE `table_schema` = DATABASE()
+    AND `table_name` = 'hybrid_spell_template'
+    AND `column_name` = 'description'
+);
+
+SET @hybrid_description_sql := IF(
+  @hybrid_description_column_exists = 0,
+  'ALTER TABLE `hybrid_spell_template` ADD COLUMN `description` TEXT NULL AFTER `category`',
+  'SELECT 1'
+);
+
+PREPARE hybrid_description_stmt FROM @hybrid_description_sql;
+EXECUTE hybrid_description_stmt;
+DEALLOCATE PREPARE hybrid_description_stmt;
 
 UPDATE `hybrid_spell_template` SET `description` = 'Empowers your next melee swing with extra weapon damage.' WHERE `spell_id` = 78;
 UPDATE `hybrid_spell_template` SET `description` = 'Charges an enemy, generates rage, and briefly stuns the target.' WHERE `spell_id` = 100;
