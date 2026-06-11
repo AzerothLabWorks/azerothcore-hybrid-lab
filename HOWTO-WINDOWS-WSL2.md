@@ -338,6 +338,18 @@ Rebuild after adding C++ modules:
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 ```
 
+### Pacific Server Time
+
+The source-build Docker override templates set `TZ=America/Los_Angeles` for `ac-worldserver` so in-game day/night follows Pacific Time instead of UTC.
+
+For an existing server directory, refresh the copied compose override before rebuilding:
+
+```bash
+cd ~/azerothcore-hybrid-lab
+cp docker/overrides/playerbots.yml ~/wow-server-playerbots-hybrid/docker-compose.override.yml
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
 Current known module keys:
 
 - `hybrid`: Hybrid Talent System from this repo.

@@ -6,6 +6,8 @@ services:
       dockerfile: apps/docker/Dockerfile
     volumes:
       - ./modules:/azerothcore/modules
+    environment:
+      TZ: "America/Los_Angeles"
 
   ac-authserver:
     build:

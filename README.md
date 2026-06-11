@@ -21,6 +21,7 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
 - **Supported module set**: Hybrid Talent System, Profession Master, Auction House Bot, Transmog, and Auto Learn Spells.
 - **Safer install directories**: Hybrid installs use `-hybrid` directory names such as `wow-server-playerbots-hybrid` so testing does not collide with existing server installs.
+- **Pacific server time**: Docker source-build profiles set `TZ=America/Los_Angeles` for `ac-worldserver` so in-game day/night follows Pacific Time instead of UTC.
 
 ## Profiles
 

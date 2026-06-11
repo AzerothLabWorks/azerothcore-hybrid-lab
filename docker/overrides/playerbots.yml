@@ -7,6 +7,7 @@ services:
     volumes:
       - ./modules:/azerothcore/modules
     environment:
+      TZ: "America/Los_Angeles"
       AC_PLAYERBOTS_UPDATES_ENABLE_DATABASES: "1"
       AC_AI_PLAYERBOT_RANDOM_BOT_AUTOLOGIN: "1"
       AC_AI_PLAYERBOT_MIN_RANDOM_BOTS: "50"
