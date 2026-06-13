@@ -80,12 +80,16 @@ namespace
         ACTION_RESET_CONFIRM = GOSSIP_ACTION_INFO_DEF + 3,
         ACTION_RESET_EXECUTE = GOSSIP_ACTION_INFO_DEF + 4,
         ACTION_DISMISS = GOSSIP_ACTION_INFO_DEF + 5,
+        ACTION_UNLEARN = GOSSIP_ACTION_INFO_DEF + 6,
         ACTION_CLASS_BASE = GOSSIP_ACTION_INFO_DEF + 100,
         ACTION_BROWSE_PAGE_BASE = GOSSIP_ACTION_INFO_DEF + 1000,
-        ACTION_LEARN_BASE = GOSSIP_ACTION_INFO_DEF + 20000
+        ACTION_UNLEARN_PAGE_BASE = GOSSIP_ACTION_INFO_DEF + 10000,
+        ACTION_UNLEARN_SPELL_BASE = GOSSIP_ACTION_INFO_DEF + 20000,
+        ACTION_LEARN_BASE = GOSSIP_ACTION_INFO_DEF + 40000
     };
 
     constexpr uint32 HybridBrowsePageSize = 12;
+    constexpr uint32 HybridUnlearnPageSize = 12;
     constexpr uint32 HybridPageActionStride = 100;
     constexpr uint32 HybridLearnActionStride = 1000;
     constexpr uint32 HybridActionRestoreDelayMs = 1500;
@@ -212,6 +216,11 @@ namespace
         CharacterDatabase.Execute("REPLACE INTO character_hybrid_spell (guid, spell_id) VALUES ({}, {})", guid, spellId);
     }
 
+    void DeleteHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
+    {
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_spell WHERE guid = {} AND spell_id = {}", guid, spellId);
+    }
+
     void DeleteHybridSpells(ObjectGuid::LowType guid)
     {
         CharacterDatabase.Execute("DELETE FROM character_hybrid_spell WHERE guid = {}", guid);
@@ -231,6 +240,34 @@ namespace
             Field* fields = result->Fetch();
             spellIds.insert(fields[0].Get<uint32>());
         } while (result->NextRow());
+
+        return spellIds;
+    }
+
+    std::vector<uint32> GetLearnedHybridSpellIds(Player const* player)
+    {
+        std::vector<uint32> spellIds;
+        if (!player)
+            return spellIds;
+
+        std::set<uint32> knownSpellIds = GetKnownHybridSpellIds(player->GetGUID().GetCounter());
+        for (uint32 spellId : knownSpellIds)
+            if (SpellTemplates.count(spellId))
+                spellIds.push_back(spellId);
+
+        std::sort(spellIds.begin(), spellIds.end(), [](uint32 leftSpellId, uint32 rightSpellId)
+        {
+            HybridSpellTemplate const& left = SpellTemplates[leftSpellId];
+            HybridSpellTemplate const& right = SpellTemplates[rightSpellId];
+            if (left.ClassMask != right.ClassMask)
+                return left.ClassMask < right.ClassMask;
+
+            SpellInfo const* leftInfo = sSpellMgr->GetSpellInfo(leftSpellId);
+            SpellInfo const* rightInfo = sSpellMgr->GetSpellInfo(rightSpellId);
+            std::string leftName = leftInfo ? leftInfo->SpellName[0] : std::to_string(leftSpellId);
+            std::string rightName = rightInfo ? rightInfo->SpellName[0] : std::to_string(rightSpellId);
+            return leftName < rightName;
+        });
 
         return spellIds;
     }
@@ -670,6 +707,7 @@ namespace
         ClearGossipMenuFor(player);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "View hybrid status", GOSSIP_SENDER_MAIN, ACTION_STATUS);
         AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Learn hybrid spells", GOSSIP_SENDER_MAIN, ACTION_BROWSE);
+        AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Unlearn hybrid spells", GOSSIP_SENDER_MAIN, ACTION_UNLEARN);
         AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "Reset hybrid build", GOSSIP_SENDER_MAIN, ACTION_RESET_CONFIRM);
         if (creature->IsSummon())
             if (TempSummon* summon = creature->ToTempSummon())
@@ -868,6 +906,95 @@ namespace
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
     }
 
+    void SendUnlearnMenu(Player* player, Creature* creature, uint32 page = 0)
+    {
+        ClearGossipMenuFor(player);
+
+        std::vector<uint32> spellIds = GetLearnedHybridSpellIds(player);
+        uint32 pageCount = spellIds.empty() ? 1 : static_cast<uint32>((spellIds.size() + HybridUnlearnPageSize - 1) / HybridUnlearnPageSize);
+        page = std::min(page, pageCount - 1);
+
+        if (pageCount > 1)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Learned spells page " + std::to_string(page + 1) + " of " + std::to_string(pageCount), GOSSIP_SENDER_MAIN, ACTION_UNLEARN_PAGE_BASE + page);
+
+        uint32 start = page * HybridUnlearnPageSize;
+        uint32 end = std::min<uint32>(start + HybridUnlearnPageSize, static_cast<uint32>(spellIds.size()));
+        for (uint32 index = start; index < end; ++index)
+        {
+            auto itr = SpellTemplates.find(spellIds[index]);
+            if (itr == SpellTemplates.end())
+                continue;
+
+            HybridSpellTemplate const& templ = itr->second;
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
+            std::string label = "Unlearn ";
+            label += spellInfo ? spellInfo->SpellName[0] : std::to_string(templ.SpellId);
+            label += " - refund ";
+            label += std::to_string(templ.Cost);
+            label += " point";
+            label += templ.Cost == 1 ? "" : "s";
+
+            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, label, GOSSIP_SENDER_MAIN, ACTION_UNLEARN_SPELL_BASE + index);
+        }
+
+        if (spellIds.empty())
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "You have not learned any hybrid spells.", GOSSIP_SENDER_MAIN, 0);
+
+        if (page > 0)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Previous page", GOSSIP_SENDER_MAIN, ACTION_UNLEARN_PAGE_BASE + page - 1);
+
+        if (page + 1 < pageCount)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Next page", GOSSIP_SENDER_MAIN, ACTION_UNLEARN_PAGE_BASE + page + 1);
+
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, 0);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+    }
+
+    bool TryUnlearnHybridSpell(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return false;
+
+        auto itr = SpellTemplates.find(spellId);
+        if (itr == SpellTemplates.end())
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("That hybrid spell is no longer available.");
+            return false;
+        }
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        if (!HasHybridSpellInChain(guid, spellId))
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You have not learned that hybrid spell.");
+            return false;
+        }
+
+        RemoveHybridActionButtons(player, spellId);
+        RemoveHybridSpellRanks(player, spellId);
+        DeletePersistedHybridSpellRanks(guid, spellId);
+        DeleteHybridSpell(guid, spellId);
+
+        for (HybridSynergyTemplate const& synergy : SynergyTemplates)
+        {
+            if (synergy.RequiredSpell1 != spellId && synergy.RequiredSpell2 != spellId)
+                continue;
+
+            RemoveHybridActionButtons(player, synergy.RewardSpell);
+            if (player->HasSpell(synergy.RewardSpell))
+                player->removeSpell(synergy.RewardSpell, SPEC_MASK_ALL, false);
+        }
+
+        ApplySynergies(player);
+        player->SendActionButtons(1);
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+        ChatHandler(player->GetSession()).PSendSysMessage("{} unlearned. {} hybrid point{} refunded.",
+            spellInfo ? spellInfo->SpellName[0] : std::to_string(spellId),
+            itr->second.Cost,
+            itr->second.Cost == 1 ? "" : "s");
+        return true;
+    }
+
     bool TryLearnHybridSpell(Player* player, uint32 spellId)
     {
         auto itr = SpellTemplates.find(spellId);
@@ -1026,18 +1153,43 @@ public:
             return true;
         }
 
+        if (action == ACTION_UNLEARN)
+        {
+            SendUnlearnMenu(player, creature);
+            return true;
+        }
+
         if (action >= ACTION_CLASS_BASE && action < ACTION_BROWSE_PAGE_BASE)
         {
             SendBrowseMenu(player, creature, action - ACTION_CLASS_BASE);
             return true;
         }
 
-        if (action >= ACTION_BROWSE_PAGE_BASE && action < ACTION_LEARN_BASE)
+        if (action >= ACTION_BROWSE_PAGE_BASE && action < ACTION_UNLEARN_PAGE_BASE)
         {
             uint32 payload = action - ACTION_BROWSE_PAGE_BASE;
             uint32 classIndex = payload / HybridPageActionStride;
             uint32 page = payload % HybridPageActionStride;
             SendBrowseMenu(player, creature, classIndex, page);
+            return true;
+        }
+
+        if (action >= ACTION_UNLEARN_PAGE_BASE && action < ACTION_UNLEARN_SPELL_BASE)
+        {
+            SendUnlearnMenu(player, creature, action - ACTION_UNLEARN_PAGE_BASE);
+            return true;
+        }
+
+        if (action >= ACTION_UNLEARN_SPELL_BASE && action < ACTION_LEARN_BASE)
+        {
+            uint32 index = action - ACTION_UNLEARN_SPELL_BASE;
+            std::vector<uint32> spellIds = GetLearnedHybridSpellIds(player);
+            if (index < spellIds.size())
+                TryUnlearnHybridSpell(player, spellIds[index]);
+            else
+                ChatHandler(player->GetSession()).PSendSysMessage("That hybrid spell option is no longer available.");
+
+            SendUnlearnMenu(player, creature, index / HybridUnlearnPageSize);
             return true;
         }
 

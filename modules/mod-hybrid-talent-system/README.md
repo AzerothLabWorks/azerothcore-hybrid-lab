@@ -9,6 +9,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
 - Hybrid points are calculated from level, not manually stored.
 - Learned hybrid spells persist across logout.
 - Purchased hybrid spells can automatically upgrade to the best rank for the player's level on login and level-up.
+- Players can unlearn individual hybrid spells from the trainer to refund only that spell's points.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
 - Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
@@ -59,7 +60,6 @@ The `class_mask` column is a disallow mask. For example, Mage spells use `128`, 
 
 ## Next Work
 
-- Add a proper unlearn-single-spell menu.
 - Add pages or class filters to the gossip UI once the spell pool grows.
 - Add playerbot AI tuning so bots deliberately choose and cast hybrid spells.
 - Add a Lua addon UI after the server rules are stable.
