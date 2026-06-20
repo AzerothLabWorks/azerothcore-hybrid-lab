@@ -8,8 +8,8 @@ index 26997d502..50ee22194 100644
  
 +#
 +#    HybridEquipment.ProficiencyOverride
-+#        Description: Allows weapon and armor proficiencies to bypass item class
-+#                     restrictions for equipment. Race, faction, level,
++#        Description: Allows weapon and armor equipment to bypass normal class
++#                     and proficiency restrictions. Race, faction, level,
 +#                     reputation, and profession requirements still apply.
 +#        Default:     1 - (Enabled)
 +#                     0 - (Disabled, WotLK class-restricted equipment)
@@ -29,7 +29,7 @@ index ea1d6fede..c5665f5ef 100644
  
 +namespace
 +{
-+bool CanUseHybridEquipmentProficiency(Player const* player, ItemTemplate const* proto)
++bool CanUseHybridEquipmentProficiency(ItemTemplate const* proto)
 +{
 +    if (!sWorld->getBoolConfig(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY))
 +        return false;
@@ -38,13 +38,22 @@ index ea1d6fede..c5665f5ef 100644
 +        return false;
 +
 +    uint32 skill = proto->GetSkill();
-+    return skill && player->GetSkillValue(skill) > 0;
++    return skill != 0;
 +}
 +}
 +
  void Player::SetVirtualItemSlot(uint8 i, Item* item)
  {
      ASSERT(i < 3);
+@@ -2326,7 +2341,7 @@ InventoryResult Player::CanUseItem(Item* pItem, bool not_loading) const
+                         allowEquip = (itemSkill == SKILL_MAIL);
+                     }
+                 }
+-                if (!allowEquip && GetSkillValue(itemSkill) == 0)
++                if (!allowEquip && GetSkillValue(itemSkill) == 0 && !CanUseHybridEquipmentProficiency(pProto))
+                     return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
+             }
+ 
 @@ -2364,7 +2379,12 @@ InventoryResult Player::CanUseItem(ItemTemplate const* proto) const
          return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
      }
@@ -55,7 +64,7 @@ index ea1d6fede..c5665f5ef 100644
 +        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
 +    }
 +
-+    if ((proto->AllowableClass & getClassMask()) == 0 && !CanUseHybridEquipmentProficiency(this, proto))
++    if ((proto->AllowableClass & getClassMask()) == 0 && !CanUseHybridEquipmentProficiency(proto))
      {
          return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
      }
@@ -64,7 +73,7 @@ index ea1d6fede..c5665f5ef 100644
      }
  
 -    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell))
-+    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell) && !CanUseHybridEquipmentProficiency(this, proto))
++    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell) && !CanUseHybridEquipmentProficiency(proto))
      {
          return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
      }
@@ -77,13 +86,22 @@ index ea1d6fede..c5665f5ef 100644
          return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
  
 -    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell))
-+    if ((proto->AllowableClass & getClassMask()) == 0 && !CanUseHybridEquipmentProficiency(this, proto))
++    if ((proto->AllowableClass & getClassMask()) == 0 && !CanUseHybridEquipmentProficiency(proto))
 +        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
 +
-+    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell) && !CanUseHybridEquipmentProficiency(this, proto))
++    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell) && !CanUseHybridEquipmentProficiency(proto))
          return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
  
      if (proto->RequiredSkill != 0)
+@@ -2445,7 +2468,7 @@ InventoryResult Player::CanRollForItemInLFG(ItemTemplate const* proto, WorldObje
+             return EQUIP_ERR_CANT_EQUIP_SKILL;
+     }
+ 
+-    if (proto->Class == ITEM_CLASS_WEAPON && GetSkillValue(item_weapon_skills[proto->SubClass]) == 0)
++    if (proto->Class == ITEM_CLASS_WEAPON && GetSkillValue(item_weapon_skills[proto->SubClass]) == 0 && !CanUseHybridEquipmentProficiency(proto))
+         return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
+ 
+     if (proto->Class == ITEM_CLASS_ARMOR)
 diff --git a/src/server/game/World/WorldConfig.cpp b/src/server/game/World/WorldConfig.cpp
 index df140cae3..718f0af6b 100644
 --- a/src/server/game/World/WorldConfig.cpp
