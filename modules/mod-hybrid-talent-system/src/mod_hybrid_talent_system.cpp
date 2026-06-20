@@ -1069,7 +1069,7 @@ public:
 class HybridTalentPlayerScript : public PlayerScript
 {
 public:
-    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript") { }
+    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEVEL_CHANGED, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_SAVE }) { }
 
     void OnPlayerLogin(Player* player) override
     {

@@ -254,7 +254,7 @@ public:
 class startup_qol_playerscript : public PlayerScript
 {
 public:
-    startup_qol_playerscript() : PlayerScript("startup_qol_playerscript") { }
+    startup_qol_playerscript() : PlayerScript("startup_qol_playerscript", { PLAYERHOOK_ON_FIRST_LOGIN, PLAYERHOOK_ON_LOGIN }) { }
 
     void OnPlayerFirstLogin(Player* player) override
     {

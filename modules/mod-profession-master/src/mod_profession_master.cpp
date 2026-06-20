@@ -395,7 +395,7 @@ public:
 class profession_master_playerscript : public PlayerScript
 {
 public:
-    profession_master_playerscript() : PlayerScript("profession_master_playerscript") { }
+    profession_master_playerscript() : PlayerScript("profession_master_playerscript", { PLAYERHOOK_ON_LOGIN }) { }
 
     void OnPlayerLogin(Player* player) override
     {
