@@ -1,5 +1,6 @@
 #include "Chat.h"
 #include "Config.h"
+#include "DBCStores.h"
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptMgr.h"
@@ -158,6 +159,27 @@ void LearnConfiguredSpells(Player* player, std::vector<uint32> const& spellIds)
     }
 }
 
+void LearnSkillLineSpells(Player* player, uint16 skill)
+{
+    for (SkillLineAbilityEntry const* ability : GetSkillLineAbilitiesBySkillLine(skill))
+    {
+        if (!ability || ability->SupercededBySpell)
+            continue;
+
+        if (ability->AcquireMethod != SKILL_LINE_ABILITY_LEARNED_ON_SKILL_VALUE && ability->AcquireMethod != SKILL_LINE_ABILITY_LEARNED_ON_SKILL_LEARN)
+            continue;
+
+        if (player->HasSpell(ability->Spell))
+            continue;
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(ability->Spell);
+        if (!spellInfo || !SpellMgr::IsSpellValid(spellInfo))
+            continue;
+
+        player->learnSpell(ability->Spell, false);
+    }
+}
+
 void GrantItems(Player* player)
 {
     for (ItemGrant const& item : Items)
@@ -169,13 +191,19 @@ void GrantWeaponSkills(Player* player)
     uint16 maxValue = std::max<uint16>(player->GetMaxSkillValueForLevel(), 1);
 
     for (uint16 skill : WeaponSkills)
+    {
         player->SetSkill(skill, 0, maxValue, maxValue);
+        LearnSkillLineSpells(player, skill);
+    }
 }
 
 void GrantArmorSkills(Player* player)
 {
     for (uint16 skill : ArmorSkills)
+    {
         player->SetSkill(skill, 0, 1, 1);
+        LearnSkillLineSpells(player, skill);
+    }
 }
 
 void GrantStartupPackage(Player* player)

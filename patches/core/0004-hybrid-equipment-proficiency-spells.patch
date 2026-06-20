@@ -1,0 +1,91 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index b60da91da..ef3b8a9ad 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -88,6 +88,39 @@
+ //  there is probably some underlying problem with imports which should properly addressed
+ //  see: https://github.com/azerothcore/azerothcore-wotlk/issues/9766
+ #include "GridNotifiersImpl.h"
+ 
++static bool IsHybridEquipmentSkillLine(uint32 skillLine)
++{
++    switch (skillLine)
++    {
++        case SKILL_SWORDS:
++        case SKILL_AXES:
++        case SKILL_BOWS:
++        case SKILL_GUNS:
++        case SKILL_MACES:
++        case SKILL_2H_SWORDS:
++        case SKILL_STAVES:
++        case SKILL_2H_MACES:
++        case SKILL_UNARMED:
++        case SKILL_2H_AXES:
++        case SKILL_DAGGERS:
++        case SKILL_THROWN:
++        case SKILL_CROSSBOWS:
++        case SKILL_WANDS:
++        case SKILL_POLEARMS:
++        case SKILL_FIST_WEAPONS:
++        case SKILL_CLOTH:
++        case SKILL_LEATHER:
++        case SKILL_MAIL:
++        case SKILL_PLATE_MAIL:
++        case SKILL_SHIELD:
++            return true;
++        default:
++            return false;
++    }
++}
++
++static bool CanUseHybridEquipmentSkillLine(uint32 skillLine)
++{
++    return sWorld->getBoolConfig(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY) && IsHybridEquipmentSkillLine(skillLine);
++}
++
+ enum CharacterFlags
+ {
+     CHARACTER_FLAG_NONE                 = 0x00000000,
+@@ -3098,7 +3131,7 @@ bool Player::CheckSkillLearnedBySpell(uint32 spellId)
+         if (!pSkill)
+             continue;
+ 
+-        if (GetSkillRaceClassInfo(pSkill->id, getRace(), getClass()))
++        if (GetSkillRaceClassInfo(pSkill->id, getRace(), getClass()) || CanUseHybridEquipmentSkillLine(pSkill->id))
+             return true;
+         else
+             errorSkill = pSkill->id;
+@@ -12008,6 +12041,7 @@ void Player::learnSkillRewardedSpells(uint32 skill_id, uint32 skill_value)
+ {
+     uint32 raceMask  = getRaceMask();
+     uint32 classMask = getClassMask();
++    bool allowHybridEquipmentSkill = CanUseHybridEquipmentSkillLine(skill_id);
+ 
+     // Get all abilities for this skill and sort by MinSkillLineRank (lowest to highest)
+     auto abilities = GetSkillLineAbilitiesBySkillLine(skill_id);
+@@ -12030,13 +12064,13 @@ void Player::learnSkillRewardedSpells(uint32 skill_id, uint32 skill_value)
+         }
+ 
+         // Check race if set
+-        if (pAbility->RaceMask && !(pAbility->RaceMask & raceMask))
++        if (!allowHybridEquipmentSkill && pAbility->RaceMask && !(pAbility->RaceMask & raceMask))
+         {
+             continue;
+         }
+ 
+         // Check class if set
+-        if (pAbility->ClassMask && !(pAbility->ClassMask & classMask))
++        if (!allowHybridEquipmentSkill && pAbility->ClassMask && !(pAbility->ClassMask & classMask))
+         {
+             continue;
+         }
+@@ -12383,6 +12417,9 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id) const
+ 
+     for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
+     {
++        if (CanUseHybridEquipmentSkillLine(_spell_idx->second->SkillLine))
++            return true;
++
+         // skip wrong race skills
+         if (_spell_idx->second->RaceMask && (_spell_idx->second->RaceMask & racemask) == 0)
+             continue;

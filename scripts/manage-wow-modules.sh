@@ -497,6 +497,10 @@ core_patch_already_present() {
       [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
       grep -q "isHybridEquipmentSkill" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
       ;;
+    0004-hybrid-equipment-proficiency-spells.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
+      grep -q "CanUseHybridEquipmentSkillLine" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
+      ;;
     *)
       return 1
       ;;
