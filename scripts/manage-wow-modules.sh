@@ -515,10 +515,10 @@ apply_core_patches() {
   [[ ${#patches[@]} -gt 0 ]] || die "No core patches found in: $patch_dir"
 
   for patch_file in "${patches[@]}"; do
-    if (cd "$SERVER_DIR" && git apply --check "$patch_file"); then
-      (cd "$SERVER_DIR" && git apply "$patch_file")
+    if (cd "$SERVER_DIR" && git apply --check --recount "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply --recount "$patch_file")
       log "Applied $(basename "$patch_file")."
-    elif (cd "$SERVER_DIR" && git apply --reverse --check "$patch_file"); then
+    elif (cd "$SERVER_DIR" && git apply --reverse --check --recount "$patch_file"); then
       warn "Already applied: $(basename "$patch_file")"
     elif core_patch_already_present "$(basename "$patch_file")"; then
       warn "Already present by marker check: $(basename "$patch_file")"
