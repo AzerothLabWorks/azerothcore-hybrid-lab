@@ -29,6 +29,7 @@ bool Enabled = true;
 bool NotifyPlayer = true;
 bool LearnWeaponSkills = true;
 bool LearnArmorSkills = true;
+bool ReapplyEquipmentSkillsOnLogin = true;
 uint32 MoneyCopper = 200000000;
 std::vector<uint32> RidingSpells;
 std::vector<uint32> MountSpells;
@@ -206,6 +207,15 @@ void GrantArmorSkills(Player* player)
     }
 }
 
+void GrantEquipmentSkills(Player* player)
+{
+    if (LearnWeaponSkills)
+        GrantWeaponSkills(player);
+
+    if (LearnArmorSkills)
+        GrantArmorSkills(player);
+}
+
 void GrantStartupPackage(Player* player)
 {
     LearnConfiguredSpells(player, RidingSpells);
@@ -215,11 +225,7 @@ void GrantStartupPackage(Player* player)
     if (MoneyCopper)
         player->ModifyMoney(static_cast<int32>(MoneyCopper));
 
-    if (LearnWeaponSkills)
-        GrantWeaponSkills(player);
-
-    if (LearnArmorSkills)
-        GrantArmorSkills(player);
+    GrantEquipmentSkills(player);
 
     if (NotifyPlayer)
         ChatHandler(player->GetSession()).SendNotification("Startup QoL package granted.");
@@ -237,6 +243,7 @@ public:
         NotifyPlayer = sConfigMgr->GetOption<bool>("StartupQoL.NotifyPlayer", true);
         LearnWeaponSkills = sConfigMgr->GetOption<bool>("StartupQoL.LearnWeaponSkills", true);
         LearnArmorSkills = sConfigMgr->GetOption<bool>("StartupQoL.LearnArmorSkills", true);
+        ReapplyEquipmentSkillsOnLogin = sConfigMgr->GetOption<bool>("StartupQoL.ReapplyEquipmentSkillsOnLogin", true);
         MoneyCopper = sConfigMgr->GetOption<uint32>("StartupQoL.MoneyCopper", 200000000);
         RidingSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.RidingSpells", "33388,33391,34090,34091,54197"));
         MountSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.MountSpells", "58983,61425,17229,72808,60021,69395,60002,40192"));
@@ -253,6 +260,12 @@ public:
     {
         if (Enabled)
             GrantStartupPackage(player);
+    }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        if (Enabled && ReapplyEquipmentSkillsOnLogin)
+            GrantEquipmentSkills(player);
     }
 };
 

@@ -24,3 +24,7 @@ StartupQoL.MoneyCopper = 200000000
 # max skill for level. Armor skills are granted as 1/1 proficiency skills.
 StartupQoL.LearnWeaponSkills = 1
 StartupQoL.LearnArmorSkills = 1
+
+# Reapply only equipment proficiencies on login, without re-granting items,
+# gold, riding spells, or mount spells.
+StartupQoL.ReapplyEquipmentSkillsOnLogin = 1
