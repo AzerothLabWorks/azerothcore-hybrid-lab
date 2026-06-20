@@ -323,7 +323,7 @@ Apply Hybrid Lab core patches, including combo point carry-over:
 Install modules into an existing source server:
 
 ```bash
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster startupqol ahbot transmog learnspells
 ```
 
 Import module SQL after the database containers are running:
@@ -336,6 +336,16 @@ Rebuild after adding C++ modules:
 
 ```bash
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+### Startup QoL Starter Package
+
+The `startupqol` module grants brand-new characters a first-login package: all configured riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and weapon/armor proficiencies. Existing characters are not changed retroactively.
+
+After installing the module, copy its runtime config before rebuilding:
+
+```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
 ```
 
 ### Pacific Server Time
@@ -354,6 +364,7 @@ Current known module keys:
 
 - `hybrid`: Hybrid Talent System from this repo.
 - `professionmaster`: Profession Master from this repo.
+- `startupqol`: Startup QoL first-login starter package from this repo.
 - `ahbot`: Auction House Bot.
 - `transmog`: Transmog.
 - `learnspells`: Auto Learn Spells.

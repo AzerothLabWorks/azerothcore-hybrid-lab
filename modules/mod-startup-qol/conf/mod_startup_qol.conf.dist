@@ -1,0 +1,26 @@
+#
+# Startup QoL
+#
+# Grants a configurable starter package when a brand-new character first logs
+# into the world.
+#
+
+StartupQoL.Enable = 1
+
+# Send a small confirmation message after the package is granted.
+StartupQoL.NotifyPlayer = 1
+
+# Riding and mount spells granted on first login.
+StartupQoL.RidingSpells = 33388,33391,34090,34091,54197
+StartupQoL.MountSpells = 58983,61425,17229,72808,60021,69395,32345,40192
+
+# Starter items in entry:count format.
+StartupQoL.Items = 23162:4
+
+# Money is in copper. 200000000 copper = 20000 gold.
+StartupQoL.MoneyCopper = 200000000
+
+# Equipment proficiencies. Weapon skills are granted at the character's current
+# max skill for level. Armor skills are granted as 1/1 proficiency skills.
+StartupQoL.LearnWeaponSkills = 1
+StartupQoL.LearnArmorSkills = 1

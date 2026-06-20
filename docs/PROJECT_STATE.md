@@ -67,9 +67,10 @@ WSL/server side:
 cd ~/azerothcore-hybrid-lab
 git pull
 
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install playerbots hybrid professionmaster ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install playerbots hybrid professionmaster startupqol ahbot transmog learnspells
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
 
 AHBOT_ACCOUNT=ahbot AHBOT_CHARACTER=Auctioneer \
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
@@ -84,3 +85,5 @@ cd ~/wow-server-playerbots-hybrid
 docker compose ps
 docker compose logs --tail=160 ac-worldserver
 ```
+
+- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, and weapon/armor proficiencies on first login.

@@ -21,6 +21,7 @@ Commands:
   setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
+  setup-startup-qol    Install Startup QoL config.
   rebuild               Rebuild and restart Docker services.
 
 Known modules are defined in configs/modules.conf.
@@ -33,6 +34,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 USAGE
 }
@@ -45,7 +47,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-hybrid|setup-profession-master|rebuild)
+    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
       COMMAND="$1"
       shift
       break
@@ -410,6 +412,23 @@ WHERE CreatureID = @model_source;
   log "Restart ac-worldserver after rebuilding, then spawn the NPC with: .npc add 190020"
 }
 
+setup_startup_qol() {
+  require_server_dir
+
+  local module_dir="$SERVER_DIR/modules/mod-startup-qol"
+  [[ -d "$module_dir" ]] || die "mod-startup-qol is not installed. Run: $0 --server-dir \"$SERVER_DIR\" install startupqol"
+
+  local source_conf="$module_dir/conf/mod_startup_qol.conf.dist"
+  [[ -f "$source_conf" ]] || die "Could not find $source_conf"
+
+  local etc_modules_dir="$SERVER_DIR/env/dist/etc/modules"
+  mkdir -p "$etc_modules_dir"
+  cp "$source_conf" "$etc_modules_dir/mod_startup_qol.conf"
+  log "Installed Startup QoL config to $etc_modules_dir/mod_startup_qol.conf"
+
+  log "Startup QoL setup complete. Rebuild and restart the server, then create a new character to test."
+}
+
 import_module_sql() {
   require_server_dir
   local key="$1"
@@ -504,6 +523,9 @@ case "$COMMAND" in
     ;;
   setup-profession-master)
     setup_profession_master
+    ;;
+  setup-startup-qol)
+    setup_startup_qol
     ;;
   rebuild)
     rebuild_server

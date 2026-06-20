@@ -6,6 +6,7 @@ This repo owns the custom work:
 
 - `modules/mod-hybrid-talent-system`
 - `modules/mod-profession-master`
+- `modules/mod-startup-qol`
 - `patches/core` AzerothCore source patches
 - WSL2/Docker installer scripts
 - Module management scripts
@@ -17,9 +18,10 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 
 - **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, action-bar preservation for learned hybrid spells, and a summon beacon item.
 - **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item.
+- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, and weapon/armor proficiencies.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
-- **Supported module set**: Hybrid Talent System, Profession Master, Auction House Bot, Transmog, and Auto Learn Spells.
+- **Supported module set**: Hybrid Talent System, Profession Master, Startup QoL, Auction House Bot, Transmog, and Auto Learn Spells.
 - **Safer install directories**: Hybrid installs use `-hybrid` directory names such as `wow-server-playerbots-hybrid` so testing does not collide with existing server installs.
 - **Pacific server time**: Docker source-build profiles set `TZ=America/Los_Angeles` for `ac-worldserver` so in-game day/night follows Pacific Time instead of UTC.
 
@@ -51,12 +53,17 @@ After installation, use:
 ```bash
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster startupqol ahbot transmog learnspells
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
 ```
+
+## Startup QoL
+
+Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively.
 
 ## Custom NPCs
 
