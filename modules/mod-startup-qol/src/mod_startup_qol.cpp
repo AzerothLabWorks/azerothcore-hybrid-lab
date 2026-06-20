@@ -211,7 +211,7 @@ public:
         LearnArmorSkills = sConfigMgr->GetOption<bool>("StartupQoL.LearnArmorSkills", true);
         MoneyCopper = sConfigMgr->GetOption<uint32>("StartupQoL.MoneyCopper", 200000000);
         RidingSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.RidingSpells", "33388,33391,34090,34091,54197"));
-        MountSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.MountSpells", "58983,61425,17229,72808,60021,69395,32345,40192"));
+        MountSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.MountSpells", "58983,61425,17229,72808,60021,69395,60002,40192"));
         Items = ParseItemList(sConfigMgr->GetOption<std::string>("StartupQoL.Items", "23162:4"));
     }
 };

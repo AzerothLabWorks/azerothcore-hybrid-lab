@@ -12,7 +12,7 @@ StartupQoL.NotifyPlayer = 1
 
 # Riding and mount spells granted on first login.
 StartupQoL.RidingSpells = 33388,33391,34090,34091,54197
-StartupQoL.MountSpells = 58983,61425,17229,72808,60021,69395,32345,40192
+StartupQoL.MountSpells = 58983,61425,17229,72808,60021,69395,60002,40192
 
 # Starter items in entry:count format.
 StartupQoL.Items = 23162:4
