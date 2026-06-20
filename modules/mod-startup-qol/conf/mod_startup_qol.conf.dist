@@ -25,6 +25,10 @@ StartupQoL.MoneyCopper = 200000000
 StartupQoL.LearnWeaponSkills = 1
 StartupQoL.LearnArmorSkills = 1
 
+# Passive proficiency spells granted with the skill rows so the client can show
+# armor and weapon proficiencies in the spellbook/proficiency UI.
+StartupQoL.EquipmentProficiencySpells = 196,197,198,199,200,201,202,203,227,264,266,674,750,8737,9077,9078,9116,1180,2567,5009,5011,15590
+
 # Reapply only equipment proficiencies on login, without re-granting items,
 # gold, riding spells, or mount spells.
 StartupQoL.ReapplyEquipmentSkillsOnLogin = 1

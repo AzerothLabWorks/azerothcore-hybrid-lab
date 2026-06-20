@@ -33,6 +33,7 @@ bool ReapplyEquipmentSkillsOnLogin = true;
 uint32 MoneyCopper = 200000000;
 std::vector<uint32> RidingSpells;
 std::vector<uint32> MountSpells;
+std::vector<uint32> EquipmentProficiencySpells;
 std::vector<ItemGrant> Items;
 
 constexpr std::array<uint16, 16> WeaponSkills =
@@ -214,6 +215,8 @@ void GrantEquipmentSkills(Player* player)
 
     if (LearnArmorSkills)
         GrantArmorSkills(player);
+
+    LearnConfiguredSpells(player, EquipmentProficiencySpells);
 }
 
 void GrantStartupPackage(Player* player)
@@ -247,6 +250,7 @@ public:
         MoneyCopper = sConfigMgr->GetOption<uint32>("StartupQoL.MoneyCopper", 200000000);
         RidingSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.RidingSpells", "33388,33391,34090,34091,54197"));
         MountSpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.MountSpells", "58983,61425,17229,72808,60021,69395,60002,40192"));
+        EquipmentProficiencySpells = ParseUIntList(sConfigMgr->GetOption<std::string>("StartupQoL.EquipmentProficiencySpells", "196,197,198,199,200,201,202,203,227,264,266,674,750,8737,9077,9078,9116,1180,2567,5009,5011,15590"));
         Items = ParseItemList(sConfigMgr->GetOption<std::string>("StartupQoL.Items", "23162:4"));
     }
 };
