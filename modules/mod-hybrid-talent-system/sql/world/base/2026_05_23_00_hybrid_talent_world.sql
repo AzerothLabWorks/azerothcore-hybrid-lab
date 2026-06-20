@@ -202,6 +202,9 @@ REPLACE INTO `hybrid_spell_template`
 (5782,  256,  10, 3, 'Warlock - Control',      8, 0), -- Fear
 (702,   256,  10, 1, 'Warlock - Curse',        1, 0), -- Curse of Weakness
 (688,   256,  10, 3, 'Warlock - Summon',       8, 0), -- Summon Imp
+(697,   256,  10, 3, 'Warlock - Summon',       8, 0), -- Summon Voidwalker
+(712,   256,  20, 3, 'Warlock - Summon',       8, 0), -- Summon Succubus
+(691,   256,  30, 3, 'Warlock - Summon',       8, 0), -- Summon Felhunter
 (5697,  256,  16, 2, 'Warlock - Utility',      8, 0), -- Unending Breath
 (706,   256,  20, 2, 'Warlock - Armor',        4, 0), -- Demon Armor
 (28176, 256,  62, 2, 'Warlock - Armor',        4, 0), -- Fel Armor
