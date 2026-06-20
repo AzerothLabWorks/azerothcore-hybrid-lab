@@ -154,7 +154,7 @@ void LearnConfiguredSpells(Player* player, std::vector<uint32> const& spellIds)
             continue;
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
-        if (!spellInfo || !SpellMgr::IsSpellValid(spellInfo))
+        if (!spellInfo)
             continue;
 
         player->learnSpell(spellId, false);
@@ -269,7 +269,10 @@ public:
     void OnPlayerLogin(Player* player) override
     {
         if (Enabled && ReapplyEquipmentSkillsOnLogin)
+        {
             GrantEquipmentSkills(player);
+            player->SaveToDB(false, false);
+        }
     }
 };
 
