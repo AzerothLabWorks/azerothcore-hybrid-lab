@@ -18,8 +18,9 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 
 - **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, action-bar preservation for learned hybrid spells, and a summon beacon item.
 - **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item.
-- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, and weapon/armor proficiencies.
+- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, and an optional equipment-proficiency override for hybrid gearing.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
+- **Hybrid equipment proficiency**: Core patch that lets learned weapon and armor proficiencies bypass normal equipment class restrictions while preserving race, faction, level, reputation, and profession gates.
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
 - **Supported module set**: Hybrid Talent System, Profession Master, Startup QoL, Auction House Bot, Transmog, and Auto Learn Spells.
 - **Safer install directories**: Hybrid installs use `-hybrid` directory names such as `wow-server-playerbots-hybrid` so testing does not collide with existing server installs.
@@ -63,7 +64,7 @@ After installation, use:
 
 ## Startup QoL
 
-Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively.
+Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those proficiencies also allow hybrid equipment choices such as a mage wearing mail.
 
 ## Custom NPCs
 

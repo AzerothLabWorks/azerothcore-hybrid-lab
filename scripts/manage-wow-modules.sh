@@ -426,6 +426,12 @@ setup_startup_qol() {
   cp "$source_conf" "$etc_modules_dir/mod_startup_qol.conf"
   log "Installed Startup QoL config to $etc_modules_dir/mod_startup_qol.conf"
 
+  local world_conf="$SERVER_DIR/env/dist/etc/worldserver.conf"
+  if [[ -f "$world_conf" ]]; then
+    set_conf_value "$world_conf" "HybridEquipment.ProficiencyOverride" "1"
+    log "Enabled HybridEquipment.ProficiencyOverride in $world_conf"
+  fi
+
   log "Startup QoL setup complete. Rebuild and restart the server, then create a new character to test."
 }
 

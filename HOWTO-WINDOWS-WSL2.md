@@ -340,11 +340,12 @@ Rebuild after adding C++ modules:
 
 ### Startup QoL Starter Package
 
-The `startupqol` module grants brand-new characters a first-login package: all configured riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and weapon/armor proficiencies. Existing characters are not changed retroactively.
+The `startupqol` module grants brand-new characters a first-login package: all configured riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and weapon/armor proficiencies. Existing characters are not changed retroactively. When core patches are applied, those proficiencies can also bypass normal weapon/armor class restrictions for hybrid gearing.
 
-After installing the module, copy its runtime config before rebuilding:
+After installing the module, apply core patches and copy its runtime config before rebuilding:
 
 ```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
 ```
 

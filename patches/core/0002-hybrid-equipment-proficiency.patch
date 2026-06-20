@@ -1,0 +1,110 @@
+diff --git a/src/server/apps/worldserver/worldserver.conf.dist b/src/server/apps/worldserver/worldserver.conf.dist
+index 26997d502..50ee22194 100644
+--- a/src/server/apps/worldserver/worldserver.conf.dist
++++ b/src/server/apps/worldserver/worldserver.conf.dist
+@@ -1743,6 +1743,16 @@ PlayerStart.CustomSpells = 0
+ 
+ ComboPoints.CarryOver = 1
+ 
++#
++#    HybridEquipment.ProficiencyOverride
++#        Description: Allows weapon and armor proficiencies to bypass item class
++#                     restrictions for equipment. Race, faction, level,
++#                     reputation, and profession requirements still apply.
++#        Default:     1 - (Enabled)
++#                     0 - (Disabled, WotLK class-restricted equipment)
++
++HybridEquipment.ProficiencyOverride = 1
++
+ #
+ #    PlayerStart.MapsExplored
+ #        Description: Characters start with all maps explored.
+diff --git a/src/server/game/Entities/Player/PlayerStorage.cpp b/src/server/game/Entities/Player/PlayerStorage.cpp
+index ea1d6fede..c5665f5ef 100644
+--- a/src/server/game/Entities/Player/PlayerStorage.cpp
++++ b/src/server/game/Entities/Player/PlayerStorage.cpp
+@@ -77,6 +77,21 @@
+ /***                    STORAGE SYSTEM                 ***/
+ /*********************************************************/
+ 
++namespace
++{
++bool CanUseHybridEquipmentProficiency(Player const* player, ItemTemplate const* proto)
++{
++    if (!sWorld->getBoolConfig(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY))
++        return false;
++
++    if (!proto || (proto->Class != ITEM_CLASS_WEAPON && proto->Class != ITEM_CLASS_ARMOR))
++        return false;
++
++    uint32 skill = proto->GetSkill();
++    return skill && player->GetSkillValue(skill) > 0;
++}
++}
++
+ void Player::SetVirtualItemSlot(uint8 i, Item* item)
+ {
+     ASSERT(i < 3);
+@@ -2364,7 +2379,12 @@ InventoryResult Player::CanUseItem(ItemTemplate const* proto) const
+         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+     }
+ 
+-    if ((proto->AllowableClass & getClassMask()) == 0 || (proto->AllowableRace & getRaceMask()) == 0)
++    if ((proto->AllowableRace & getRaceMask()) == 0)
++    {
++        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
++    }
++
++    if ((proto->AllowableClass & getClassMask()) == 0 && !CanUseHybridEquipmentProficiency(this, proto))
+     {
+         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+     }
+@@ -2381,7 +2401,7 @@ InventoryResult Player::CanUseItem(ItemTemplate const* proto) const
+         }
+     }
+ 
+-    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell))
++    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell) && !CanUseHybridEquipmentProficiency(this, proto))
+     {
+         return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
+     }
+@@ -2430,10 +2450,13 @@ InventoryResult Player::CanRollForItemInLFG(ItemTemplate const* proto, WorldObje
+         SKILL_FISHING
+     }; //Copy from function Item::GetSkill()
+ 
+-    if ((proto->AllowableClass & getClassMask()) == 0 || (proto->AllowableRace & getRaceMask()) == 0)
++    if ((proto->AllowableRace & getRaceMask()) == 0)
+         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+ 
+-    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell))
++    if ((proto->AllowableClass & getClassMask()) == 0 && !CanUseHybridEquipmentProficiency(this, proto))
++        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
++
++    if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell) && !CanUseHybridEquipmentProficiency(this, proto))
+         return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
+ 
+     if (proto->RequiredSkill != 0)
+diff --git a/src/server/game/World/WorldConfig.cpp b/src/server/game/World/WorldConfig.cpp
+index df140cae3..718f0af6b 100644
+--- a/src/server/game/World/WorldConfig.cpp
++++ b/src/server/game/World/WorldConfig.cpp
+@@ -533,6 +533,7 @@ void WorldConfig::BuildConfigCache()
+ 
+     SetConfigValue<bool>(CONFIG_START_CUSTOM_SPELLS, "PlayerStart.CustomSpells", false);
+     SetConfigValue<bool>(CONFIG_COMBO_POINTS_CARRY_OVER, "ComboPoints.CarryOver", true);
++    SetConfigValue<bool>(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY, "HybridEquipment.ProficiencyOverride", true);
+     SetConfigValue<uint32>(CONFIG_HONOR_AFTER_DUEL, "HonorPointsAfterDuel", 0);
+     SetConfigValue<bool>(CONFIG_START_ALL_EXPLORED, "PlayerStart.MapsExplored", false);
+     SetConfigValue<bool>(CONFIG_START_ALL_REP, "PlayerStart.AllReputation", false);
+diff --git a/src/server/game/World/WorldConfig.h b/src/server/game/World/WorldConfig.h
+index c942fb22c..f3e8a9c66 100644
+--- a/src/server/game/World/WorldConfig.h
++++ b/src/server/game/World/WorldConfig.h
+@@ -81,6 +81,7 @@ enum ServerConfigs
+     CONFIG_PET_LOS,
+     CONFIG_START_CUSTOM_SPELLS,
+     CONFIG_COMBO_POINTS_CARRY_OVER,
++    CONFIG_HYBRID_EQUIPMENT_PROFICIENCY,
+     CONFIG_START_ALL_EXPLORED,
+     CONFIG_START_ALL_REP,
+     CONFIG_ALWAYS_MAXSKILL,
