@@ -86,4 +86,4 @@ docker compose ps
 docker compose logs --tail=160 ac-worldserver
 ```
 
-- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, and weapon/armor proficiencies on first login. Core patch `0002-hybrid-equipment-proficiency.patch` lets weapon/armor equipment bypass normal class/proficiency restrictions while preserving item level and other non-class gates.
+- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, and weapon/armor proficiencies on first login. Core patches `0002-hybrid-equipment-proficiency.patch` and `0003-hybrid-equipment-skill-persistence.patch` let startup weapon/armor proficiencies persist across class restrictions and let equipment bypass normal class/proficiency restrictions while preserving item level and other non-class gates.

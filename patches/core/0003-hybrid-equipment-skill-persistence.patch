@@ -1,0 +1,124 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 3e65e30cb..b60da91da 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -13750,21 +13750,61 @@ void Player::_LoadSkills(PreparedQueryResult result)
+             uint16 max      = fields[2].Get<uint16>();
+ 
+             SkillRaceClassInfoEntry const* rcEntry = GetSkillRaceClassInfo(skill, getRace(), getClass());
++            bool isHybridEquipmentSkill = false;
+             if (!rcEntry)
+             {
+-                LOG_ERROR("entities.player", "Player {} (GUID: {}), has skill ({}) that is invalid for the race/class combination (Race: {}, Class: {}). Will be deleted.",
+-                    GetName(), GetGUID().GetCounter(), skill, getRace(), getClass());
++                if (sWorld->getBoolConfig(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY))
++                {
++                    switch (skill)
++                    {
++                        case SKILL_SWORDS:
++                        case SKILL_AXES:
++                        case SKILL_BOWS:
++                        case SKILL_GUNS:
++                        case SKILL_MACES:
++                        case SKILL_2H_SWORDS:
++                        case SKILL_STAVES:
++                        case SKILL_2H_MACES:
++                        case SKILL_UNARMED:
++                        case SKILL_2H_AXES:
++                        case SKILL_DAGGERS:
++                        case SKILL_THROWN:
++                        case SKILL_CROSSBOWS:
++                        case SKILL_WANDS:
++                        case SKILL_POLEARMS:
++                        case SKILL_FIST_WEAPONS:
++                        case SKILL_CLOTH:
++                        case SKILL_LEATHER:
++                        case SKILL_MAIL:
++                        case SKILL_PLATE_MAIL:
++                        case SKILL_SHIELD:
++                            isHybridEquipmentSkill = true;
++                            break;
++                        default:
++                            break;
++                    }
++                }
++
++                if (!isHybridEquipmentSkill)
++                {
++                    LOG_ERROR("entities.player", "Player {} (GUID: {}), has skill ({}) that is invalid for the race/class combination (Race: {}, Class: {}). Will be deleted.",
++                        GetName(), GetGUID().GetCounter(), skill, getRace(), getClass());
+ 
+-                // Mark skill for deletion in the database
+-                mSkillStatus.insert(SkillStatusMap::value_type(skill, SkillStatusData(0, SKILL_DELETED)));
+-                continue;
++                    // Mark skill for deletion in the database
++                    mSkillStatus.insert(SkillStatusMap::value_type(skill, SkillStatusData(0, SKILL_DELETED)));
++                    continue;
++                }
+             }
+ 
+-            // set fixed skill ranges
+-            switch (GetSkillRangeType(rcEntry))
++            if (isHybridEquipmentSkill)
+             {
+-                case SKILL_RANGE_LANGUAGE:                      // 300..300
+-                    value = max = 300;
+-                    break;
+-                case SKILL_RANGE_MONO:                          // 1..1, grey monolite bar
+-                    value = max = 1;
+-                    break;
+-                case SKILL_RANGE_LEVEL:
++                if (skill == SKILL_CLOTH || skill == SKILL_LEATHER || skill == SKILL_MAIL || skill == SKILL_PLATE_MAIL || skill == SKILL_SHIELD)
++                {
++                    value = max = 1;
++                }
++                else
++                {
+                     max = GetMaxSkillValueForLevel();
+-                default:
+-                    break;
++                    value = value ? std::min<uint16>(value, max) : max;
++                }
++            }
++            else
++            {
++                // set fixed skill ranges
++                switch (GetSkillRangeType(rcEntry))
++                {
++                    case SKILL_RANGE_LANGUAGE:                      // 300..300
++                        value = max = 300;
++                        break;
++                    case SKILL_RANGE_MONO:                          // 1..1, grey monolite bar
++                        value = max = 1;
++                        break;
++                    case SKILL_RANGE_LEVEL:
++                        max = GetMaxSkillValueForLevel();
++                    default:
++                        break;
++                }
+             }
+ 
+             if (value == 0)
+@@ -13786,15 +13826,18 @@ void Player::_LoadSkills(PreparedQueryResult result)
+             }
+ 
+             uint16 skillStep = 0;
+-            if (SkillTiersEntry const* skillTier = sSkillTiersStore.LookupEntry(rcEntry->SkillTierID))
++            if (rcEntry)
+             {
+-                for (uint32 i = 0; i < MAX_SKILL_STEP; ++i)
++                if (SkillTiersEntry const* skillTier = sSkillTiersStore.LookupEntry(rcEntry->SkillTierID))
+                 {
+-                    if (skillTier->Value[skillStep] == max)
++                    for (uint32 i = 0; i < MAX_SKILL_STEP; ++i)
+                     {
+-                        skillStep = i + 1;
+-                        break;
++                        if (skillTier->Value[skillStep] == max)
++                        {
++                            skillStep = i + 1;
++                            break;
++                        }
+                     }
+                 }
+             }
