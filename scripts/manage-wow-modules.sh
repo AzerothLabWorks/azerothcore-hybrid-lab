@@ -479,6 +479,29 @@ rebuild_server() {
   docker compose up -d --build
 }
 
+core_patch_already_present() {
+  local patch_name="$1"
+
+  case "$patch_name" in
+    0001-combo-points-carry-over.patch)
+      [[ -f "$SERVER_DIR/src/server/game/World/WorldConfig.h" ]] || return 1
+      grep -q "CONFIG_COMBO_POINTS_CARRY_OVER" "$SERVER_DIR/src/server/game/World/WorldConfig.h" && \
+        grep -q "RebindComboPoints" "$SERVER_DIR/src/server/game/Entities/Unit/Unit.h"
+      ;;
+    0002-hybrid-equipment-proficiency.patch)
+      [[ -f "$SERVER_DIR/src/server/game/World/WorldConfig.h" ]] || return 1
+      grep -q "CONFIG_HYBRID_EQUIPMENT_PROFICIENCY" "$SERVER_DIR/src/server/game/World/WorldConfig.h" && \
+        grep -q "CanUseHybridEquipmentProficiency" "$SERVER_DIR/src/server/game/Entities/Player/PlayerStorage.cpp"
+      ;;
+    0003-hybrid-equipment-skill-persistence.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
+      grep -q "isHybridEquipmentSkill" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 apply_core_patches() {
   require_server_dir
 
@@ -497,6 +520,8 @@ apply_core_patches() {
       log "Applied $(basename "$patch_file")."
     elif (cd "$SERVER_DIR" && git apply --reverse --check "$patch_file"); then
       warn "Already applied: $(basename "$patch_file")"
+    elif core_patch_already_present "$(basename "$patch_file")"; then
+      warn "Already present by marker check: $(basename "$patch_file")"
     else
       die "Could not apply core patch: $patch_file"
     fi
