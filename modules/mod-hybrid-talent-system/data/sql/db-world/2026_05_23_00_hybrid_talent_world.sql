@@ -198,6 +198,7 @@ REPLACE INTO `hybrid_spell_template`
 (172,   256,  10, 1, 'Warlock - Shadow',       1, 0), -- Corruption
 (348,   256,  10, 1, 'Warlock - Fire',         1, 0), -- Immolate
 (1454,  256,  10, 2, 'Warlock - Utility',      8, 0), -- Life Tap
+(1120,  256,  10, 0, 'Warlock - Resource',     8, 0), -- Drain Soul
 (687,   256,  10, 2, 'Warlock - Armor',        4, 0), -- Demon Skin
 (5782,  256,  10, 3, 'Warlock - Control',      8, 0), -- Fear
 (702,   256,  10, 1, 'Warlock - Curse',        1, 0), -- Curse of Weakness
