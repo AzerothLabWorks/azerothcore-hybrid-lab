@@ -5,7 +5,7 @@ Grants a configurable starter package to brand-new characters on first login.
 Default package:
 
 - Riding spells: `33388`, `33391`, `34090`, `34091`, `54197`
-- Mount spells: `58983`, `61425`, `17229`, `72808`, `60021`, `69395`, `60002`, `40192`
+- Mount spells: `58983`, `61425`, `17229`, `72808`, `60021`, `69395`, `60002`, `40192`, `28828`
 - Four `Gigantique Bags` (`23162`)
 - `20000` gold
 - All weapon proficiency skill rows and passive proficiency spells
