@@ -126,7 +126,7 @@ local function Refresh()
     SendCommand("hybridui refresh")
 end
 
-local function GetRowsForSelectedClass()
+local function GetVisibleRows()
     local result = {}
     local search = string.lower(state.search or "")
 
@@ -141,7 +141,9 @@ local function GetRowsForSelectedClass()
             or string.find(string.lower(row.description or ""), search, 1, true)
             or string.find(tostring(row.spellId), search, 1, true)
 
-        if row.classIndex == state.selectedClass and filterMatch and searchMatch then
+        local classMatch = state.filter == "known" or row.classIndex == state.selectedClass
+
+        if classMatch and filterMatch and searchMatch then
             table.insert(result, row)
         end
     end
@@ -235,7 +237,7 @@ local function UpdateRows()
         return
     end
 
-    local rows = GetRowsForSelectedClass()
+    local rows = GetVisibleRows()
     local pageCount = GetPageCount(rows)
     if state.page > pageCount then
         state.page = pageCount
@@ -277,6 +279,11 @@ local function UpdateRows()
     end
 
     if #rows == 0 then
+        if state.filter == "known" then
+            mainFrame.empty:SetText("No known hybrid spells.")
+        else
+            mainFrame.empty:SetText("No spells available for this class.")
+        end
         mainFrame.empty:Show()
     else
         mainFrame.empty:Hide()
@@ -567,7 +574,7 @@ local function CreateMainFrame()
     nextButton:SetPoint("LEFT", mainFrame.page, "RIGHT", 14, 0)
     nextButton:SetText("Next")
     nextButton:SetScript("OnClick", function()
-        local pageCount = GetPageCount(GetRowsForSelectedClass())
+        local pageCount = GetPageCount(GetVisibleRows())
         if state.page < pageCount then
             state.page = state.page + 1
             UpdateRows()
