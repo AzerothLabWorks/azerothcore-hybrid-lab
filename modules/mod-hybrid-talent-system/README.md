@@ -47,6 +47,20 @@ The world SQL creates item `1915`, `Hybrid Talent Beacon`, with `ScriptName` set
 
 By default, the module grants the item to players on login. Using the item summons a temporary Hybrid Talent Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
 
+## Addon UI
+
+The development branch includes an optional Wrath client addon at `addon/HybridTalentUI`.
+
+To test it, copy the `HybridTalentUI` folder into the client's `Interface/AddOns` folder, enable it at the character screen, then use `/hybridui` or `/hyui` in game.
+
+The addon talks to the server through AzerothCore addon-channel commands:
+
+- `hybridui refresh`
+- `hybridui learn <spellId>`
+- `hybridui unlearn <spellId>`
+
+The server remains authoritative. Learn and unlearn requests are validated by the same module logic used by the gossip trainer.
+
 ## Admin Commands
 
 - `.hybrid reload` reloads config and DB templates.

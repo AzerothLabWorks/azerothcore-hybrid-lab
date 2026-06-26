@@ -14,10 +14,12 @@
 #include "ScriptMgr.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
+#include "WorldSession.h"
 #include "WorldScript.h"
 
 #include <algorithm>
 #include <cstddef>
+#include <cctype>
 #include <map>
 #include <set>
 #include <string>
@@ -828,6 +830,104 @@ namespace
         return text.substr(0, maxLength - 3) + "...";
     }
 
+    std::string SanitizeAddonField(std::string text, std::size_t maxLength)
+    {
+        for (char& ch : text)
+            if (ch == '\t' || ch == '\n' || ch == '\r' || ch == '|')
+                ch = ' ';
+
+        text = TruncateHybridText(text, maxLength);
+        while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())))
+            text.pop_back();
+
+        return text;
+    }
+
+    uint32 GetHybridClassIndexForMask(uint32 classMask)
+    {
+        for (uint32 classIndex = 0; classIndex < HybridClasses.size(); ++classIndex)
+            if (HybridClasses[classIndex].ClassMask == classMask)
+                return classIndex;
+
+        return 0;
+    }
+
+    std::vector<uint32> GetHybridUiSpellIds()
+    {
+        std::vector<uint32> spellIds;
+        spellIds.reserve(SpellTemplates.size());
+
+        for (auto const& pair : SpellTemplates)
+            spellIds.push_back(pair.first);
+
+        std::sort(spellIds.begin(), spellIds.end(), [](uint32 leftSpellId, uint32 rightSpellId)
+        {
+            HybridSpellTemplate const& left = SpellTemplates[leftSpellId];
+            HybridSpellTemplate const& right = SpellTemplates[rightSpellId];
+            if (left.ClassMask != right.ClassMask)
+                return left.ClassMask < right.ClassMask;
+
+            SpellInfo const* leftInfo = sSpellMgr->GetSpellInfo(leftSpellId);
+            SpellInfo const* rightInfo = sSpellMgr->GetSpellInfo(rightSpellId);
+            std::string leftName = leftInfo ? leftInfo->SpellName[0] : std::to_string(leftSpellId);
+            std::string rightName = rightInfo ? rightInfo->SpellName[0] : std::to_string(rightSpellId);
+            return leftName < rightName;
+        });
+
+        return spellIds;
+    }
+
+    void SendHybridUiSnapshot(ChatHandler* handler, Player* player)
+    {
+        if (!handler || !player)
+            return;
+
+        if (!Enabled)
+        {
+            handler->PSendSysMessage("HYUI\tERROR\tHybrid Talent System is disabled.");
+            return;
+        }
+
+        uint16 earned = CalculateEarnedPoints(player);
+        uint16 spent = GetSpentPoints(player->GetGUID().GetCounter());
+        uint16 available = earned > spent ? earned - spent : 0;
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        std::vector<uint32> spellIds = GetHybridUiSpellIds();
+
+        handler->PSendSysMessage("HYUI\tBEGIN\t1\t{}\t{}\t{}\t{}", earned, spent, available, static_cast<uint32>(spellIds.size()));
+
+        for (uint32 spellId : spellIds)
+        {
+            auto itr = SpellTemplates.find(spellId);
+            if (itr == SpellTemplates.end())
+                continue;
+
+            HybridSpellTemplate const& templ = itr->second;
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
+            if (!spellInfo)
+                continue;
+
+            bool known = HasHybridSpellInChain(guid, templ.SpellId);
+            bool baseClassBlocked = templ.ClassMask && (templ.ClassMask & player->getClassMask());
+            bool levelBlocked = player->GetLevel() < templ.RequiredLevel;
+            bool alreadyKnownInSpellbook = PlayerHasSpellInChain(player, templ.SpellId);
+            bool canLearn = !known && !baseClassBlocked && !levelBlocked && !alreadyKnownInSpellbook && available >= templ.Cost;
+            uint32 classIndex = GetHybridClassIndexForMask(templ.ClassMask);
+
+            handler->PSendSysMessage("HYUI\tSPELL\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                templ.SpellId,
+                classIndex,
+                templ.RequiredLevel,
+                templ.Cost,
+                known ? 1 : 0,
+                canLearn ? 1 : 0,
+                SanitizeAddonField(spellInfo->SpellName[0], 48),
+                SanitizeAddonField(GetHybridSpellDescription(templ), 110));
+        }
+
+        handler->PSendSysMessage("HYUI\tEND");
+    }
+
     void SendClassMenu(Player* player, Creature* creature)
     {
         ClearGossipMenuFor(player);
@@ -1284,9 +1384,17 @@ public:
             { "reset",  HandleResetCommand,  SEC_ADMINISTRATOR, Console::No }
         };
 
+        static ChatCommandTable hybridUiCommands =
+        {
+            { "refresh", HandleHybridUiRefreshCommand, SEC_PLAYER, Console::No },
+            { "learn",   HandleHybridUiLearnCommand,   SEC_PLAYER, Console::No },
+            { "unlearn", HandleHybridUiUnlearnCommand, SEC_PLAYER, Console::No }
+        };
+
         static ChatCommandTable commandTable =
         {
-            { "hybrid", hybridCommands }
+            { "hybrid", hybridCommands },
+            { "hybridui", hybridUiCommands }
         };
 
         return commandTable;
@@ -1311,6 +1419,38 @@ public:
 
         ResetHybridBuild(target);
         handler->PSendSysMessage("Hybrid build reset for {}.", target->GetName());
+        return true;
+    }
+
+    static bool HandleHybridUiRefreshCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+        if (!player)
+            return false;
+
+        SendHybridUiSnapshot(handler, player);
+        return true;
+    }
+
+    static bool HandleHybridUiLearnCommand(ChatHandler* handler, uint32 spellId)
+    {
+        Player* player = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+        if (!player)
+            return false;
+
+        TryLearnHybridSpell(player, spellId);
+        SendHybridUiSnapshot(handler, player);
+        return true;
+    }
+
+    static bool HandleHybridUiUnlearnCommand(ChatHandler* handler, uint32 spellId)
+    {
+        Player* player = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+        if (!player)
+            return false;
+
+        TryUnlearnHybridSpell(player, spellId);
+        SendHybridUiSnapshot(handler, player);
         return true;
     }
 };
