@@ -185,10 +185,10 @@ apply_core_patches() {
 
   log "Applying Hybrid Lab core patches..."
   for patch_file in "${patches[@]}"; do
-    if (cd "$SERVER_DIR" && git apply --check "$patch_file"); then
-      (cd "$SERVER_DIR" && git apply "$patch_file")
+    if (cd "$SERVER_DIR" && git apply --check --recount "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply --recount "$patch_file")
       log "Applied $(basename "$patch_file")."
-    elif (cd "$SERVER_DIR" && git apply --reverse --check "$patch_file"); then
+    elif (cd "$SERVER_DIR" && git apply --reverse --check --recount "$patch_file"); then
       warn "Already applied: $(basename "$patch_file")"
     else
       die "Could not apply core patch: $patch_file"
