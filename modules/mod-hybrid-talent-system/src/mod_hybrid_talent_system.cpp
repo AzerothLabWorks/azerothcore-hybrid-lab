@@ -173,7 +173,7 @@ namespace
 
     uint16 GetSpentTalentPoints(ObjectGuid::LowType guid)
     {
-        QueryResult result = CharacterDatabase.Query("SELECT rank FROM character_hybrid_talent WHERE guid = {}", guid);
+        QueryResult result = CharacterDatabase.Query("SELECT `rank` FROM character_hybrid_talent WHERE guid = {}", guid);
         if (!result)
             return 0;
 
@@ -263,7 +263,7 @@ namespace
 
     uint8 GetSavedHybridTalentRank(ObjectGuid::LowType guid, uint32 talentId)
     {
-        QueryResult result = CharacterDatabase.Query("SELECT rank FROM character_hybrid_talent WHERE guid = {} AND talent_id = {}", guid, talentId);
+        QueryResult result = CharacterDatabase.Query("SELECT `rank` FROM character_hybrid_talent WHERE guid = {} AND talent_id = {}", guid, talentId);
         if (!result)
             return 0;
 
@@ -272,7 +272,7 @@ namespace
 
     void SaveHybridTalent(ObjectGuid::LowType guid, uint32 talentId, uint8 rank)
     {
-        CharacterDatabase.DirectExecute("REPLACE INTO character_hybrid_talent (guid, talent_id, rank) VALUES ({}, {}, {})", guid, talentId, rank);
+        CharacterDatabase.DirectExecute("REPLACE INTO character_hybrid_talent (guid, talent_id, `rank`) VALUES ({}, {}, {})", guid, talentId, rank);
     }
 
     void DeleteHybridTalent(ObjectGuid::LowType guid, uint32 talentId)
@@ -289,7 +289,7 @@ namespace
     {
         std::map<uint32, uint8> talentRanks;
 
-        QueryResult result = CharacterDatabase.Query("SELECT talent_id, rank FROM character_hybrid_talent WHERE guid = {}", guid);
+        QueryResult result = CharacterDatabase.Query("SELECT talent_id, `rank` FROM character_hybrid_talent WHERE guid = {}", guid);
         if (!result)
             return talentRanks;
 
