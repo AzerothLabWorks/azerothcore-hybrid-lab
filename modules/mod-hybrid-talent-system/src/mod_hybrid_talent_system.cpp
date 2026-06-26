@@ -215,17 +215,17 @@ namespace
 
     void SaveHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
     {
-        CharacterDatabase.Execute("REPLACE INTO character_hybrid_spell (guid, spell_id) VALUES ({}, {})", guid, spellId);
+        CharacterDatabase.DirectExecute("REPLACE INTO character_hybrid_spell (guid, spell_id) VALUES ({}, {})", guid, spellId);
     }
 
     void DeleteHybridSpell(ObjectGuid::LowType guid, uint32 spellId)
     {
-        CharacterDatabase.Execute("DELETE FROM character_hybrid_spell WHERE guid = {} AND spell_id = {}", guid, spellId);
+        CharacterDatabase.DirectExecute("DELETE FROM character_hybrid_spell WHERE guid = {} AND spell_id = {}", guid, spellId);
     }
 
     void DeleteHybridSpells(ObjectGuid::LowType guid)
     {
-        CharacterDatabase.Execute("DELETE FROM character_hybrid_spell WHERE guid = {}", guid);
+        CharacterDatabase.DirectExecute("DELETE FROM character_hybrid_spell WHERE guid = {}", guid);
         CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {}", guid);
     }
 
