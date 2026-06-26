@@ -46,6 +46,32 @@ local FILTERS = {
 }
 local filterButtons = {}
 
+local HIDDEN_KNOWN_SUPPORT_SPELLS = {
+    [196] = true,   -- One-Handed Axes
+    [197] = true,   -- Two-Handed Axes
+    [198] = true,   -- One-Handed Maces
+    [199] = true,   -- Two-Handed Maces
+    [200] = true,   -- Polearms
+    [201] = true,   -- One-Handed Swords
+    [202] = true,   -- Two-Handed Swords
+    [203] = true,   -- Unarmed
+    [204] = true,   -- Defense
+    [227] = true,   -- Staves
+    [264] = true,   -- Bows
+    [266] = true,   -- Guns
+    [674] = true,   -- Dual Wield
+    [750] = true,   -- Plate Mail
+    [8737] = true,  -- Mail
+    [9077] = true,  -- Leather
+    [9116] = true,  -- Shield
+    [1180] = true,  -- Daggers
+    [2567] = true,  -- Thrown
+    [3127] = true,  -- Parry
+    [5009] = true,  -- Wands
+    [5011] = true,  -- Crossbows
+    [15590] = true, -- Fist Weapons
+}
+
 local function GetSpellIcon(spellId)
     local _, _, icon = GetSpellInfo(spellId)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -126,6 +152,10 @@ local function Refresh()
     SendCommand("hybridui refresh")
 end
 
+local function IsHiddenKnownSupportSpell(row)
+    return row and row.known and HIDDEN_KNOWN_SUPPORT_SPELLS[row.spellId]
+end
+
 local function GetVisibleRows()
     local result = {}
     local search = string.lower(state.search or "")
@@ -142,8 +172,9 @@ local function GetVisibleRows()
             or string.find(tostring(row.spellId), search, 1, true)
 
         local classMatch = state.filter == "known" or row.classIndex == state.selectedClass
+        local supportMatch = state.filter ~= "known" or not IsHiddenKnownSupportSpell(row)
 
-        if classMatch and filterMatch and searchMatch then
+        if classMatch and filterMatch and searchMatch and supportMatch then
             table.insert(result, row)
         end
     end
