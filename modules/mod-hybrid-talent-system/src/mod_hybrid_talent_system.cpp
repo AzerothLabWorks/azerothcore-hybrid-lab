@@ -911,10 +911,25 @@ namespace
             bool baseClassBlocked = templ.ClassMask && (templ.ClassMask & player->getClassMask());
             bool levelBlocked = player->GetLevel() < templ.RequiredLevel;
             bool alreadyKnownInSpellbook = PlayerHasSpellInChain(player, templ.SpellId);
-            bool canLearn = !known && !baseClassBlocked && !levelBlocked && !alreadyKnownInSpellbook && available >= templ.Cost;
+            bool pointsBlocked = available < templ.Cost;
+            bool canLearn = !known && !baseClassBlocked && !levelBlocked && !alreadyKnownInSpellbook && !pointsBlocked;
             uint32 classIndex = GetHybridClassIndexForMask(templ.ClassMask);
+            std::string reason;
 
-            handler->PSendSysMessage("HYUI\tSPELL\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            if (known)
+                reason = "Known";
+            else if (baseClassBlocked)
+                reason = "Own class";
+            else if (alreadyKnownInSpellbook)
+                reason = "Already known";
+            else if (levelBlocked)
+                reason = "Requires level " + std::to_string(templ.RequiredLevel);
+            else if (pointsBlocked)
+                reason = "Needs " + std::to_string(templ.Cost) + " point" + (templ.Cost == 1 ? "" : "s");
+            else
+                reason = "Available";
+
+            handler->PSendSysMessage("HYUI\tSPELL\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 templ.SpellId,
                 classIndex,
                 templ.RequiredLevel,
@@ -922,7 +937,8 @@ namespace
                 known ? 1 : 0,
                 canLearn ? 1 : 0,
                 SanitizeAddonField(spellInfo->SpellName[0], 48),
-                SanitizeAddonField(GetHybridSpellDescription(templ), 110));
+                SanitizeAddonField(GetHybridSpellDescription(templ), 110),
+                SanitizeAddonField(reason, 40));
         }
 
         handler->PSendSysMessage("HYUI\tEND");

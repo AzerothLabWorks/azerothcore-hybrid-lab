@@ -23,6 +23,9 @@ local state = {
     selectedClass = 1,
     page = 1,
     loaded = false,
+    filter = "all",
+    search = "",
+    selectedSpell = nil,
 }
 
 local mainFrame
@@ -30,6 +33,13 @@ local openButton
 local classButtons = {}
 local rowButtons = {}
 local ROWS_PER_PAGE = 12
+local FILTERS = {
+    { key = "all", label = "All" },
+    { key = "available", label = "Available" },
+    { key = "known", label = "Known" },
+    { key = "locked", label = "Locked" },
+}
+local filterButtons = {}
 
 local function Print(message)
     if DEFAULT_CHAT_FRAME then
@@ -86,8 +96,20 @@ end
 
 local function GetRowsForSelectedClass()
     local result = {}
+    local search = string.lower(state.search or "")
+
     for _, row in ipairs(state.rows) do
-        if row.classIndex == state.selectedClass then
+        local filterMatch = state.filter == "all"
+            or (state.filter == "available" and row.canLearn)
+            or (state.filter == "known" and row.known)
+            or (state.filter == "locked" and not row.canLearn and not row.known)
+
+        local searchMatch = search == ""
+            or string.find(string.lower(row.name or ""), search, 1, true)
+            or string.find(string.lower(row.description or ""), search, 1, true)
+            or string.find(tostring(row.spellId), search, 1, true)
+
+        if row.classIndex == state.selectedClass and filterMatch and searchMatch then
             table.insert(result, row)
         end
     end
@@ -130,6 +152,52 @@ local function UpdateClassButtons()
     end
 end
 
+local function UpdateFilterButtons()
+    for _, button in ipairs(filterButtons) do
+        if button.filterKey == state.filter then
+            button:LockHighlight()
+        else
+            button:UnlockHighlight()
+        end
+    end
+end
+
+local function GetSelectedRow()
+    if not state.selectedSpell then
+        return nil
+    end
+
+    for _, row in ipairs(state.rows) do
+        if row.spellId == state.selectedSpell then
+            return row
+        end
+    end
+
+    return nil
+end
+
+local function UpdateDetails()
+    if not mainFrame then
+        return
+    end
+
+    local row = GetSelectedRow()
+    if not row then
+        mainFrame.detailIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        mainFrame.detailName:SetText("Select a spell")
+        mainFrame.detailMeta:SetText("")
+        mainFrame.detailDesc:SetText("Left-click an available spell to learn it. Right-click a known spell to unlearn it.")
+        mainFrame.detailReason:SetText("")
+        return
+    end
+
+    mainFrame.detailIcon:SetTexture(GetSpellTexture(row.spellId) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    mainFrame.detailName:SetText(row.name)
+    mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
+    mainFrame.detailDesc:SetText(row.description ~= "" and row.description or "No description available.")
+    mainFrame.detailReason:SetText(row.reason or "")
+end
+
 local function UpdateRows()
     if not mainFrame then
         return
@@ -152,9 +220,11 @@ local function UpdateRows()
         button.data = data
 
         if data then
+            button.icon:SetTexture(GetSpellTexture(data.spellId) or "Interface\\Icons\\INV_Misc_QuestionMark")
             button.name:SetText(data.name)
             button.meta:SetText("Level " .. data.requiredLevel .. "  Cost " .. data.cost)
             button.desc:SetText(data.description ~= "" and data.description or "No description available.")
+            button.reason:SetText(data.reason or "")
 
             if data.known then
                 button.status:SetText("Known")
@@ -180,6 +250,8 @@ local function UpdateRows()
     end
 
     UpdateClassButtons()
+    UpdateFilterButtons()
+    UpdateDetails()
     UpdateMicroButton()
 end
 
@@ -194,6 +266,7 @@ local function AddSpell(parts)
         canLearn = parts[8] == "1",
         name = parts[9] or "",
         description = parts[10] or "",
+        reason = parts[11] or "",
     }
 
     if row.spellId > 0 and CLASS_NAMES[classIndex] then
@@ -243,6 +316,9 @@ local function OnSpellRowClick(self, mouseButton)
         return
     end
 
+    state.selectedSpell = row.spellId
+    UpdateDetails()
+
     if mouseButton == "RightButton" then
         if row.known then
             SendCommand("hybridui unlearn " .. row.spellId)
@@ -268,9 +344,13 @@ local function CreateSpellRow(parent, index)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
 
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    SetFrameSize(row.icon, 28, 28)
+    row.icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+
     row.name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    row.name:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -1)
-    row.name:SetWidth(150)
+    row.name:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 8, -1)
+    row.name:SetWidth(135)
     row.name:SetJustifyH("LEFT")
 
     row.meta = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -279,9 +359,14 @@ local function CreateSpellRow(parent, index)
     row.meta:SetJustifyH("LEFT")
 
     row.desc = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.desc:SetPoint("LEFT", row, "LEFT", 170, 0)
-    row.desc:SetWidth(360)
+    row.desc:SetPoint("LEFT", row, "LEFT", 190, 0)
+    row.desc:SetWidth(275)
     row.desc:SetJustifyH("LEFT")
+
+    row.reason = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    row.reason:SetPoint("LEFT", row, "LEFT", 472, 0)
+    row.reason:SetWidth(105)
+    row.reason:SetJustifyH("LEFT")
 
     row.status = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.status:SetPoint("RIGHT", row, "RIGHT", 0, 0)
@@ -297,6 +382,7 @@ local function CreateSpellRow(parent, index)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(self.data.name)
         GameTooltip:AddLine(self.data.description, 1, 1, 1, 1)
+        GameTooltip:AddLine(self.data.reason or "", 0.95, 0.82, 0.35)
         GameTooltip:AddLine("Left-click: learn if available", 0.6, 0.8, 1)
         GameTooltip:AddLine("Right-click: unlearn if known", 0.6, 0.8, 1)
         GameTooltip:Show()
@@ -338,6 +424,34 @@ local function CreateMainFrame()
     local close = CreateFrame("Button", nil, mainFrame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -4, -4)
 
+    mainFrame.search = CreateFrame("EditBox", nil, mainFrame, "InputBoxTemplate")
+    SetFrameSize(mainFrame.search, 180, 22)
+    mainFrame.search:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -84)
+    mainFrame.search:SetAutoFocus(false)
+    mainFrame.search:SetScript("OnTextChanged", function(self)
+        state.search = self:GetText() or ""
+        state.page = 1
+        UpdateRows()
+    end)
+
+    mainFrame.searchLabel = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    mainFrame.searchLabel:SetPoint("BOTTOMLEFT", mainFrame.search, "TOPLEFT", 0, 2)
+    mainFrame.searchLabel:SetText("Search")
+
+    for index, filter in ipairs(FILTERS) do
+        local button = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
+        SetFrameSize(button, 82, 22)
+        button:SetPoint("LEFT", mainFrame.search, "RIGHT", 14 + ((index - 1) * 86), 0)
+        button:SetText(filter.label)
+        button.filterKey = filter.key
+        button:SetScript("OnClick", function(self)
+            state.filter = self.filterKey
+            state.page = 1
+            UpdateRows()
+        end)
+        filterButtons[index] = button
+    end
+
     for index, className in ipairs(CLASS_NAMES) do
         local button = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
         SetFrameSize(button, 132, 22)
@@ -359,6 +473,31 @@ local function CreateMainFrame()
     mainFrame.empty = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     mainFrame.empty:SetPoint("CENTER", mainFrame, "CENTER", 0, -10)
     mainFrame.empty:SetText("No spells available for this class.")
+
+    mainFrame.detailIcon = mainFrame:CreateTexture(nil, "ARTWORK")
+    SetFrameSize(mainFrame.detailIcon, 36, 36)
+    mainFrame.detailIcon:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 20, 52)
+
+    mainFrame.detailName = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    mainFrame.detailName:SetPoint("TOPLEFT", mainFrame.detailIcon, "TOPRIGHT", 10, 0)
+    mainFrame.detailName:SetWidth(190)
+    mainFrame.detailName:SetJustifyH("LEFT")
+
+    mainFrame.detailMeta = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    mainFrame.detailMeta:SetPoint("TOPLEFT", mainFrame.detailName, "BOTTOMLEFT", 0, -3)
+    mainFrame.detailMeta:SetWidth(220)
+    mainFrame.detailMeta:SetJustifyH("LEFT")
+
+    mainFrame.detailReason = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    mainFrame.detailReason:SetPoint("TOPLEFT", mainFrame.detailMeta, "BOTTOMLEFT", 0, -3)
+    mainFrame.detailReason:SetWidth(220)
+    mainFrame.detailReason:SetJustifyH("LEFT")
+    mainFrame.detailReason:SetTextColor(0.95, 0.82, 0.35)
+
+    mainFrame.detailDesc = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    mainFrame.detailDesc:SetPoint("LEFT", mainFrame.detailIcon, "RIGHT", 245, 0)
+    mainFrame.detailDesc:SetWidth(380)
+    mainFrame.detailDesc:SetJustifyH("LEFT")
 
     local prev = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
     SetFrameSize(prev, 72, 24)
