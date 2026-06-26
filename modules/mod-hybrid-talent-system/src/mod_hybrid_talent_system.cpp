@@ -908,10 +908,10 @@ namespace
             if (!spellInfo)
                 continue;
 
-            bool known = HasHybridSpellInChain(guid, templ.SpellId);
             bool baseClassBlocked = templ.ClassMask && (templ.ClassMask & player->getClassMask());
             bool levelBlocked = player->GetLevel() < templ.RequiredLevel;
             bool alreadyKnownInSpellbook = PlayerHasSpellInChain(player, templ.SpellId);
+            bool known = HasHybridSpellInChain(guid, templ.SpellId) || (!baseClassBlocked && alreadyKnownInSpellbook);
             bool pointsBlocked = available < templ.Cost;
             bool canLearn = !known && !baseClassBlocked && !levelBlocked && !alreadyKnownInSpellbook && !pointsBlocked;
             uint32 classIndex = GetHybridClassIndexForMask(templ.ClassMask);

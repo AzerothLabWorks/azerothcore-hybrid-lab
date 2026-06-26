@@ -51,6 +51,28 @@ local function GetSpellIcon(spellId)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
+local function ShowSpellTooltip(owner, row)
+    if not owner or not row then
+        return
+    end
+
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if GameTooltip.SetHyperlink then
+        GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(row.reason or "", 0.95, 0.82, 0.35)
+        GameTooltip:AddLine("Left-click: learn if available", 0.6, 0.8, 1)
+        GameTooltip:AddLine("Right-click: unlearn if known", 0.6, 0.8, 1)
+    else
+        GameTooltip:SetText(row.name)
+        GameTooltip:AddLine(row.description, 1, 1, 1, 1)
+        GameTooltip:AddLine(row.reason or "", 0.95, 0.82, 0.35)
+        GameTooltip:AddLine("Left-click: learn if available", 0.6, 0.8, 1)
+        GameTooltip:AddLine("Right-click: unlearn if known", 0.6, 0.8, 1)
+    end
+    GameTooltip:Show()
+end
+
 local function Print(message)
     if DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage("|cff66d9efHybridTalentUI:|r " .. tostring(message))
@@ -396,13 +418,7 @@ local function CreateSpellRow(parent, index)
             return
         end
 
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(self.data.name)
-        GameTooltip:AddLine(self.data.description, 1, 1, 1, 1)
-        GameTooltip:AddLine(self.data.reason or "", 0.95, 0.82, 0.35)
-        GameTooltip:AddLine("Left-click: learn if available", 0.6, 0.8, 1)
-        GameTooltip:AddLine("Right-click: unlearn if known", 0.6, 0.8, 1)
-        GameTooltip:Show()
+        ShowSpellTooltip(self, self.data)
     end)
     row:SetScript("OnLeave", function()
         GameTooltip:Hide()
@@ -497,6 +513,17 @@ local function CreateMainFrame()
     mainFrame.detailIcon = mainFrame:CreateTexture(nil, "ARTWORK")
     SetFrameSize(mainFrame.detailIcon, 42, 42)
     mainFrame.detailIcon:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 604, -144)
+
+    mainFrame.detailIconHit = CreateFrame("Frame", nil, mainFrame)
+    SetFrameSize(mainFrame.detailIconHit, 42, 42)
+    mainFrame.detailIconHit:SetPoint("CENTER", mainFrame.detailIcon, "CENTER", 0, 0)
+    mainFrame.detailIconHit:EnableMouse(true)
+    mainFrame.detailIconHit:SetScript("OnEnter", function(self)
+        ShowSpellTooltip(self, GetSelectedRow())
+    end)
+    mainFrame.detailIconHit:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     mainFrame.detailName = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mainFrame.detailName:SetPoint("TOPLEFT", mainFrame.detailIcon, "TOPRIGHT", 10, 0)
