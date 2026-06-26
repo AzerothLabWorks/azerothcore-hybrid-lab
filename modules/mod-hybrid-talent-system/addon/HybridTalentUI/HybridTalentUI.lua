@@ -246,7 +246,9 @@ local function GetVisibleRows()
                 or string.find(tostring(row.talentId), search, 1, true)
                 or string.find(tostring(row.spellId), search, 1, true)
 
-            if row.classIndex == state.selectedClass and filterMatch and searchMatch then
+            local classMatch = state.filter == "known" or row.classIndex == state.selectedClass
+
+            if classMatch and filterMatch and searchMatch then
                 table.insert(result, row)
             end
         end
@@ -467,7 +469,7 @@ local function UpdateRows()
     if #rows == 0 then
         if state.mode == "talents" then
             if state.filter == "known" then
-                mainFrame.empty:SetText("No known hybrid talents for this class.")
+                mainFrame.empty:SetText("No known hybrid talents.")
             else
                 mainFrame.empty:SetText("No talents available for this class.")
             end
