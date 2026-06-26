@@ -28,7 +28,7 @@ Codex on this machine runs shell commands through a sandbox Windows account and 
 
 ## Stable Server Features
 
-- Playerbots profile with grouping behavior tuning.
+- Playerbots profile with grouping behavior tuning and `1500` configured online random bots.
 - Hybrid Talent System with cross-class spell learning, descriptions, auto-rank upgrades, action-bar preservation, beacons, single-spell unlearning, and full reset.
 - Profession Master with beacon item.
 - AHBot setup automation.
@@ -71,6 +71,7 @@ git pull
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
 
 AHBOT_ACCOUNT=ahbot AHBOT_CHARACTER=Auctioneer \
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
