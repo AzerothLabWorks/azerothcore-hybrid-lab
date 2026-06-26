@@ -895,6 +895,7 @@ namespace
         std::vector<uint32> spellIds = GetHybridUiSpellIds();
 
         handler->PSendSysMessage("HYUI\tBEGIN\t1\t{}\t{}\t{}\t{}", earned, spent, available, static_cast<uint32>(spellIds.size()));
+        handler->PSendSysMessage("HYUI\tSTATUS\t{}\t{}\t{}\t{}\t{}", player->GetLevel(), MinLevel, PointsPerInterval, PointIntervalLevels ? PointIntervalLevels : 1, MaxPoints);
 
         for (uint32 spellId : spellIds)
         {

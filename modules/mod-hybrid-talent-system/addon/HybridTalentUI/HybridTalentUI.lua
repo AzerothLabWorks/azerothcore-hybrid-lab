@@ -26,13 +26,18 @@ local state = {
     filter = "all",
     search = "",
     selectedSpell = nil,
+    level = 0,
+    minLevel = 0,
+    pointsPerInterval = 0,
+    interval = 0,
+    maxPoints = 0,
 }
 
 local mainFrame
 local openButton
 local classButtons = {}
 local rowButtons = {}
-local ROWS_PER_PAGE = 12
+local ROWS_PER_PAGE = 9
 local FILTERS = {
     { key = "all", label = "All" },
     { key = "available", label = "Available" },
@@ -40,6 +45,11 @@ local FILTERS = {
     { key = "locked", label = "Locked" },
 }
 local filterButtons = {}
+
+local function GetSpellIcon(spellId)
+    local _, _, icon = GetSpellInfo(spellId)
+    return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
 
 local function Print(message)
     if DEFAULT_CHAT_FRAME then
@@ -191,7 +201,7 @@ local function UpdateDetails()
         return
     end
 
-    mainFrame.detailIcon:SetTexture(GetSpellTexture(row.spellId) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    mainFrame.detailIcon:SetTexture(GetSpellIcon(row.spellId))
     mainFrame.detailName:SetText(row.name)
     mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
     mainFrame.detailDesc:SetText(row.description ~= "" and row.description or "No description available.")
@@ -212,6 +222,7 @@ local function UpdateRows()
     local startIndex = (state.page - 1) * ROWS_PER_PAGE + 1
 
     mainFrame.points:SetText("Hybrid points: " .. state.available .. " available / " .. state.earned .. " earned")
+    mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.minLevel .. "  +" .. state.pointsPerInterval .. " point / " .. state.interval .. " levels  Max " .. state.maxPoints)
     mainFrame.page:SetText("Page " .. state.page .. " / " .. pageCount)
 
     for rowIndex = 1, ROWS_PER_PAGE do
@@ -220,7 +231,7 @@ local function UpdateRows()
         button.data = data
 
         if data then
-            button.icon:SetTexture(GetSpellTexture(data.spellId) or "Interface\\Icons\\INV_Misc_QuestionMark")
+            button.icon:SetTexture(GetSpellIcon(data.spellId))
             button.name:SetText(data.name)
             button.meta:SetText("Level " .. data.requiredLevel .. "  Cost " .. data.cost)
             button.desc:SetText(data.description ~= "" and data.description or "No description available.")
@@ -290,6 +301,12 @@ local function HandleServerMessage(body)
         state.loaded = false
     elseif parts[2] == "SPELL" then
         AddSpell(parts)
+    elseif parts[2] == "STATUS" then
+        state.level = tonumber(parts[3] or "0") or 0
+        state.minLevel = tonumber(parts[4] or "0") or 0
+        state.pointsPerInterval = tonumber(parts[5] or "0") or 0
+        state.interval = tonumber(parts[6] or "0") or 0
+        state.maxPoints = tonumber(parts[7] or "0") or 0
     elseif parts[2] == "END" then
         state.loaded = true
         UpdateRows()
@@ -339,8 +356,8 @@ end
 
 local function CreateSpellRow(parent, index)
     local row = CreateFrame("Button", nil, parent)
-    SetFrameSize(row, 668, 36)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -112 - ((index - 1) * 39))
+    SetFrameSize(row, 558, 42)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -138 - ((index - 1) * 45))
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
 
@@ -350,7 +367,7 @@ local function CreateSpellRow(parent, index)
 
     row.name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.name:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 8, -1)
-    row.name:SetWidth(135)
+    row.name:SetWidth(145)
     row.name:SetJustifyH("LEFT")
 
     row.meta = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -359,13 +376,13 @@ local function CreateSpellRow(parent, index)
     row.meta:SetJustifyH("LEFT")
 
     row.desc = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.desc:SetPoint("LEFT", row, "LEFT", 190, 0)
-    row.desc:SetWidth(275)
+    row.desc:SetPoint("LEFT", row, "LEFT", 205, 0)
+    row.desc:SetWidth(205)
     row.desc:SetJustifyH("LEFT")
 
     row.reason = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    row.reason:SetPoint("LEFT", row, "LEFT", 472, 0)
-    row.reason:SetWidth(105)
+    row.reason:SetPoint("LEFT", row, "LEFT", 420, 0)
+    row.reason:SetWidth(88)
     row.reason:SetJustifyH("LEFT")
 
     row.status = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -400,7 +417,7 @@ local function CreateMainFrame()
     end
 
     mainFrame = CreateFrame("Frame", "HybridTalentUIFrame", UIParent)
-    SetFrameSize(mainFrame, 720, 640)
+    SetFrameSize(mainFrame, 900, 640)
     mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     mainFrame:SetMovable(true)
     mainFrame:EnableMouse(true)
@@ -421,13 +438,16 @@ local function CreateMainFrame()
     mainFrame.points:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -46, -22)
     mainFrame.points:SetJustifyH("RIGHT")
 
+    mainFrame.status = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    mainFrame.status:SetPoint("TOPRIGHT", mainFrame.points, "BOTTOMRIGHT", 0, -3)
+    mainFrame.status:SetJustifyH("RIGHT")
+
     local close = CreateFrame("Button", nil, mainFrame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -4, -4)
 
     mainFrame.search = CreateFrame("EditBox", nil, mainFrame, "InputBoxTemplate")
     SetFrameSize(mainFrame.search, 180, 22)
-    mainFrame.search:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -84)
-    mainFrame.search:SetAutoFocus(false)
+    mainFrame.search:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -106)
     mainFrame.search:SetScript("OnTextChanged", function(self)
         state.search = self:GetText() or ""
         state.page = 1
@@ -440,8 +460,8 @@ local function CreateMainFrame()
 
     for index, filter in ipairs(FILTERS) do
         local button = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
-        SetFrameSize(button, 82, 22)
-        button:SetPoint("LEFT", mainFrame.search, "RIGHT", 14 + ((index - 1) * 86), 0)
+        SetFrameSize(button, 76, 22)
+        button:SetPoint("LEFT", mainFrame.search, "RIGHT", 14 + ((index - 1) * 80), 0)
         button:SetText(filter.label)
         button.filterKey = filter.key
         button:SetScript("OnClick", function(self)
@@ -475,12 +495,12 @@ local function CreateMainFrame()
     mainFrame.empty:SetText("No spells available for this class.")
 
     mainFrame.detailIcon = mainFrame:CreateTexture(nil, "ARTWORK")
-    SetFrameSize(mainFrame.detailIcon, 36, 36)
-    mainFrame.detailIcon:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 20, 52)
+    SetFrameSize(mainFrame.detailIcon, 42, 42)
+    mainFrame.detailIcon:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 604, -144)
 
     mainFrame.detailName = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mainFrame.detailName:SetPoint("TOPLEFT", mainFrame.detailIcon, "TOPRIGHT", 10, 0)
-    mainFrame.detailName:SetWidth(190)
+    mainFrame.detailName:SetWidth(210)
     mainFrame.detailName:SetJustifyH("LEFT")
 
     mainFrame.detailMeta = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -495,8 +515,8 @@ local function CreateMainFrame()
     mainFrame.detailReason:SetTextColor(0.95, 0.82, 0.35)
 
     mainFrame.detailDesc = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    mainFrame.detailDesc:SetPoint("LEFT", mainFrame.detailIcon, "RIGHT", 245, 0)
-    mainFrame.detailDesc:SetWidth(380)
+    mainFrame.detailDesc:SetPoint("TOPLEFT", mainFrame.detailIcon, "BOTTOMLEFT", 0, -14)
+    mainFrame.detailDesc:SetWidth(265)
     mainFrame.detailDesc:SetJustifyH("LEFT")
 
     local prev = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
