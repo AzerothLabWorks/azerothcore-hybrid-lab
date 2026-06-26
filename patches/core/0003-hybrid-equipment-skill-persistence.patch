@@ -99,7 +99,7 @@ index 3e65e30cb..b60da91da 100644
              }
  
              if (value == 0)
-@@ -13786,15 +13826,18 @@ void Player::_LoadSkills(PreparedQueryResult result)
+@@ -13786,14 +13826,17 @@ void Player::_LoadSkills(PreparedQueryResult result)
              }
  
              uint16 skillStep = 0;
