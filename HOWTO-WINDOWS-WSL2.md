@@ -332,6 +332,14 @@ Import module SQL after the database containers are running:
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid professionmaster ahbot transmog learnspells
 ```
 
+Tune Playerbots for the Hybrid Lab defaults:
+
+```bash
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
+```
+
+This writes `env/dist/etc/modules/playerbots.conf` and sets both `AiPlayerbot.MinRandomBots` and `AiPlayerbot.MaxRandomBots` to `1500`.
+
 Rebuild after adding C++ modules:
 
 ```bash

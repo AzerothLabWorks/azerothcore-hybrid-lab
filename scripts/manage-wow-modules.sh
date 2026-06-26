@@ -18,6 +18,7 @@ Commands:
   import-sql MODULE...  Apply module SQL files to running Docker databases.
   apply-core-patches    Apply Hybrid Lab AzerothCore core patches.
   setup-ahbot           Create/update AHBot account, owner character, and config.
+  setup-playerbots      Install Playerbots config and tune random bot population.
   setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
@@ -32,6 +33,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
@@ -47,7 +49,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
+    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-playerbots|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
       COMMAND="$1"
       shift
       break
@@ -306,6 +308,30 @@ WHERE NOT EXISTS (SELECT 1 FROM characters WHERE name = @char_name);
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
+setup_playerbots() {
+  require_server_dir
+
+  local source_config="$SERVER_DIR/modules/mod-playerbots/conf/playerbots.conf.dist"
+  if [[ ! -f "$source_config" ]]; then
+    source_config="$SERVER_DIR/env/dist/etc/modules/playerbots.conf.dist"
+  fi
+
+  [[ -f "$source_config" ]] || die "Could not find playerbots.conf.dist. Is mod-playerbots installed?"
+
+  local target_config="$SERVER_DIR/env/dist/etc/modules/playerbots.conf"
+  mkdir -p "$(dirname "$target_config")"
+  cp "$source_config" "$target_config"
+
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotAutologin" "1"
+  set_conf_value "$target_config" "AiPlayerbot.MinRandomBots" "1500"
+  set_conf_value "$target_config" "AiPlayerbot.MaxRandomBots" "1500"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotAccountCount" "0"
+
+  log "Installed Playerbots config to $target_config"
+  log "Configured Playerbots random bot population for 1500 online bots."
+  log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
+}
+
 setup_hybrid() {
   require_server_dir
 
@@ -552,6 +578,9 @@ case "$COMMAND" in
     ;;
   setup-ahbot)
     setup_ahbot
+    ;;
+  setup-playerbots)
+    setup_playerbots
     ;;
   setup-hybrid)
     setup_hybrid
