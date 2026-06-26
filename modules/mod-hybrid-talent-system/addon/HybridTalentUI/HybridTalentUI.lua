@@ -63,13 +63,19 @@ local function NextCounter()
     return string.format("%04d", state.commandCounter)
 end
 
+local function RegisterPrefix()
+    if RegisterAddonMessagePrefix then
+        RegisterAddonMessagePrefix(PREFIX)
+    end
+end
+
 local function SendCommand(command)
     if not SendAddonMessage then
         DEFAULT_CHAT_FRAME:AddMessage("HybridTalentUI: SendAddonMessage is unavailable.")
         return
     end
 
-    RegisterAddonMessagePrefix(PREFIX)
+    RegisterPrefix()
     SendAddonMessage(PREFIX, "i" .. NextCounter() .. command, "WHISPER", UnitName("player"))
 end
 
@@ -403,7 +409,7 @@ eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         CreateUI()
-        RegisterAddonMessagePrefix(PREFIX)
+        RegisterPrefix()
         SLASH_HYBRIDTALENTUI1 = "/hybridui"
         SLASH_HYBRIDTALENTUI2 = "/hyui"
         SlashCmdList.HYBRIDTALENTUI = function()
