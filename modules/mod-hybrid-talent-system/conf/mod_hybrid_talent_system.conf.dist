@@ -18,6 +18,19 @@ HybridTalentSystem.PointIntervalLevels = 2
 # Maximum hybrid points a character can earn.
 HybridTalentSystem.MaxPoints = 35
 
+# Minimum character level required to learn hybrid talents.
+HybridTalentSystem.TalentMinLevel = 10
+
+# Hybrid talent points earned per eligible interval.
+HybridTalentSystem.TalentPointsPerInterval = 1
+
+# Level interval after TalentMinLevel. With TalentMinLevel 10 and Interval 2,
+# players earn at levels 10, 12, 14, etc.
+HybridTalentSystem.TalentPointIntervalLevels = 2
+
+# Maximum hybrid talent points a character can earn.
+HybridTalentSystem.TalentMaxPoints = 35
+
 # Copper cost to reset all hybrid spells.
 # 10000 copper = 1 gold.
 HybridTalentSystem.ResetCostCopper = 100000

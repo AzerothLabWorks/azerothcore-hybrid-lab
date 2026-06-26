@@ -18,6 +18,13 @@ local state = {
     earned = 0,
     spent = 0,
     available = 0,
+    talentEarned = 0,
+    talentSpent = 0,
+    talentAvailable = 0,
+    talentMinLevel = 0,
+    talentPointsPerInterval = 0,
+    talentInterval = 0,
+    talentMaxPoints = 0,
     rows = {},
     talents = {},
     byClass = {},
@@ -144,11 +151,13 @@ local function ShowTalentTooltip(owner, row)
         GameTooltip:SetHyperlink("spell:" .. row.spellId)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(GetTalentTabName(row) .. "  Rank " .. row.knownRank .. "/" .. row.maxRank, 0.95, 0.82, 0.35)
-        GameTooltip:AddLine("Talent browsing only", 0.6, 0.8, 1)
+        GameTooltip:AddLine("Left-click: learn next rank if available", 0.6, 0.8, 1)
+        GameTooltip:AddLine("Right-click: unlearn one rank if known", 0.6, 0.8, 1)
     else
         GameTooltip:SetText(row.name)
         GameTooltip:AddLine(GetTalentTabName(row) .. "  Rank " .. row.knownRank .. "/" .. row.maxRank, 0.95, 0.82, 0.35)
-        GameTooltip:AddLine("Talent browsing only", 0.6, 0.8, 1)
+        GameTooltip:AddLine("Left-click: learn next rank if available", 0.6, 0.8, 1)
+        GameTooltip:AddLine("Right-click: unlearn one rank if known", 0.6, 0.8, 1)
     end
     GameTooltip:Show()
 end
@@ -226,13 +235,18 @@ local function GetVisibleRows()
 
     if state.mode == "talents" then
         for _, row in ipairs(state.talents) do
+            local filterMatch = state.filter == "all"
+                or (state.filter == "available" and row.canLearn)
+                or (state.filter == "known" and row.knownRank > 0)
+                or (state.filter == "locked" and not row.canLearn and row.knownRank == 0)
+
             local searchMatch = search == ""
                 or string.find(string.lower(row.name or ""), search, 1, true)
                 or string.find(string.lower(GetTalentTabName(row)), search, 1, true)
                 or string.find(tostring(row.talentId), search, 1, true)
                 or string.find(tostring(row.spellId), search, 1, true)
 
-            if row.classIndex == state.selectedClass and searchMatch then
+            if row.classIndex == state.selectedClass and filterMatch and searchMatch then
                 table.insert(result, row)
             end
         end
@@ -300,17 +314,12 @@ end
 
 local function UpdateFilterButtons()
     for _, button in ipairs(filterButtons) do
-        if state.mode == "talents" then
-            button:Disable()
-            button:UnlockHighlight()
-        else
-            button:Enable()
+        button:Enable()
 
-            if button.filterKey == state.filter then
-                button:LockHighlight()
-            else
-                button:UnlockHighlight()
-            end
+        if button.filterKey == state.filter then
+            button:LockHighlight()
+        else
+            button:UnlockHighlight()
         end
     end
 end
@@ -364,7 +373,7 @@ local function UpdateDetails()
         mainFrame.detailName:SetText(state.mode == "talents" and "Select a talent" or "Select a spell")
         mainFrame.detailMeta:SetText("")
         if state.mode == "talents" then
-            mainFrame.detailDesc:SetText("Mouse over a talent to view its native tooltip.")
+            mainFrame.detailDesc:SetText("Left-click an available talent to learn its next rank. Right-click a known talent to unlearn one rank.")
         else
             mainFrame.detailDesc:SetText("Left-click an available spell to learn it. Right-click a known spell to unlearn it.")
         end
@@ -376,7 +385,7 @@ local function UpdateDetails()
     mainFrame.detailName:SetText(row.name)
     if state.mode == "talents" then
         mainFrame.detailMeta:SetText(GetTalentTabName(row) .. "  Row " .. (row.row + 1) .. "  Column " .. (row.col + 1))
-        mainFrame.detailDesc:SetText("Talent ID " .. row.talentId .. "  Spell ID " .. row.spellId .. "  Rank " .. row.knownRank .. "/" .. row.maxRank)
+        mainFrame.detailDesc:SetText("Talent ID " .. row.talentId .. "  Spell ID " .. row.spellId .. "  Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Cost 1")
         mainFrame.detailReason:SetText(row.reason or "Browse only")
     else
         mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
@@ -398,10 +407,11 @@ local function UpdateRows()
 
     local startIndex = (state.page - 1) * ROWS_PER_PAGE + 1
 
-    mainFrame.points:SetText("Hybrid points: " .. state.available .. " available / " .. state.earned .. " earned")
     if state.mode == "talents" then
-        mainFrame.status:SetText("Talent browsing only")
+        mainFrame.points:SetText("Hybrid talent points: " .. state.talentAvailable .. " available / " .. state.talentEarned .. " earned")
+        mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.talentMinLevel .. "  +" .. state.talentPointsPerInterval .. " point / " .. state.talentInterval .. " levels  Max " .. state.talentMaxPoints)
     else
+        mainFrame.points:SetText("Hybrid points: " .. state.available .. " available / " .. state.earned .. " earned")
         mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.minLevel .. "  +" .. state.pointsPerInterval .. " point / " .. state.interval .. " levels  Max " .. state.maxPoints)
     end
     mainFrame.page:SetText("Page " .. state.page .. " / " .. pageCount)
@@ -416,10 +426,21 @@ local function UpdateRows()
             button.name:SetText(data.name)
             if state.mode == "talents" then
                 button.meta:SetText(GetTalentTabName(data) .. "  Row " .. (data.row + 1) .. " Col " .. (data.col + 1))
-                button.desc:SetText("Rank " .. data.knownRank .. "/" .. data.maxRank)
+                button.desc:SetText("Rank " .. data.knownRank .. "/" .. data.maxRank .. "  Cost 1")
                 button.reason:SetText(data.reason or "")
-                button.status:SetText("Browse")
-                button.status:SetTextColor(0.6, 0.8, 1)
+                if data.knownRank >= data.maxRank then
+                    button.status:SetText("Known")
+                    button.status:SetTextColor(0.25, 0.9, 0.35)
+                elseif data.canLearn then
+                    button.status:SetText("Available")
+                    button.status:SetTextColor(0.95, 0.82, 0.35)
+                elseif data.knownRank > 0 then
+                    button.status:SetText("Partial")
+                    button.status:SetTextColor(0.6, 0.8, 1)
+                else
+                    button.status:SetText("Locked")
+                    button.status:SetTextColor(0.6, 0.6, 0.6)
+                end
             else
                 button.meta:SetText("Level " .. data.requiredLevel .. "  Cost " .. data.cost)
                 button.desc:SetText(data.description ~= "" and data.description or "No description available.")
@@ -445,7 +466,11 @@ local function UpdateRows()
 
     if #rows == 0 then
         if state.mode == "talents" then
-            mainFrame.empty:SetText("No talents available for this class.")
+            if state.filter == "known" then
+                mainFrame.empty:SetText("No known hybrid talents for this class.")
+            else
+                mainFrame.empty:SetText("No talents available for this class.")
+            end
         elseif state.filter == "known" then
             mainFrame.empty:SetText("No known hybrid spells.")
         else
@@ -494,8 +519,9 @@ local function AddTalent(parts)
         col = tonumber(parts[8] or "0") or 0,
         maxRank = tonumber(parts[9] or "0") or 0,
         knownRank = tonumber(parts[10] or "0") or 0,
-        name = parts[11] or "",
-        reason = parts[12] or "",
+        canLearn = parts[11] == "1",
+        name = parts[12] or "",
+        reason = parts[13] or "",
     }
 
     if row.talentId > 0 and row.spellId > 0 and CLASS_NAMES[classIndex] then
@@ -514,6 +540,9 @@ local function HandleServerMessage(body)
         state.earned = tonumber(parts[4] or "0") or 0
         state.spent = tonumber(parts[5] or "0") or 0
         state.available = tonumber(parts[6] or "0") or 0
+        state.talentEarned = 0
+        state.talentSpent = 0
+        state.talentAvailable = 0
         state.rows = {}
         state.talents = {}
         state.byClass = {}
@@ -529,6 +558,14 @@ local function HandleServerMessage(body)
         state.pointsPerInterval = tonumber(parts[5] or "0") or 0
         state.interval = tonumber(parts[6] or "0") or 0
         state.maxPoints = tonumber(parts[7] or "0") or 0
+    elseif parts[2] == "TALENTSTATUS" then
+        state.talentEarned = tonumber(parts[3] or "0") or 0
+        state.talentSpent = tonumber(parts[4] or "0") or 0
+        state.talentAvailable = tonumber(parts[5] or "0") or 0
+        state.talentMinLevel = tonumber(parts[6] or "0") or 0
+        state.talentPointsPerInterval = tonumber(parts[7] or "0") or 0
+        state.talentInterval = tonumber(parts[8] or "0") or 0
+        state.talentMaxPoints = tonumber(parts[9] or "0") or 0
     elseif parts[2] == "END" then
         state.loaded = true
         UpdateRows()
@@ -558,6 +595,22 @@ local function OnSpellRowClick(self, mouseButton)
     if state.mode == "talents" then
         state.selectedTalent = row.talentId
         UpdateDetails()
+        if mouseButton == "RightButton" then
+            if row.knownRank > 0 then
+                SendCommand("hybridui unlearntalent " .. row.talentId)
+            else
+                Print(row.name .. " is not currently learned as a hybrid talent.")
+            end
+            return
+        end
+
+        if row.canLearn then
+            SendCommand("hybridui learntalent " .. row.talentId)
+        elseif row.knownRank >= row.maxRank then
+            Print(row.name .. " is already at maximum rank.")
+        else
+            Print(row.name .. " is locked or unaffordable.")
+        end
         return
     end
 
