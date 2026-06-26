@@ -3,6 +3,7 @@
 #include "Config.h"
 #include "Creature.h"
 #include "CreatureScript.h"
+#include "DBCStores.h"
 #include "DatabaseEnv.h"
 #include "GossipDef.h"
 #include "Item.h"
@@ -877,6 +878,87 @@ namespace
         return spellIds;
     }
 
+    uint8 GetTalentMaxRank(TalentEntry const* talentInfo)
+    {
+        if (!talentInfo)
+            return 0;
+
+        uint8 maxRank = 0;
+        for (uint8 rank = 0; rank < MAX_TALENT_RANK; ++rank)
+            if (talentInfo->RankID[rank])
+                maxRank = rank + 1;
+
+        return maxRank;
+    }
+
+    uint8 GetKnownTalentRank(Player const* player, TalentEntry const* talentInfo)
+    {
+        if (!player || !talentInfo)
+            return 0;
+
+        for (int8 rank = MAX_TALENT_RANK - 1; rank >= 0; --rank)
+            if (talentInfo->RankID[rank] && player->HasSpell(talentInfo->RankID[rank]))
+                return rank + 1;
+
+        return 0;
+    }
+
+    std::vector<uint32> GetHybridUiTalentIds()
+    {
+        std::vector<uint32> talentIds;
+        talentIds.reserve(sTalentStore.GetNumRows());
+
+        for (uint32 talentId = 0; talentId < sTalentStore.GetNumRows(); ++talentId)
+        {
+            TalentEntry const* talentInfo = sTalentStore.LookupEntry(talentId);
+            if (!talentInfo || !talentInfo->RankID[0])
+                continue;
+
+            TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TalentTab);
+            if (!talentTabInfo || !talentTabInfo->ClassMask || talentTabInfo->petTalentMask)
+                continue;
+
+            if (!sSpellMgr->GetSpellInfo(talentInfo->RankID[0]))
+                continue;
+
+            talentIds.push_back(talentId);
+        }
+
+        std::sort(talentIds.begin(), talentIds.end(), [](uint32 leftTalentId, uint32 rightTalentId)
+        {
+            TalentEntry const* left = sTalentStore.LookupEntry(leftTalentId);
+            TalentEntry const* right = sTalentStore.LookupEntry(rightTalentId);
+            if (!left || !right)
+                return leftTalentId < rightTalentId;
+
+            TalentTabEntry const* leftTab = sTalentTabStore.LookupEntry(left->TalentTab);
+            TalentTabEntry const* rightTab = sTalentTabStore.LookupEntry(right->TalentTab);
+            uint32 leftClassMask = leftTab ? leftTab->ClassMask : 0;
+            uint32 rightClassMask = rightTab ? rightTab->ClassMask : 0;
+            if (leftClassMask != rightClassMask)
+                return leftClassMask < rightClassMask;
+
+            uint32 leftTabPage = leftTab ? leftTab->tabpage : 0;
+            uint32 rightTabPage = rightTab ? rightTab->tabpage : 0;
+            if (leftTabPage != rightTabPage)
+                return leftTabPage < rightTabPage;
+
+            if (left->Row != right->Row)
+                return left->Row < right->Row;
+
+            if (left->Col != right->Col)
+                return left->Col < right->Col;
+
+            SpellInfo const* leftInfo = sSpellMgr->GetSpellInfo(left->RankID[0]);
+            SpellInfo const* rightInfo = sSpellMgr->GetSpellInfo(right->RankID[0]);
+            std::string leftName = leftInfo ? leftInfo->SpellName[0] : std::to_string(leftTalentId);
+            std::string rightName = rightInfo ? rightInfo->SpellName[0] : std::to_string(rightTalentId);
+            return leftName < rightName;
+        });
+
+        return talentIds;
+    }
+
     void SendHybridUiSnapshot(ChatHandler* handler, Player* player)
     {
         if (!handler || !player)
@@ -893,6 +975,7 @@ namespace
         uint16 available = earned > spent ? earned - spent : 0;
         ObjectGuid::LowType guid = player->GetGUID().GetCounter();
         std::vector<uint32> spellIds = GetHybridUiSpellIds();
+        std::vector<uint32> talentIds = GetHybridUiTalentIds();
 
         handler->PSendSysMessage("HYUI\tBEGIN\t1\t{}\t{}\t{}\t{}", earned, spent, available, static_cast<uint32>(spellIds.size()));
         handler->PSendSysMessage("HYUI\tSTATUS\t{}\t{}\t{}\t{}\t{}", player->GetLevel(), MinLevel, PointsPerInterval, PointIntervalLevels ? PointIntervalLevels : 1, MaxPoints);
@@ -939,6 +1022,38 @@ namespace
                 canLearn ? 1 : 0,
                 SanitizeAddonField(spellInfo->SpellName[0], 48),
                 SanitizeAddonField(GetHybridSpellDescription(templ), 110),
+                SanitizeAddonField(reason, 40));
+        }
+
+        for (uint32 talentId : talentIds)
+        {
+            TalentEntry const* talentInfo = sTalentStore.LookupEntry(talentId);
+            if (!talentInfo)
+                continue;
+
+            TalentTabEntry const* talentTabInfo = sTalentTabStore.LookupEntry(talentInfo->TalentTab);
+            if (!talentTabInfo)
+                continue;
+
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(talentInfo->RankID[0]);
+            if (!spellInfo)
+                continue;
+
+            uint32 classIndex = GetHybridClassIndexForMask(talentTabInfo->ClassMask);
+            uint8 maxRank = GetTalentMaxRank(talentInfo);
+            uint8 knownRank = GetKnownTalentRank(player, talentInfo);
+            std::string reason = knownRank ? "Known rank " + std::to_string(knownRank) + "/" + std::to_string(maxRank) : "Browse only";
+
+            handler->PSendSysMessage("HYUI\tTALENT\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                talentInfo->TalentID,
+                talentInfo->RankID[0],
+                classIndex,
+                talentTabInfo->tabpage,
+                talentInfo->Row,
+                talentInfo->Col,
+                maxRank,
+                knownRank,
+                SanitizeAddonField(spellInfo->SpellName[0], 48),
                 SanitizeAddonField(reason, 40));
         }
 

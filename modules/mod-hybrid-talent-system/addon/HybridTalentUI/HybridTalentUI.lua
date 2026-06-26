@@ -19,13 +19,17 @@ local state = {
     spent = 0,
     available = 0,
     rows = {},
+    talents = {},
     byClass = {},
+    byTalentClass = {},
     selectedClass = 1,
     page = 1,
     loaded = false,
+    mode = "spells",
     filter = "all",
     search = "",
     selectedSpell = nil,
+    selectedTalent = nil,
     level = 0,
     minLevel = 0,
     pointsPerInterval = 0,
@@ -37,7 +41,12 @@ local mainFrame
 local openButton
 local classButtons = {}
 local rowButtons = {}
+local modeButtons = {}
 local ROWS_PER_PAGE = 9
+local MODES = {
+    { key = "spells", label = "Spells" },
+    { key = "talents", label = "Talents" },
+}
 local FILTERS = {
     { key = "all", label = "All" },
     { key = "available", label = "Available" },
@@ -45,6 +54,19 @@ local FILTERS = {
     { key = "locked", label = "Locked" },
 }
 local filterButtons = {}
+
+local TALENT_TAB_NAMES = {
+    [1] = { "Arms", "Fury", "Protection" },
+    [2] = { "Holy", "Protection", "Retribution" },
+    [3] = { "Beast Mastery", "Marksmanship", "Survival" },
+    [4] = { "Assassination", "Combat", "Subtlety" },
+    [5] = { "Discipline", "Holy", "Shadow" },
+    [6] = { "Blood", "Frost", "Unholy" },
+    [7] = { "Elemental", "Enhancement", "Restoration" },
+    [8] = { "Arcane", "Fire", "Frost" },
+    [9] = { "Affliction", "Demonology", "Destruction" },
+    [10] = { "Balance", "Feral Combat", "Restoration" },
+}
 
 local HIDDEN_KNOWN_SUPPORT_SPELLS = {
     [196] = true,   -- One-Handed Axes
@@ -99,6 +121,46 @@ local function ShowSpellTooltip(owner, row)
     GameTooltip:Show()
 end
 
+local function GetTalentTabName(row)
+    if not row then
+        return "Talent"
+    end
+
+    local tabs = TALENT_TAB_NAMES[row.classIndex]
+    if tabs and tabs[row.tabPage + 1] then
+        return tabs[row.tabPage + 1]
+    end
+
+    return "Talent"
+end
+
+local function ShowTalentTooltip(owner, row)
+    if not owner or not row then
+        return
+    end
+
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if GameTooltip.SetHyperlink then
+        GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(GetTalentTabName(row) .. "  Rank " .. row.knownRank .. "/" .. row.maxRank, 0.95, 0.82, 0.35)
+        GameTooltip:AddLine("Talent browsing only", 0.6, 0.8, 1)
+    else
+        GameTooltip:SetText(row.name)
+        GameTooltip:AddLine(GetTalentTabName(row) .. "  Rank " .. row.knownRank .. "/" .. row.maxRank, 0.95, 0.82, 0.35)
+        GameTooltip:AddLine("Talent browsing only", 0.6, 0.8, 1)
+    end
+    GameTooltip:Show()
+end
+
+local function ShowRowTooltip(owner, row)
+    if state.mode == "talents" then
+        ShowTalentTooltip(owner, row)
+    else
+        ShowSpellTooltip(owner, row)
+    end
+end
+
 local function Print(message)
     if DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage("|cff66d9efHybridTalentUI:|r " .. tostring(message))
@@ -147,7 +209,9 @@ end
 
 local function Refresh()
     state.rows = {}
+    state.talents = {}
     state.byClass = {}
+    state.byTalentClass = {}
     state.loaded = false
     SendCommand("hybridui refresh")
 end
@@ -159,6 +223,21 @@ end
 local function GetVisibleRows()
     local result = {}
     local search = string.lower(state.search or "")
+
+    if state.mode == "talents" then
+        for _, row in ipairs(state.talents) do
+            local searchMatch = search == ""
+                or string.find(string.lower(row.name or ""), search, 1, true)
+                or string.find(string.lower(GetTalentTabName(row)), search, 1, true)
+                or string.find(tostring(row.talentId), search, 1, true)
+                or string.find(tostring(row.spellId), search, 1, true)
+
+            if row.classIndex == state.selectedClass and searchMatch then
+                table.insert(result, row)
+            end
+        end
+        return result
+    end
 
     for _, row in ipairs(state.rows) do
         local filterMatch = state.filter == "all"
@@ -184,6 +263,8 @@ end
 local function SetSelectedClass(index)
     state.selectedClass = index
     state.page = 1
+    state.selectedSpell = nil
+    state.selectedTalent = nil
 end
 
 local function GetPageCount(rows)
@@ -207,7 +288,7 @@ end
 
 local function UpdateClassButtons()
     for index, button in ipairs(classButtons) do
-        local count = state.byClass[index] or 0
+        local count = state.mode == "talents" and (state.byTalentClass[index] or 0) or (state.byClass[index] or 0)
         button:SetText(CLASS_NAMES[index] .. " (" .. count .. ")")
         if index == state.selectedClass then
             button:LockHighlight()
@@ -219,7 +300,24 @@ end
 
 local function UpdateFilterButtons()
     for _, button in ipairs(filterButtons) do
-        if button.filterKey == state.filter then
+        if state.mode == "talents" then
+            button:Disable()
+            button:UnlockHighlight()
+        else
+            button:Enable()
+
+            if button.filterKey == state.filter then
+                button:LockHighlight()
+            else
+                button:UnlockHighlight()
+            end
+        end
+    end
+end
+
+local function UpdateModeButtons()
+    for _, button in ipairs(modeButtons) do
+        if button.modeKey == state.mode then
             button:LockHighlight()
         else
             button:UnlockHighlight()
@@ -228,6 +326,20 @@ local function UpdateFilterButtons()
 end
 
 local function GetSelectedRow()
+    if state.mode == "talents" then
+        if not state.selectedTalent then
+            return nil
+        end
+
+        for _, row in ipairs(state.talents) do
+            if row.talentId == state.selectedTalent then
+                return row
+            end
+        end
+
+        return nil
+    end
+
     if not state.selectedSpell then
         return nil
     end
@@ -249,18 +361,28 @@ local function UpdateDetails()
     local row = GetSelectedRow()
     if not row then
         mainFrame.detailIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        mainFrame.detailName:SetText("Select a spell")
+        mainFrame.detailName:SetText(state.mode == "talents" and "Select a talent" or "Select a spell")
         mainFrame.detailMeta:SetText("")
-        mainFrame.detailDesc:SetText("Left-click an available spell to learn it. Right-click a known spell to unlearn it.")
+        if state.mode == "talents" then
+            mainFrame.detailDesc:SetText("Mouse over a talent to view its native tooltip.")
+        else
+            mainFrame.detailDesc:SetText("Left-click an available spell to learn it. Right-click a known spell to unlearn it.")
+        end
         mainFrame.detailReason:SetText("")
         return
     end
 
     mainFrame.detailIcon:SetTexture(GetSpellIcon(row.spellId))
     mainFrame.detailName:SetText(row.name)
-    mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
-    mainFrame.detailDesc:SetText(row.description ~= "" and row.description or "No description available.")
-    mainFrame.detailReason:SetText(row.reason or "")
+    if state.mode == "talents" then
+        mainFrame.detailMeta:SetText(GetTalentTabName(row) .. "  Row " .. (row.row + 1) .. "  Column " .. (row.col + 1))
+        mainFrame.detailDesc:SetText("Talent ID " .. row.talentId .. "  Spell ID " .. row.spellId .. "  Rank " .. row.knownRank .. "/" .. row.maxRank)
+        mainFrame.detailReason:SetText(row.reason or "Browse only")
+    else
+        mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
+        mainFrame.detailDesc:SetText(row.description ~= "" and row.description or "No description available.")
+        mainFrame.detailReason:SetText(row.reason or "")
+    end
 end
 
 local function UpdateRows()
@@ -277,7 +399,11 @@ local function UpdateRows()
     local startIndex = (state.page - 1) * ROWS_PER_PAGE + 1
 
     mainFrame.points:SetText("Hybrid points: " .. state.available .. " available / " .. state.earned .. " earned")
-    mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.minLevel .. "  +" .. state.pointsPerInterval .. " point / " .. state.interval .. " levels  Max " .. state.maxPoints)
+    if state.mode == "talents" then
+        mainFrame.status:SetText("Talent browsing only")
+    else
+        mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.minLevel .. "  +" .. state.pointsPerInterval .. " point / " .. state.interval .. " levels  Max " .. state.maxPoints)
+    end
     mainFrame.page:SetText("Page " .. state.page .. " / " .. pageCount)
 
     for rowIndex = 1, ROWS_PER_PAGE do
@@ -288,19 +414,27 @@ local function UpdateRows()
         if data then
             button.icon:SetTexture(GetSpellIcon(data.spellId))
             button.name:SetText(data.name)
-            button.meta:SetText("Level " .. data.requiredLevel .. "  Cost " .. data.cost)
-            button.desc:SetText(data.description ~= "" and data.description or "No description available.")
-            button.reason:SetText(data.reason or "")
-
-            if data.known then
-                button.status:SetText("Known")
-                button.status:SetTextColor(0.25, 0.9, 0.35)
-            elseif data.canLearn then
-                button.status:SetText("Available")
-                button.status:SetTextColor(0.95, 0.82, 0.35)
+            if state.mode == "talents" then
+                button.meta:SetText(GetTalentTabName(data) .. "  Row " .. (data.row + 1) .. " Col " .. (data.col + 1))
+                button.desc:SetText("Rank " .. data.knownRank .. "/" .. data.maxRank)
+                button.reason:SetText(data.reason or "")
+                button.status:SetText("Browse")
+                button.status:SetTextColor(0.6, 0.8, 1)
             else
-                button.status:SetText("Locked")
-                button.status:SetTextColor(0.6, 0.6, 0.6)
+                button.meta:SetText("Level " .. data.requiredLevel .. "  Cost " .. data.cost)
+                button.desc:SetText(data.description ~= "" and data.description or "No description available.")
+                button.reason:SetText(data.reason or "")
+
+                if data.known then
+                    button.status:SetText("Known")
+                    button.status:SetTextColor(0.25, 0.9, 0.35)
+                elseif data.canLearn then
+                    button.status:SetText("Available")
+                    button.status:SetTextColor(0.95, 0.82, 0.35)
+                else
+                    button.status:SetText("Locked")
+                    button.status:SetTextColor(0.6, 0.6, 0.6)
+                end
             end
 
             button:Show()
@@ -310,7 +444,9 @@ local function UpdateRows()
     end
 
     if #rows == 0 then
-        if state.filter == "known" then
+        if state.mode == "talents" then
+            mainFrame.empty:SetText("No talents available for this class.")
+        elseif state.filter == "known" then
             mainFrame.empty:SetText("No known hybrid spells.")
         else
             mainFrame.empty:SetText("No spells available for this class.")
@@ -322,6 +458,7 @@ local function UpdateRows()
 
     UpdateClassButtons()
     UpdateFilterButtons()
+    UpdateModeButtons()
     UpdateDetails()
     UpdateMicroButton()
 end
@@ -346,6 +483,27 @@ local function AddSpell(parts)
     end
 end
 
+local function AddTalent(parts)
+    local classIndex = (tonumber(parts[5] or "0") or 0) + 1
+    local row = {
+        talentId = tonumber(parts[3] or "0") or 0,
+        spellId = tonumber(parts[4] or "0") or 0,
+        classIndex = classIndex,
+        tabPage = tonumber(parts[6] or "0") or 0,
+        row = tonumber(parts[7] or "0") or 0,
+        col = tonumber(parts[8] or "0") or 0,
+        maxRank = tonumber(parts[9] or "0") or 0,
+        knownRank = tonumber(parts[10] or "0") or 0,
+        name = parts[11] or "",
+        reason = parts[12] or "",
+    }
+
+    if row.talentId > 0 and row.spellId > 0 and CLASS_NAMES[classIndex] then
+        table.insert(state.talents, row)
+        state.byTalentClass[classIndex] = (state.byTalentClass[classIndex] or 0) + 1
+    end
+end
+
 local function HandleServerMessage(body)
     local parts = SplitTabs(body)
     if parts[1] ~= "HYUI" then
@@ -357,10 +515,14 @@ local function HandleServerMessage(body)
         state.spent = tonumber(parts[5] or "0") or 0
         state.available = tonumber(parts[6] or "0") or 0
         state.rows = {}
+        state.talents = {}
         state.byClass = {}
+        state.byTalentClass = {}
         state.loaded = false
     elseif parts[2] == "SPELL" then
         AddSpell(parts)
+    elseif parts[2] == "TALENT" then
+        AddTalent(parts)
     elseif parts[2] == "STATUS" then
         state.level = tonumber(parts[3] or "0") or 0
         state.minLevel = tonumber(parts[4] or "0") or 0
@@ -390,6 +552,12 @@ end
 local function OnSpellRowClick(self, mouseButton)
     local row = self.data
     if not row then
+        return
+    end
+
+    if state.mode == "talents" then
+        state.selectedTalent = row.talentId
+        UpdateDetails()
         return
     end
 
@@ -456,7 +624,7 @@ local function CreateSpellRow(parent, index)
             return
         end
 
-        ShowSpellTooltip(self, self.data)
+        ShowRowTooltip(self, self.data)
     end)
     row:SetScript("OnLeave", function()
         GameTooltip:Hide()
@@ -512,6 +680,22 @@ local function CreateMainFrame()
     mainFrame.searchLabel:SetPoint("BOTTOMLEFT", mainFrame.search, "TOPLEFT", 0, 2)
     mainFrame.searchLabel:SetText("Search")
 
+    for index, mode in ipairs(MODES) do
+        local button = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
+        SetFrameSize(button, 82, 22)
+        button:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 150 + ((index - 1) * 88), -18)
+        button:SetText(mode.label)
+        button.modeKey = mode.key
+        button:SetScript("OnClick", function(self)
+            state.mode = self.modeKey
+            state.page = 1
+            state.selectedSpell = nil
+            state.selectedTalent = nil
+            UpdateRows()
+        end)
+        modeButtons[index] = button
+    end
+
     for index, filter in ipairs(FILTERS) do
         local button = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
         SetFrameSize(button, 76, 22)
@@ -557,7 +741,7 @@ local function CreateMainFrame()
     mainFrame.detailIconHit:SetPoint("CENTER", mainFrame.detailIcon, "CENTER", 0, 0)
     mainFrame.detailIconHit:EnableMouse(true)
     mainFrame.detailIconHit:SetScript("OnEnter", function(self)
-        ShowSpellTooltip(self, GetSelectedRow())
+        ShowRowTooltip(self, GetSelectedRow())
     end)
     mainFrame.detailIconHit:SetScript("OnLeave", function()
         GameTooltip:Hide()
