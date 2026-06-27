@@ -1,0 +1,36 @@
+diff --git a/src/server/game/Entities/Pet/Pet.cpp b/src/server/game/Entities/Pet/Pet.cpp
+--- a/src/server/game/Entities/Pet/Pet.cpp
++++ b/src/server/game/Entities/Pet/Pet.cpp
+@@ -445,6 +445,32 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
+ 
+         CleanupActionBar();                                     // remove unknown spells from action bar after load
+ 
++        if (getPetType() == HUNTER_PET && owner->HasSpell(1515))
++        {
++            bool hasCommandSlots = false;
++            for (uint8 i = ACTION_BAR_INDEX_START; i < ACTION_BAR_INDEX_PET_SPELL_START; ++i)
++                if (UnitActionBarEntry const* ab = m_charmInfo->GetActionBarEntry(i))
++                    if (ab->GetAction())
++                    {
++                        hasCommandSlots = true;
++                        break;
++                    }
++
++            if (!hasCommandSlots)
++            {
++                m_charmInfo->InitPetActionBar();
++                for (PetSpellMap::const_iterator itr = m_spells.begin(); itr != m_spells.end(); ++itr)
++                {
++                    if (itr->second.state == PETSPELL_REMOVED)
++                        continue;
++
++                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
++                    if (spellInfo && !spellInfo->IsPassive())
++                        m_charmInfo->AddSpellToActionBar(spellInfo, itr->second.active);
++                }
++            }
++        }
++
+         LOG_DEBUG("entities.pet", "New Pet has {}", GetGUID().ToString());
+ 
+         owner->PetSpellInitialize();
