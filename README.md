@@ -1,12 +1,13 @@
 # AzerothCore Hybrid Lab
 
-Personal AzerothCore lab for building a WotLK 3.3.5a private server with optional module profiles, NPC-driven quality-of-life systems, and an Ascension-inspired Hybrid Talent System.
+Personal AzerothCore lab for building a WotLK 3.3.5a private server with optional module profiles, NPC-driven quality-of-life systems, and an Ascension-inspired Hybrid spell/talent progression system.
 
 This repo owns the custom work:
 
 - `modules/mod-hybrid-talent-system`
 - `modules/mod-profession-master`
 - `modules/mod-startup-qol`
+- `client-addons/HybridTalentUI`
 - `patches/core` AzerothCore source patches
 - WSL2/Docker installer scripts
 - Module management scripts
@@ -16,14 +17,18 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 
 ## Features
 
-- **Hybrid Talent System**: NPC-first cross-class spell learning unlocked at level 10, with configurable point costs, gold reset cost, automatic spell rank upgrades, action-bar preservation for learned hybrid spells, selected pet-buff mirroring, and a summon beacon item.
-- **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item.
+- **HybridTalentUI addon**: Addon-first cross-class spell and talent interface inspired by Project Ascension. It opens from a movable microbar button, supports spell/talent tabs, class browsing, search, availability filters, icons, and in-game tooltip descriptions.
+- **Hybrid spell learning**: Cross-class spell learning unlocks at level 10, uses configurable hybrid spell points, supports left-click learning and right-click unlearning, refunds points correctly, preserves learned spells through relog, upgrades ranks automatically, and restores learned spell action buttons where possible.
+- **Hybrid talent browsing and learning**: Cross-class talent browsing is available in the same UI with separate hybrid talent points, tooltip descriptions, learn/unlearn support, relog persistence, and dependency checks such as requiring Charge before Improved Charge.
+- **Cross-class hunter pet support**: Hybrid Hunter support includes Tame Beast dependency grants, Mend/Call/Dismiss/Revive/Feed/Beast Training support, non-Hunter pet taming, pet persistence, pet action bar restoration, pet spellbook tab support, and pet autocast persistence.
+- **Retired Hybrid trainer/beacon path on this branch**: The legacy Hybrid Talent Master NPC and Hybrid Talent Beacon have been disabled/removed in the dev build. Hybrid progression now flows through the addon and `/hybridui` command path.
+- **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item. This NPC remains active.
 - **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, and an optional equipment-proficiency override for hybrid gearing.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Hybrid equipment proficiency**: Core patch that lets weapon and armor equipment bypass normal class/proficiency restrictions while preserving race, faction, level, reputation, and profession gates.
-- **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot, set up custom trainer NPC templates, and rebuild Docker services.
-- **Supported module set**: Hybrid Talent System, Profession Master, Startup QoL, Auction House Bot, Transmog, and Auto Learn Spells.
-- **Safer install directories**: Hybrid installs use `-hybrid` directory names such as `wow-server-playerbots-hybrid` so testing does not collide with existing server installs.
+- **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot/Playerbots, set up custom NPC templates, import addon-backed Hybrid SQL, and rebuild Docker services.
+- **Supported module set**: Hybrid Talent System, Profession Master, Startup QoL, Auction House Bot, Transmog, Auto Learn Spells, and Playerbots.
+- **Safer install directories**: Hybrid installs use `-hybrid` and `-hybrid-dev` directory names so development testing does not collide with stable server installs.
 - **Pacific server time**: Docker source-build profiles set `TZ=America/Los_Angeles` for `ac-worldserver` so in-game day/night follows Pacific Time instead of UTC.
 
 ## Profiles
@@ -65,27 +70,41 @@ After installation, use:
 
 The Playerbots setup step writes `playerbots.conf` and tunes the random bot population to `1500` online bots.
 
+## Development Branch State
+
+This branch, `codex/hybrid-talents-ui`, is the active development build for the addon-first Hybrid spell/talent project. The stable production branch remains `main`; use a separate development server directory such as `~/wow-server-playerbots-hybrid-dev` and a separate client copy such as `C:\Games\WoW-3.3.5a-HD-Dev` when testing this branch.
+
+The current development direction is to make the addon the main user experience for hybrid progression while keeping the server module responsible for validation, persistence, point accounting, dependency grants, and cross-class engine support.
+
 ## Startup QoL
 
 Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those hybrid proficiencies are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
 
-## Custom NPCs
+## Custom NPCs and Addon Access
 
-- Hybrid trainer: `190010`, `Hybrid Talent Master`, script `npc_hybrid_talent_master`
+Hybrid spell/talent access is now addon-first on this branch:
+
+- Hybrid UI addon: `client-addons/HybridTalentUI`
+- In-game command path: `/hybridui`
+- Legacy Hybrid trainer: `190010`, `Hybrid Talent Master`, retired on this branch
+- Legacy Hybrid beacon item: `1915`, `Hybrid Talent Beacon`, retired on this branch
+
+Profession Master remains NPC/beacon based:
+
 - Profession trainer: `190020`, `Artisan Nexus-Weaver`, script `npc_profession_master`
-- Hybrid beacon item: `1915`, `Hybrid Talent Beacon`
 - Profession beacon item: `3500`, `Profession Master Beacon`
 
-The setup commands create or normalize the database templates and beacon items. Beacon items are granted on login by default and summon temporary trainers near the player. You can still choose permanent in-game placement with GM commands such as:
+The Hybrid setup step imports addon-backed Hybrid SQL and removes old Hybrid beacon/trainer access. The Profession Master setup step still creates or normalizes the Profession Master template. You can place the Profession Master permanently with:
 
 ```text
-.npc add 190010
 .npc add 190020
 ```
 
 ## Current Status
 
-The repo is an active MVP lab. The Hybrid Talent System and Profession Master are playable and being tested through normal progression. The next larger design phase is cross-class talent support with a more visual talent browsing experience.
+The dev branch is playable and being tested through normal progression. Confirmed areas include Hybrid spell learning/unlearning, Hybrid talent learning/unlearning, point spending/refunds, relog persistence, spell/talent tooltips, class browsing, dependency checks, cross-class Hunter pet taming, pet action bars, pet spellbook tab support, and pet autocast persistence.
+
+Known near-term development areas include broader class-by-class balance testing, additional dependency rules, talent progression tuning, pet talent edge cases, and continued UI polish.
 
 ## References
 
