@@ -37,5 +37,16 @@ HybridTalentSystem.RestoreOnLogin = 1
 # player's level on login and level-up.
 HybridTalentSystem.AutoUpgradeRanks = 1
 
+# Mirror selected self-cast friendly buff spell families onto the player's
+# active pet. This supports hybrid builds that use hunter beasts or warlock
+# demons.
+HybridTalentSystem.MirrorPetBuffs = 1
+
+# Comma-separated spell IDs to mirror to pets. Only the first rank of each
+# spell family is required; higher ranks are matched automatically.
+# Defaults include Fortitude, Spirit, Shadow Protection, Arcane Intellect,
+# Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift, and Thorns.
+HybridTalentSystem.PetBuffSpellIds = "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"
+
 # Learn synergy reward spells when requirements are met.
 HybridTalentSystem.EnableSynergies = 1

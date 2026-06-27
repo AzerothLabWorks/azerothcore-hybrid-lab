@@ -29,7 +29,7 @@ Codex on this machine runs shell commands through a sandbox Windows account and 
 ## Stable Server Features
 
 - Playerbots profile with grouping behavior tuning and `1500` configured online random bots.
-- Hybrid Talent System with cross-class spell learning, descriptions, auto-rank upgrades, action-bar preservation, beacons, single-spell unlearning, and full reset.
+- Hybrid Talent System with cross-class spell learning, descriptions, auto-rank upgrades, action-bar preservation, selected pet-buff mirroring for demons/beasts, beacons, single-spell unlearning, and full reset.
 - Profession Master with beacon item.
 - AHBot setup automation.
 - Transmog and Auto Learn Spells modules.

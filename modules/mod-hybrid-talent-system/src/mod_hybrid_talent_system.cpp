@@ -8,19 +8,25 @@
 #include "Item.h"
 #include "ItemScript.h"
 #include "Log.h"
+#include "Pet.h"
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
+#include "Spell.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "WorldScript.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
+#include <exception>
 #include <map>
 #include <set>
+#include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -68,6 +74,8 @@ namespace
     bool RestoreOnLogin = true;
     bool EnableSynergies = true;
     bool AutoUpgradeRanks = true;
+    bool MirrorPetBuffs = true;
+    std::unordered_set<uint32> PetBuffSpellIds;
 
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
@@ -181,6 +189,59 @@ namespace
     bool IsSameSpellChain(uint32 leftSpellId, uint32 rightSpellId)
     {
         return GetFirstRankSpellId(leftSpellId) == GetFirstRankSpellId(rightSpellId);
+    }
+
+    std::unordered_set<uint32> ParseSpellIdSet(std::string const& value)
+    {
+        std::unordered_set<uint32> spellIds;
+        std::stringstream stream(value);
+        std::string token;
+
+        while (std::getline(stream, token, ','))
+        {
+            token.erase(std::remove_if(token.begin(), token.end(), [](unsigned char c) { return std::isspace(c); }), token.end());
+            if (token.empty())
+                continue;
+
+            try
+            {
+                spellIds.insert(static_cast<uint32>(std::stoul(token)));
+            }
+            catch (std::exception const&)
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid pet buff spell id '{}' in HybridTalentSystem.PetBuffSpellIds.", token);
+            }
+        }
+
+        return spellIds;
+    }
+
+    bool IsPetBuffSpell(uint32 spellId)
+    {
+        return PetBuffSpellIds.count(spellId) != 0 || PetBuffSpellIds.count(GetFirstRankSpellId(spellId)) != 0;
+    }
+
+    void MirrorBuffToPet(Player* player, Spell* spell)
+    {
+        if (!Enabled || !MirrorPetBuffs || !player || !spell)
+            return;
+
+        SpellInfo const* spellInfo = spell->GetSpellInfo();
+        if (!spellInfo || !IsPetBuffSpell(spellInfo->Id))
+            return;
+
+        Unit* target = spell->m_targets.GetUnitTarget();
+        if (target && target != player)
+            return;
+
+        Pet* pet = player->GetPet();
+        if (!pet || !pet->IsAlive())
+            return;
+
+        if (pet->HasAura(spellInfo->Id))
+            return;
+
+        player->CastSpell(pet, spellInfo->Id, true);
     }
 
     bool HasHybridSpellInChain(ObjectGuid::LowType guid, uint32 spellId)
@@ -626,6 +687,9 @@ namespace
         RestoreOnLogin = sConfigMgr->GetOption<bool>("HybridTalentSystem.RestoreOnLogin", true);
         EnableSynergies = sConfigMgr->GetOption<bool>("HybridTalentSystem.EnableSynergies", true);
         AutoUpgradeRanks = sConfigMgr->GetOption<bool>("HybridTalentSystem.AutoUpgradeRanks", true);
+        MirrorPetBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorPetBuffs", true);
+        PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
+            "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
     }
 
     void EnsureCharacterTables()
@@ -1069,7 +1133,7 @@ public:
 class HybridTalentPlayerScript : public PlayerScript
 {
 public:
-    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEVEL_CHANGED, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_SAVE }) { }
+    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEVEL_CHANGED, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_SAVE, PLAYERHOOK_ON_SPELL_CAST }) { }
 
     void OnPlayerLogin(Player* player) override
     {
@@ -1102,6 +1166,11 @@ public:
     {
         if (Enabled)
             SaveHybridActionButtons(player);
+    }
+
+    void OnPlayerSpellCast(Player* player, Spell* spell, bool /*skipCheck*/) override
+    {
+        MirrorBuffToPet(player, spell);
     }
 };
 

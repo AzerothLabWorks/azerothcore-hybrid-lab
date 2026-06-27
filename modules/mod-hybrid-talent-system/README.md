@@ -12,6 +12,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
 - Players can unlearn individual hybrid spells from the trainer to refund only that spell's points.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
+- Selected self-cast buffs can mirror onto active hunter pets and warlock demons.
 - Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
 - `Hybrid Talent Beacon` item can summon a temporary trainer near the player.
 
@@ -46,6 +47,12 @@ You can also change `HybridTalentSystem.TrainerNpcEntry` in the config if you wa
 The world SQL creates item `1915`, `Hybrid Talent Beacon`, with `ScriptName` set to `item_hybrid_talent_beacon`.
 
 By default, the module grants the item to players on login. Using the item summons a temporary Hybrid Talent Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
+
+## Pet Buff Mirroring
+
+When `HybridTalentSystem.MirrorPetBuffs` is enabled, selected self-cast friendly buff spell families also apply to the player's active pet. This is meant for hybrid builds using warlock demons or hunter beasts.
+
+The default `HybridTalentSystem.PetBuffSpellIds` list includes common buff families such as Power Word: Fortitude, Divine Spirit, Shadow Protection, Arcane Intellect, Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift of the Wild, and Thorns. Add only the first rank of a spell family; higher ranks are matched automatically.
 
 ## Admin Commands
 
