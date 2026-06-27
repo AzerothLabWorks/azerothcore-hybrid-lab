@@ -176,6 +176,45 @@ local function Print(message)
     end
 end
 
+local function FormatBoolean(value)
+    if value then
+        return "yes"
+    end
+
+    return "no"
+end
+
+local function DebugPetActions()
+    Print("pet exists: " .. FormatBoolean(UnitExists and UnitExists("pet")) .. ", name: " .. tostring(UnitName and UnitName("pet") or "none"))
+
+    if HasPetSpells then
+        Print("HasPetSpells: " .. tostring(HasPetSpells()))
+    else
+        Print("HasPetSpells API is unavailable.")
+    end
+
+    if GetNumSpellTabs then
+        Print("spellbook tabs: " .. tostring(GetNumSpellTabs()))
+    end
+
+    if not GetPetActionInfo then
+        Print("GetPetActionInfo API is unavailable.")
+        return
+    end
+
+    for slot = 1, 10 do
+        local name, subtext, texture, isToken, isActive, autoCastAllowed, autoCastEnabled = GetPetActionInfo(slot)
+        Print("pet slot " .. slot
+            .. ": name=" .. tostring(name)
+            .. ", subtext=" .. tostring(subtext)
+            .. ", texture=" .. tostring(texture)
+            .. ", token=" .. tostring(isToken)
+            .. ", active=" .. tostring(isActive)
+            .. ", autoAllowed=" .. tostring(autoCastAllowed)
+            .. ", autoOn=" .. tostring(autoCastEnabled))
+    end
+end
+
 local function SetFrameSize(frame, width, height)
     frame:SetWidth(width)
     frame:SetHeight(height)
@@ -903,6 +942,23 @@ local function HandleSlash(input)
     spellId = string.match(input, "^unlearn%s+(%d+)$")
     if spellId then
         SendCommand("hybridui unlearn " .. spellId)
+        return
+    end
+
+    if input == "petdebug" or input == "pet debug" then
+        DebugPetActions()
+        return
+    end
+
+    local petSlot = string.match(input, "^petcast%s+(%d+)$")
+    if petSlot then
+        petSlot = tonumber(petSlot)
+        if CastPetAction and petSlot and petSlot >= 1 and petSlot <= 10 then
+            CastPetAction(petSlot)
+            Print("requested pet action slot " .. petSlot)
+        else
+            Print("pet action slot must be 1-10.")
+        end
         return
     end
 
