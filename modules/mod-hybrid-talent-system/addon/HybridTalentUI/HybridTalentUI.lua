@@ -912,6 +912,47 @@ local function ToggleMainFrame()
     end
 end
 
+local function EnsureSavedVariables()
+    HybridTalentUIDB = HybridTalentUIDB or {}
+    HybridTalentUIDB.openButton = HybridTalentUIDB.openButton or {}
+end
+
+local function PositionOpenButton(useDefault)
+    if not openButton then
+        return
+    end
+
+    EnsureSavedVariables()
+    openButton:ClearAllPoints()
+
+    local pos = HybridTalentUIDB.openButton
+    if not useDefault and pos.point and pos.relativePoint and pos.x and pos.y then
+        openButton:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
+    else
+        openButton:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -430, 116)
+    end
+end
+
+local function SaveOpenButtonPosition()
+    if not openButton then
+        return
+    end
+
+    EnsureSavedVariables()
+    local point, _, relativePoint, x, y = openButton:GetPoint(1)
+    HybridTalentUIDB.openButton.point = point
+    HybridTalentUIDB.openButton.relativePoint = relativePoint
+    HybridTalentUIDB.openButton.x = x
+    HybridTalentUIDB.openButton.y = y
+end
+
+local function ResetOpenButtonPosition()
+    EnsureSavedVariables()
+    HybridTalentUIDB.openButton = {}
+    PositionOpenButton(true)
+    Print("Hybrid button position reset.")
+end
+
 local function CreateOpenButton()
     if openButton then
         return
@@ -920,14 +961,30 @@ local function CreateOpenButton()
     openButton = CreateFrame("Button", "HybridTalentUIMicroButton", UIParent, "UIPanelButtonTemplate")
     SetFrameSize(openButton, 64, 22)
     openButton:SetText("Hybrid")
+    openButton:SetMovable(true)
+    openButton:EnableMouse(true)
+    openButton:SetClampedToScreen(true)
+    openButton:RegisterForDrag("LeftButton")
 
-    if CharacterMicroButton then
-        openButton:SetPoint("LEFT", CharacterMicroButton, "RIGHT", 4, 0)
-    else
-        openButton:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 8, -8)
-    end
+    PositionOpenButton(false)
 
     openButton:SetScript("OnClick", ToggleMainFrame)
+    openButton:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    openButton:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        SaveOpenButtonPosition()
+    end)
+    openButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Hybrid Training")
+        GameTooltip:AddLine("Click to open. Drag to move.", 0.6, 0.8, 1)
+        GameTooltip:Show()
+    end)
+    openButton:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 end
 
 local function HandleSlash(input)
@@ -947,6 +1004,11 @@ local function HandleSlash(input)
 
     if input == "petdebug" or input == "pet debug" then
         DebugPetActions()
+        return
+    end
+
+    if input == "resetbutton" or input == "reset button" then
+        ResetOpenButtonPosition()
         return
     end
 
