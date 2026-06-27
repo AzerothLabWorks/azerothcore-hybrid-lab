@@ -934,6 +934,92 @@ namespace
         return text;
     }
 
+    bool StartsWithIgnoreCase(std::string const& text, std::string const& prefix)
+    {
+        if (text.length() < prefix.length())
+            return false;
+
+        for (std::size_t index = 0; index < prefix.length(); ++index)
+            if (std::tolower(static_cast<unsigned char>(text[index])) != std::tolower(static_cast<unsigned char>(prefix[index])))
+                return false;
+
+        return true;
+    }
+
+    bool EqualsIgnoreCase(std::string const& left, std::string const& right)
+    {
+        if (left.length() != right.length())
+            return false;
+
+        for (std::size_t index = 0; index < left.length(); ++index)
+            if (std::tolower(static_cast<unsigned char>(left[index])) != std::tolower(static_cast<unsigned char>(right[index])))
+                return false;
+
+        return true;
+    }
+
+    bool GetTalentRequiredHybridSpell(TalentEntry const* talentInfo, TalentTabEntry const* talentTabInfo, uint32& requiredSpellId, std::string& requiredSpellName)
+    {
+        requiredSpellId = 0;
+        requiredSpellName.clear();
+
+        if (!talentInfo || !talentTabInfo || !talentInfo->RankID[0])
+            return false;
+
+        SpellInfo const* talentSpellInfo = sSpellMgr->GetSpellInfo(talentInfo->RankID[0]);
+        if (!talentSpellInfo)
+            return false;
+
+        std::string talentName = talentSpellInfo->SpellName[0];
+        std::string const improvedPrefix = "Improved ";
+        if (!StartsWithIgnoreCase(talentName, improvedPrefix))
+            return false;
+
+        std::string baseSpellName = talentName.substr(improvedPrefix.length());
+        if (baseSpellName.empty())
+            return false;
+
+        for (auto const& pair : SpellTemplates)
+        {
+            HybridSpellTemplate const& templ = pair.second;
+            if (templ.ClassMask != talentTabInfo->ClassMask)
+                continue;
+
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(templ.SpellId);
+            if (!spellInfo)
+                continue;
+
+            if (!EqualsIgnoreCase(spellInfo->SpellName[0], baseSpellName))
+                continue;
+
+            requiredSpellId = templ.SpellId;
+            requiredSpellName = spellInfo->SpellName[0];
+            return true;
+        }
+
+        return false;
+    }
+
+    bool PlayerMeetsTalentSpellRequirement(Player const* player, TalentEntry const* talentInfo, TalentTabEntry const* talentTabInfo, std::string* missingReason = nullptr)
+    {
+        if (!player)
+            return false;
+
+        uint32 requiredSpellId = 0;
+        std::string requiredSpellName;
+        if (!GetTalentRequiredHybridSpell(talentInfo, talentTabInfo, requiredSpellId, requiredSpellName))
+            return true;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        if (HasHybridSpellInChain(guid, requiredSpellId) || PlayerHasSpellInChain(player, requiredSpellId))
+            return true;
+
+        if (missingReason)
+            *missingReason = "Requires " + requiredSpellName;
+
+        return false;
+    }
+
     uint32 GetHybridClassIndexForMask(uint32 classMask)
     {
         for (uint32 classIndex = 0; classIndex < HybridClasses.size(); ++classIndex)
@@ -1198,8 +1284,10 @@ namespace
 
             bool levelBlocked = player->GetLevel() < TalentMinLevel;
             bool maxed = knownRank >= maxRank;
+            std::string requirementReason;
+            bool requirementBlocked = !PlayerMeetsTalentSpellRequirement(player, talentInfo, talentTabInfo, &requirementReason);
             bool pointsBlocked = talentAvailable < 1;
-            bool canLearn = !baseClassBlocked && !levelBlocked && !maxed && !pointsBlocked;
+            bool canLearn = !baseClassBlocked && !levelBlocked && !maxed && !requirementBlocked && !pointsBlocked;
             std::string reason;
 
             if (baseClassBlocked)
@@ -1208,6 +1296,8 @@ namespace
                 reason = "Max rank";
             else if (levelBlocked)
                 reason = "Requires level " + std::to_string(TalentMinLevel);
+            else if (requirementBlocked)
+                reason = requirementReason;
             else if (pointsBlocked)
                 reason = "Needs 1 talent point";
             else
@@ -1471,6 +1561,13 @@ namespace
         if (currentRank >= maxRank)
         {
             ChatHandler(player->GetSession()).PSendSysMessage("That hybrid talent is already at maximum rank.");
+            return false;
+        }
+
+        std::string requirementReason;
+        if (!PlayerMeetsTalentSpellRequirement(player, talentInfo, talentTabInfo, &requirementReason))
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You do not meet the requirements for that hybrid talent: {}.", requirementReason);
             return false;
         }
 
