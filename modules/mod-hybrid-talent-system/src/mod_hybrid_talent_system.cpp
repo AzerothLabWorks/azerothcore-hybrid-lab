@@ -75,7 +75,7 @@ namespace
     constexpr uint32 LegacyBeaconItemEntry2 = 65010;
     constexpr uint32 LegacyBeaconItemEntry3 = 1854;
     uint32 BeaconItemEntry = 1915;
-    bool GrantBeaconOnLogin = true;
+    bool GrantBeaconOnLogin = false;
     uint32 BeaconSummonDurationSeconds = 300;
     bool RestoreOnLogin = true;
     bool EnableSynergies = true;
@@ -2267,7 +2267,5 @@ void AddHybridTalentSystemScripts()
 {
     new HybridTalentWorldScript();
     new HybridTalentPlayerScript();
-    new HybridTalentTrainerScript();
-    new HybridTalentBeaconItemScript();
     new HybridTalentCommandScript();
 }

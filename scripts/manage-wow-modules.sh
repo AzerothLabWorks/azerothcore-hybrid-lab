@@ -19,7 +19,7 @@ Commands:
   apply-core-patches    Apply Hybrid Lab AzerothCore core patches.
   setup-ahbot           Create/update AHBot account, owner character, and config.
   setup-playerbots      Install Playerbots config and tune random bot population.
-  setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
+  setup-hybrid          Install Hybrid config and import addon-backed Hybrid SQL.
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
   setup-startup-qol    Install Startup QoL config.
@@ -349,30 +349,28 @@ setup_hybrid() {
   log "Ensuring Hybrid SQL has been imported..."
   import_module_sql hybrid
 
-  log "Normalizing Hybrid trainer creature_template entry 190010..."
+  log "Retiring legacy Hybrid trainer/beacon access path..."
   mysql_query acore_world "
+DELETE FROM creature WHERE id = 190010;
 UPDATE creature_template
 SET
-  npcflag = 1,
+  npcflag = 0,
   gossip_menu_id = 0,
-  faction = 35,
-  \`rank\` = 0,
-  unit_flags = 0,
-  unit_flags2 = 0,
-  dynamicflags = 0,
-  type_flags = 0,
-  flags_extra = 0,
   AIName = '',
-  ScriptName = 'npc_hybrid_talent_master'
+  ScriptName = ''
 WHERE entry = 190010;
+DELETE FROM item_template WHERE entry = 1915;
 "
 
-  local script_name
-  script_name="$(mysql_query acore_world "SELECT ScriptName FROM creature_template WHERE entry = 190010;" | tr -d '\r')"
-  [[ "$script_name" == "npc_hybrid_talent_master" ]] || die "Hybrid trainer entry 190010 was not found or could not be updated."
+  mysql_query acore_characters "
+DELETE ci FROM character_inventory ci
+JOIN item_instance ii ON ii.guid = ci.item
+WHERE ii.itemEntry = 1915;
+DELETE FROM item_instance WHERE itemEntry = 1915;
+"
 
-  log "Hybrid setup complete."
-  log "Restart ac-worldserver, then delete and respawn the trainer if it was already spawned."
+  log "Hybrid setup complete. Use the HybridTalentUI addon/microbar button for spells and talents."
+
 }
 
 setup_profession_master() {
@@ -482,7 +480,7 @@ import_module_sql() {
       */sql/auth/*|*/sql/db_auth/*|*/sql/db-auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
       *) warn "Skipping SQL with unknown target: $sql_file" ;;
     esac
-  done < <(find "$module_dir/sql" -type f -name '*.sql' -print0 2>/dev/null || true)
+  done < <(find "$module_dir/sql" -type f -name '*.sql' -print0 2>/dev/null | sort -z || true)
 
   while IFS= read -r -d '' sql_file; do
     case "$sql_file" in
@@ -491,7 +489,7 @@ import_module_sql() {
       */data/sql/db-auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
       *) warn "Skipping SQL with unknown target: $sql_file" ;;
     esac
-  done < <(find "$module_dir/data/sql" -type f -name '*.sql' -print0 2>/dev/null || true)
+  done < <(find "$module_dir/data/sql" -type f -name '*.sql' -print0 2>/dev/null | sort -z || true)
 
   if [[ "$applied" == false ]]; then
     warn "No SQL files applied for $name."

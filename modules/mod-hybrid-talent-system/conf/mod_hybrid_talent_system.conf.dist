@@ -40,7 +40,7 @@ HybridTalentSystem.TrainerNpcEntry = 190010
 
 # Optional quality-of-life item that summons the Hybrid Talent Master near the player.
 HybridTalentSystem.BeaconItemEntry = 1915
-HybridTalentSystem.GrantBeaconOnLogin = 1
+HybridTalentSystem.GrantBeaconOnLogin = 0
 HybridTalentSystem.BeaconSummonDurationSeconds = 300
 
 # Restore persisted hybrid spells when players and playerbots log in.
