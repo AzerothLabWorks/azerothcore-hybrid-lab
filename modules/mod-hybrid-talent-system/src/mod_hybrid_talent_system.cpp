@@ -82,6 +82,7 @@ namespace
     bool AutoUpgradeRanks = true;
     bool MirrorPetBuffs = true;
     std::unordered_set<uint32> PetBuffSpellIds;
+    std::map<uint32, std::set<uint32>> SpellDependencyGrants;
 
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
@@ -249,6 +250,59 @@ namespace
         return spellIds;
     }
 
+    std::map<uint32, std::set<uint32>> ParseSpellDependencyGrantMap(std::string const& value)
+    {
+        std::map<uint32, std::set<uint32>> dependencyGrants;
+        std::stringstream entryStream(value);
+        std::string entry;
+
+        while (std::getline(entryStream, entry, ';'))
+        {
+            entry.erase(std::remove_if(entry.begin(), entry.end(), [](unsigned char c) { return std::isspace(c); }), entry.end());
+            if (entry.empty())
+                continue;
+
+            std::size_t separator = entry.find(':');
+            if (separator == std::string::npos || separator == 0 || separator + 1 >= entry.length())
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency grant entry '{}'. Expected trigger:grant,grant.", entry);
+                continue;
+            }
+
+            uint32 triggerSpellId = 0;
+            try
+            {
+                triggerSpellId = static_cast<uint32>(std::stoul(entry.substr(0, separator)));
+            }
+            catch (std::exception const&)
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency trigger in '{}'.", entry);
+                continue;
+            }
+
+            std::stringstream grantStream(entry.substr(separator + 1));
+            std::string grantToken;
+            while (std::getline(grantStream, grantToken, ','))
+            {
+                if (grantToken.empty())
+                    continue;
+
+                try
+                {
+                    uint32 grantSpellId = static_cast<uint32>(std::stoul(grantToken));
+                    if (grantSpellId)
+                        dependencyGrants[triggerSpellId].insert(grantSpellId);
+                }
+                catch (std::exception const&)
+                {
+                    LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency grant '{}' in '{}'.", grantToken, entry);
+                }
+            }
+        }
+
+        return dependencyGrants;
+    }
+
     bool IsPetBuffSpell(uint32 spellId)
     {
         return PetBuffSpellIds.count(spellId) != 0 || PetBuffSpellIds.count(GetFirstRankSpellId(spellId)) != 0;
@@ -319,6 +373,49 @@ namespace
     {
         CharacterDatabase.DirectExecute("DELETE FROM character_hybrid_spell WHERE guid = {}", guid);
         CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {}", guid);
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_spell_dependency WHERE guid = {}", guid);
+    }
+
+    bool IsHybridSpellDependencyGrantTracked(ObjectGuid::LowType guid, uint32 triggerSpellId, uint32 grantedSpellId)
+    {
+        QueryResult result = CharacterDatabase.Query("SELECT 1 FROM character_hybrid_spell_dependency WHERE guid = {} AND trigger_spell_id = {} AND granted_spell_id = {} LIMIT 1",
+            guid, triggerSpellId, grantedSpellId);
+        return !!result;
+    }
+
+    bool HasAnyHybridSpellDependencyGrant(ObjectGuid::LowType guid, uint32 grantedSpellId)
+    {
+        QueryResult result = CharacterDatabase.Query("SELECT 1 FROM character_hybrid_spell_dependency WHERE guid = {} AND granted_spell_id = {} LIMIT 1",
+            guid, grantedSpellId);
+        return !!result;
+    }
+
+    void SaveHybridSpellDependencyGrant(ObjectGuid::LowType guid, uint32 triggerSpellId, uint32 grantedSpellId)
+    {
+        CharacterDatabase.Execute("REPLACE INTO character_hybrid_spell_dependency (guid, trigger_spell_id, granted_spell_id) VALUES ({}, {}, {})",
+            guid, triggerSpellId, grantedSpellId);
+    }
+
+    void DeleteHybridSpellDependencyGrant(ObjectGuid::LowType guid, uint32 triggerSpellId, uint32 grantedSpellId)
+    {
+        CharacterDatabase.Execute("DELETE FROM character_hybrid_spell_dependency WHERE guid = {} AND trigger_spell_id = {} AND granted_spell_id = {}",
+            guid, triggerSpellId, grantedSpellId);
+    }
+
+    std::set<uint32> GetTrackedHybridSpellDependencyGrants(ObjectGuid::LowType guid, uint32 triggerSpellId)
+    {
+        std::set<uint32> grantedSpellIds;
+        QueryResult result = CharacterDatabase.Query("SELECT granted_spell_id FROM character_hybrid_spell_dependency WHERE guid = {} AND trigger_spell_id = {}",
+            guid, triggerSpellId);
+        if (!result)
+            return grantedSpellIds;
+
+        do
+        {
+            grantedSpellIds.insert((*result)[0].Get<uint32>());
+        } while (result->NextRow());
+
+        return grantedSpellIds;
     }
 
     uint8 GetSavedHybridTalentRank(ObjectGuid::LowType guid, uint32 talentId)
@@ -681,6 +778,101 @@ namespace
         return bestSpellId;
     }
 
+    uint32 GetDependencyTriggerSpellId(uint32 spellId)
+    {
+        for (auto const& pair : SpellDependencyGrants)
+            if (IsSameSpellChain(pair.first, spellId))
+                return pair.first;
+
+        return 0;
+    }
+
+    uint32 ApplyHybridSpellDependencyGrants(Player* player, uint32 spellId, bool announce)
+    {
+        if (!player)
+            return 0;
+
+        uint32 triggerSpellId = GetDependencyTriggerSpellId(spellId);
+        if (!triggerSpellId)
+            return 0;
+
+        auto itr = SpellDependencyGrants.find(triggerSpellId);
+        if (itr == SpellDependencyGrants.end())
+            return 0;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        std::vector<std::string> learnedNames;
+
+        for (uint32 grantedSpellId : itr->second)
+        {
+            if (!sSpellMgr->GetSpellInfo(grantedSpellId))
+            {
+                LOG_WARN("module.hybridtalents", "Hybrid dependency grant {} for trigger {} has no SpellInfo.", grantedSpellId, triggerSpellId);
+                continue;
+            }
+
+            bool tracked = IsHybridSpellDependencyGrantTracked(guid, triggerSpellId, grantedSpellId);
+            bool alreadyKnown = PlayerHasSpellInChain(player, grantedSpellId);
+            if (alreadyKnown && !tracked)
+                continue;
+
+            uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, grantedSpellId) : grantedSpellId;
+            if (!player->HasSpell(bestSpellId))
+            {
+                DeletePersistedHybridSpellRanks(guid, grantedSpellId);
+                player->learnSpell(bestSpellId, false);
+
+                if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(bestSpellId))
+                    learnedNames.push_back(spellInfo->SpellName[0]);
+            }
+
+            SaveHybridSpellDependencyGrant(guid, triggerSpellId, grantedSpellId);
+        }
+
+        if (announce && !learnedNames.empty())
+        {
+            std::string message = "Hybrid support learned: ";
+            for (std::size_t index = 0; index < learnedNames.size(); ++index)
+            {
+                if (index)
+                    message += ", ";
+                message += learnedNames[index];
+            }
+            message += ".";
+            ChatHandler(player->GetSession()).PSendSysMessage("{}", message);
+        }
+
+        return static_cast<uint32>(learnedNames.size());
+    }
+
+    void RemoveHybridSpellDependencyGrants(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return;
+
+        uint32 triggerSpellId = GetDependencyTriggerSpellId(spellId);
+        if (!triggerSpellId)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        std::set<uint32> grantedSpellIds = GetTrackedHybridSpellDependencyGrants(guid, triggerSpellId);
+
+        for (uint32 grantedSpellId : grantedSpellIds)
+        {
+            DeleteHybridSpellDependencyGrant(guid, triggerSpellId, grantedSpellId);
+
+            if (HasAnyHybridSpellDependencyGrant(guid, grantedSpellId))
+                continue;
+
+            if (HasHybridSpellInChain(guid, grantedSpellId))
+                continue;
+
+            RemoveHybridActionButtons(player, grantedSpellId);
+            RemoveHybridSpellRanks(player, grantedSpellId);
+            DeletePersistedHybridSpellRanks(guid, grantedSpellId);
+        }
+    }
+
     void ApplySynergies(Player* player)
     {
         if (!EnableSynergies || !player)
@@ -713,6 +905,7 @@ namespace
                 continue;
 
             LearnBestHybridSpellRank(player, spellId);
+            ApplyHybridSpellDependencyGrants(player, spellId, false);
         }
 
         ApplySynergies(player);
@@ -732,6 +925,7 @@ namespace
 
         for (uint32 spellId : spellIds)
         {
+            RemoveHybridSpellDependencyGrants(player, spellId);
             RemoveHybridActionButtons(player, spellId);
             RemoveHybridSpellRanks(player, spellId);
         }
@@ -774,6 +968,8 @@ namespace
         MirrorPetBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorPetBuffs", true);
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
+        SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
+            "1515:883,2641,982,6991,5149,1002"));
     }
 
     void EnsureCharacterTables()
@@ -791,6 +987,15 @@ namespace
             "`button` TINYINT UNSIGNED NOT NULL,"
             "`spell_id` INT UNSIGNED NOT NULL,"
             "PRIMARY KEY (`guid`, `spec`, `button`)"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        CharacterDatabase.Execute("CREATE TABLE IF NOT EXISTS `character_hybrid_spell_dependency` ("
+            "`guid` INT UNSIGNED NOT NULL,"
+            "`trigger_spell_id` INT UNSIGNED NOT NULL,"
+            "`granted_spell_id` INT UNSIGNED NOT NULL,"
+            "`learned_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "PRIMARY KEY (`guid`, `trigger_spell_id`, `granted_spell_id`),"
+            "KEY `idx_guid_granted_spell` (`guid`, `granted_spell_id`)"
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         CharacterDatabase.Execute("CREATE TABLE IF NOT EXISTS `character_hybrid_talent` ("
@@ -1525,6 +1730,7 @@ namespace
         }
 
         RemoveHybridActionButtons(player, spellId);
+        RemoveHybridSpellDependencyGrants(player, spellId);
         RemoveHybridSpellRanks(player, spellId);
         DeletePersistedHybridSpellRanks(guid, spellId);
         DeleteHybridSpell(guid, spellId);
@@ -1589,6 +1795,7 @@ namespace
 
         SaveHybridSpell(guid, spellId);
         uint32 learnedSpellId = LearnBestHybridSpellRank(player, spellId);
+        ApplyHybridSpellDependencyGrants(player, spellId, true);
         ApplySynergies(player);
         RestoreHybridActionButtons(player);
         ScheduleHybridActionRestore(player);

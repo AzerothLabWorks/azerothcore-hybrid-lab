@@ -68,6 +68,12 @@ When `HybridTalentSystem.MirrorPetBuffs` is enabled, selected self-cast friendly
 
 The default `HybridTalentSystem.PetBuffSpellIds` list includes common buff families such as Power Word: Fortitude, Divine Spirit, Shadow Protection, Arcane Intellect, Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift of the Wild, and Thorns. Add only the first rank of a spell family; higher ranks are matched automatically.
 
+## Spell Dependency Grants
+
+`HybridTalentSystem.SpellDependencyGrants` can grant support spells when a hybrid spell is learned. The default rule makes `Tame Beast` grant the hunter pet toolkit: Call Pet, Dismiss Pet, Revive Pet, Feed Pet, Beast Training, and Eye of the Beast.
+
+Dependency grants are tracked per character. When the trigger spell is unlearned or the hybrid build is reset, the module removes only support spells it granted and leaves pre-existing or separately learned spells alone.
+
 ## Admin Commands
 
 - `.hybrid reload` reloads config and DB templates.

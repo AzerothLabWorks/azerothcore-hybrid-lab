@@ -61,5 +61,12 @@ HybridTalentSystem.MirrorPetBuffs = 1
 # Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift, and Thorns.
 HybridTalentSystem.PetBuffSpellIds = "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"
 
+# Semicolon-separated dependency grant rules. Each rule is trigger:grant,grant.
+# When a hybrid spell is learned, listed support spells are learned for free and
+# tracked so they can be safely removed if the trigger spell is unlearned.
+# Default: Tame Beast grants Call Pet, Dismiss Pet, Revive Pet, Feed Pet,
+# Beast Training, and Eye of the Beast.
+HybridTalentSystem.SpellDependencyGrants = "1515:883,2641,982,6991,5149,1002"
+
 # Learn synergy reward spells when requirements are met.
 HybridTalentSystem.EnableSynergies = 1
