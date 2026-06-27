@@ -1,5 +1,5 @@
 diff --git a/src/server/game/Entities/Pet/Pet.cpp b/src/server/game/Entities/Pet/Pet.cpp
-index 2fa2c62..bed8dd2 100644
+index 2fa2c62..a442b38 100644
 --- a/src/server/game/Entities/Pet/Pet.cpp
 +++ b/src/server/game/Entities/Pet/Pet.cpp
 @@ -414,7 +414,7 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
@@ -11,12 +11,31 @@ index 2fa2c62..bed8dd2 100644
          (SQLQueryHolderBase const& holder)
      {
          if (session->GetPlayer() != owner || owner->GetPet() != this)
-@@ -445,6 +445,22 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
+@@ -445,6 +445,41 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
  
          CleanupActionBar();                                     // remove unknown spells from action bar after load
  
 +        if (getPetType() == HUNTER_PET && (owner->HasSpell(1515) || createdBySpell == 1515))
 +        {
++            if (QueryResult result = CharacterDatabase.Query("SELECT spell, active FROM pet_spell WHERE guid = {}", m_charmInfo->GetPetNumber()))
++            {
++                do
++                {
++                    Field* fields = result->Fetch();
++                    uint32 spellId = fields[0].Get<uint32>();
++                    ActiveStates active = ActiveStates(fields[1].Get<uint8>());
++
++                    if (!sSpellMgr->GetSpellInfo(spellId))
++                        continue;
++
++                    PetSpell petSpell;
++                    petSpell.state = PETSPELL_UNCHANGED;
++                    petSpell.type = PETSPELL_NORMAL;
++                    petSpell.active = active;
++                    m_spells[spellId] = petSpell;
++                } while (result->NextRow());
++            }
++
 +            m_charmInfo->InitPetActionBar();
 +
 +            uint8 petSpellSlot = ACTION_BAR_INDEX_PET_SPELL_START;
