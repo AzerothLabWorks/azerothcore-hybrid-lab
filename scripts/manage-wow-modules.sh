@@ -525,6 +525,30 @@ core_patch_already_present() {
       [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
       grep -q "CanUseHybridEquipmentSkillLine" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
       ;;
+    0005-hybrid-tame-beast-non-hunters.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/SpellEffects.cpp" ]] || return 1
+      grep -q "canHybridTame = m_spellInfo->Id == 1515" "$SERVER_DIR/src/server/game/Spells/SpellEffects.cpp"
+      ;;
+    0006-preserve-hybrid-managed-spells.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
+      grep -q "IsHybridManagedSpell" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
+      ;;
+    0007-hybrid-tame-beast-aura-completion.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/Auras/SpellAuraEffects.cpp" ]] || return 1
+      grep -q "Hybrid Tame Beast failed" "$SERVER_DIR/src/server/game/Spells/Auras/SpellAuraEffects.cpp"
+      ;;
+    0008-hybrid-hunter-pet-load.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp" ]] || return 1
+      grep -q "owner->ToPlayer()->HasSpell(1515)" "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp"
+      ;;
+    0009-hybrid-pet-action-bar-restore.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp" ]] || return 1
+      grep -q "ACTION_BAR_INDEX_PET_SPELL_START" "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp"
+      ;;
+    0010-hybrid-warrior-stance-requirements.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/SpellInfoCorrections.cpp" ]] || return 1
+      grep -q "let cross-class Warrior actives work without requiring Warrior stances" "$SERVER_DIR/src/server/game/Spells/SpellInfoCorrections.cpp"
+      ;;
     *)
       return 1
       ;;
