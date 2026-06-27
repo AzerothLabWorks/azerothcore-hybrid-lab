@@ -66,7 +66,7 @@ HybridTalentSystem.PetBuffSpellIds = "1243,21562,14752,27681,976,27683,1459,2302
 # tracked so they can be safely removed if the trigger spell is unlearned.
 # Default: Tame Beast grants Call Pet, Dismiss Pet, Revive Pet, Feed Pet,
 # Beast Training, and Eye of the Beast.
-HybridTalentSystem.SpellDependencyGrants = "1515:883,2641,982,6991,5149,1002"
+HybridTalentSystem.SpellDependencyGrants = "1515:883,2641,982,6991,5149,1002,136"
 
 # Learn synergy reward spells when requirements are met.
 HybridTalentSystem.EnableSynergies = 1

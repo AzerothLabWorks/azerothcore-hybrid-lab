@@ -557,6 +557,11 @@ namespace
             CharacterDatabase.Execute("DELETE FROM character_spell WHERE guid = {} AND spell = {}", guid, spellId);
     }
 
+    void PersistCharacterSpell(ObjectGuid::LowType guid, uint32 spellId)
+    {
+        CharacterDatabase.DirectExecute("REPLACE INTO character_spell (guid, spell, specMask) VALUES ({}, {}, {})", guid, spellId, SPEC_MASK_ALL);
+    }
+
     void UpdateHybridActionButtons(Player* player, uint32 spellId, uint32 bestSpellId)
     {
         if (!player)
@@ -767,11 +772,13 @@ namespace
 
         uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
 
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
         if (!player->HasSpell(bestSpellId))
         {
-            DeletePersistedHybridSpellRanks(player->GetGUID().GetCounter(), spellId);
+            DeletePersistedHybridSpellRanks(guid, spellId);
             player->learnSpell(bestSpellId, false);
         }
+        PersistCharacterSpell(guid, bestSpellId);
 
         UpdateHybridActionButtons(player, spellId, bestSpellId);
 
@@ -825,6 +832,7 @@ namespace
                 if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(bestSpellId))
                     learnedNames.push_back(spellInfo->SpellName[0]);
             }
+            PersistCharacterSpell(guid, bestSpellId);
 
             SaveHybridSpellDependencyGrant(guid, triggerSpellId, grantedSpellId);
         }
@@ -969,7 +977,7 @@ namespace
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
-            "1515:883,2641,982,6991,5149,1002"));
+            "1515:883,2641,982,6991,5149,1002,136"));
     }
 
     void EnsureCharacterTables()
