@@ -1,0 +1,14 @@
+diff --git a/src/server/game/Entities/Pet/Pet.cpp b/src/server/game/Entities/Pet/Pet.cpp
+index 23df0fa0f..2fa2c6236 100644
+--- a/src/server/game/Entities/Pet/Pet.cpp
++++ b/src/server/game/Entities/Pet/Pet.cpp
+@@ -1046,7 +1046,8 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
+                         owner->IsClass(CLASS_DEATH_KNIGHT, CLASS_CONTEXT_PET) ||    // Risen Ghoul
+                         owner->IsClass(CLASS_MAGE, CLASS_CONTEXT_PET))              // Water Elemental with glyph
+                     petType = SUMMON_PET;
+-                else if (owner->IsClass(CLASS_HUNTER, CLASS_CONTEXT_PET))
++                else if (owner->IsClass(CLASS_HUNTER, CLASS_CONTEXT_PET) ||
++                         (owner->IsPlayer() && owner->ToPlayer()->HasSpell(1515)))
+                 {
+                     petType = HUNTER_PET;
+                 }
