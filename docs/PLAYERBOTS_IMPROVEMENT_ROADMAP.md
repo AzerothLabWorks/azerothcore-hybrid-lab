@@ -34,11 +34,21 @@ The setup command now writes `playerbots.conf` and explicitly enables:
 - random bot LFG participation
 - instance strategy application
 - summon-on-group
+- role-biased tank/healer specs for dungeon queues
 - greetings
 - random bot talk
 - broadcasts
 
 The current Playerbots patch prevents bots from explicitly declining LFG proposals just because they are in combat or dead. This targets failed dungeon pops where one questing bot collapses the proposal for the whole group.
+
+The current setup also biases random bot specs toward dungeon viability:
+
+- warrior: more protection tanks
+- paladin: more holy/protection, fewer retribution
+- priest: more discipline/holy, fewer shadow
+- death knight: modestly more blood tanks
+- shaman: more restoration healers
+- druid: more bear/restoration, fewer balance/cat
 
 ### Diagnostics
 

@@ -340,8 +340,29 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.EnableBroadcasts" "1"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotSayWithoutMaster" "0"
 
+  # Bias random bot specs toward dungeon-viable LFG roles while keeping DPS variety.
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.1.0" "20"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.1.1" "25"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.1.2" "55"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.2.0" "40"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.2.1" "40"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.2.2" "20"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.5.0" "45"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.5.1" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.5.2" "20"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.6.0" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.6.1" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.6.2" "30"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.7.0" "25"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.7.1" "25"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.7.2" "50"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.0" "15"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.1" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.2" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.3" "15"
+
   log "Installed Playerbots config to $target_config"
-  log "Configured Playerbots random bot population, LFG participation, dungeon strategies, greetings, and broadcasts."
+  log "Configured Playerbots random bot population, LFG participation, dungeon strategies, role-biased specs, greetings, and broadcasts."
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
@@ -355,7 +376,7 @@ diagnose_playerbots_lfg() {
 
   log "Playerbots LFG-related config"
   if [[ -f "$config_file" ]]; then
-    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|EnableGreet|RandomBotTalk|EnableBroadcasts|RandomBotSayWithoutMaster)[[:space:]]*=" "$config_file" || true
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|EnableGreet|RandomBotTalk|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
   else
     warn "Could not find playerbots.conf. Run setup-playerbots first."
   fi
