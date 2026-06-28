@@ -1426,6 +1426,7 @@ namespace
         if (!player)
             return;
 
+        bool restored = false;
         std::map<uint32, uint8> talentRanks = GetKnownHybridTalentRanks(player->GetGUID().GetCounter());
         for (auto const& pair : talentRanks)
         {
@@ -1447,6 +1448,13 @@ namespace
 
             RemoveHybridTalentRanks(player, talentInfo);
             player->learnSpell(spellId, false);
+            restored = true;
+        }
+
+        if (restored)
+        {
+            RestoreHybridActionButtons(player);
+            player->SendActionButtons(1);
         }
     }
 
