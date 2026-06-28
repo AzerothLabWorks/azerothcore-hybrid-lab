@@ -675,7 +675,10 @@ namespace
         {
             ActionButton const* actionButton = player->GetActionButton(button);
             if (!actionButton)
+            {
+                CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, spec, button);
                 continue;
+            }
 
             if (actionButton->GetType() != ACTION_BUTTON_SPELL)
             {
