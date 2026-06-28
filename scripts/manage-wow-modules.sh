@@ -549,6 +549,10 @@ core_patch_already_present() {
       [[ -f "$SERVER_DIR/src/server/game/Spells/SpellInfoCorrections.cpp" ]] || return 1
       grep -q "let cross-class Warrior actives work without requiring Warrior stances" "$SERVER_DIR/src/server/game/Spells/SpellInfoCorrections.cpp"
       ;;
+    0011-preserve-hybrid-managed-action-buttons.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
+      grep -q "!HasSpell(action) && !IsHybridManagedSpell" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
+      ;;
     *)
       return 1
       ;;

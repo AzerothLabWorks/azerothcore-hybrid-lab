@@ -1,0 +1,12 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -5705,7 +5705,7 @@ bool Player::IsActionButtonDataValid(uint8 button, uint32 action, uint8 type)
+                 return false;
+             }
+ 
+-            if (!HasSpell(action))
++            if (!HasSpell(action) && !IsHybridManagedSpell(GetGUID().GetCounter(), action))
+             {
+                 LOG_DEBUG("entities.player.loading", "Player::IsActionButtonDataValid Spell action {} not added into button {} for player {}: player don't known this spell", action, button, GetName());
+                 return false;
