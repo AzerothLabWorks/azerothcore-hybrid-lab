@@ -102,16 +102,20 @@ For the development branch, use the same commands with the dev paths:
 cd ~/azerothcore-hybrid-lab-dev
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev list
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-core-patches
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-playerbots-patches
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install hybrid professionmaster startupqol ahbot transmog learnspells
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-lfg
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
-The Playerbots setup step writes `playerbots.conf` and tunes the random bot population to `1500` online bots.
+The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead. The Playerbots setup step writes `playerbots.conf` and tunes the random bot population to `1500` online bots, LFG participation, instance strategies, summon-on-group behavior, greetings, and bot broadcasts. The LFG diagnostic command prints relevant config and recent worldserver log lines after a failed dungeon entry attempt. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
+
+Playerbot improvement planning lives in [docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md](docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md).
 
 ## Development Branch State
 

@@ -17,8 +17,12 @@ Commands:
   install MODULE...     Install one or more modules into SERVER_DIR/modules.
   import-sql MODULE...  Apply module SQL files to running Docker databases.
   apply-core-patches    Apply Hybrid Lab AzerothCore core patches.
+  apply-playerbots-patches
+                         Apply Hybrid Lab mod-playerbots patches.
   setup-ahbot           Create/update AHBot account, owner character, and config.
   setup-playerbots      Install Playerbots config and tune random bot population.
+  diagnose-playerbots-lfg
+                         Show Playerbots LFG config and recent worldserver LFG logs.
   setup-hybrid          Install Hybrid config and import addon-backed Hybrid SQL.
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
@@ -28,16 +32,18 @@ Commands:
 Known modules are defined in configs/modules.conf.
 
 Examples:
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev list
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install hybrid ahbot transmog
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev import-sql hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-core-patches
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-playerbots-patches
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-lfg
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 USAGE
 }
 
@@ -49,7 +55,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-playerbots|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
+    list|installed|install|import-sql|apply-core-patches|apply-playerbots-patches|setup-ahbot|setup-playerbots|diagnose-playerbots-lfg|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
       COMMAND="$1"
       shift
       break
@@ -62,7 +68,7 @@ COMMAND="${COMMAND:-}"
 [[ -n "$COMMAND" ]] || { usage; exit 1; }
 
 if [[ -z "$SERVER_DIR" ]]; then
-  for candidate in "$HOME/wow-server-playerbots-hybrid" "$HOME/wow-server-npcbots-hybrid" "$HOME/wow-server-base-hybrid" "$HOME/wow-server-prebuilt-hybrid"; do
+  for candidate in "$HOME/wow-server-playerbots-hybrid-dev"; do
     if [[ -f "$candidate/docker-compose.yml" ]]; then
       SERVER_DIR="$candidate"
       break
@@ -326,10 +332,53 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.MinRandomBots" "1500"
   set_conf_value "$target_config" "AiPlayerbot.MaxRandomBots" "1500"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotAccountCount" "0"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotJoinLfg" "1"
+  set_conf_value "$target_config" "AiPlayerbot.ApplyInstanceStrategies" "1"
+  set_conf_value "$target_config" "AiPlayerbot.SummonWhenGroup" "1"
+  set_conf_value "$target_config" "AiPlayerbot.EnableGreet" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotTalk" "1"
+  set_conf_value "$target_config" "AiPlayerbot.EnableBroadcasts" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotSayWithoutMaster" "0"
 
   log "Installed Playerbots config to $target_config"
-  log "Configured Playerbots random bot population for 1500 online bots."
+  log "Configured Playerbots random bot population, LFG participation, dungeon strategies, greetings, and broadcasts."
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
+}
+
+diagnose_playerbots_lfg() {
+  require_server_dir
+
+  local config_file="$SERVER_DIR/env/dist/etc/modules/playerbots.conf"
+  if [[ ! -f "$config_file" ]]; then
+    config_file="$SERVER_DIR/modules/mod-playerbots/conf/playerbots.conf"
+  fi
+
+  log "Playerbots LFG-related config"
+  if [[ -f "$config_file" ]]; then
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|EnableGreet|RandomBotTalk|EnableBroadcasts|RandomBotSayWithoutMaster)[[:space:]]*=" "$config_file" || true
+  else
+    warn "Could not find playerbots.conf. Run setup-playerbots first."
+  fi
+
+  log "Docker override LFG-related environment"
+  if [[ -f "$SERVER_DIR/docker-compose.override.yml" ]]; then
+    grep -E "AC_AI_PLAYERBOT_(RANDOM_BOT_JOIN_LFG|APPLY_INSTANCE_STRATEGIES|SUMMON_WHEN_GROUP|MIN_RANDOM_BOTS|MAX_RANDOM_BOTS)|AC_PLAYERBOTS" "$SERVER_DIR/docker-compose.override.yml" || true
+  else
+    warn "No docker-compose.override.yml found."
+  fi
+
+  log "Recent worldserver lines mentioning LFG, dungeon, teleport, proposal, or playerbots"
+  local since="${PLAYERBOTS_LFG_LOG_SINCE:-45m}"
+  local lines="${PLAYERBOTS_LFG_LOG_LINES:-240}"
+  if (cd "$SERVER_DIR" && docker compose ps ac-worldserver >/dev/null 2>&1); then
+    (cd "$SERVER_DIR" && docker compose logs --since "$since" ac-worldserver 2>/dev/null \
+      | grep -Ei "playerbot|lfg|dungeon|proposal|role check|teleport|summon|group invite|instance" \
+      | tail -n "$lines") || warn "No matching recent log lines found."
+  else
+    warn "Could not read ac-worldserver logs. Is Docker running and is the server started?"
+  fi
+
+  log "When reproducing a failed dungeon entry, note: dungeon name, bot names/classes, whether they were in combat/dead/taxiing, who accepted the proposal, and whether /reload or manual summon changed anything."
 }
 
 setup_hybrid() {
@@ -584,6 +633,33 @@ apply_core_patches() {
   done
 }
 
+apply_playerbots_patches() {
+  require_server_dir
+
+  local module_dir="$SERVER_DIR/modules/mod-playerbots"
+  [[ -d "$module_dir" ]] || die "mod-playerbots is not installed at: $module_dir"
+
+  local patch_dir="$REPO_ROOT/patches/playerbots"
+  [[ -d "$patch_dir" ]] || die "No Playerbots patch directory found: $patch_dir"
+
+  shopt -s nullglob
+  local patches=("$patch_dir"/*.patch)
+  shopt -u nullglob
+
+  [[ ${#patches[@]} -gt 0 ]] || die "No Playerbots patches found in: $patch_dir"
+
+  for patch_file in "${patches[@]}"; do
+    if (cd "$SERVER_DIR" && git apply --check --recount "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply --recount "$patch_file")
+      log "Applied $(basename "$patch_file")."
+    elif (cd "$SERVER_DIR" && git apply --reverse --check --recount "$patch_file"); then
+      warn "Already applied: $(basename "$patch_file")"
+    else
+      die "Could not apply Playerbots patch: $patch_file"
+    fi
+  done
+}
+
 case "$COMMAND" in
   list)
     list_modules
@@ -602,11 +678,17 @@ case "$COMMAND" in
   apply-core-patches)
     apply_core_patches
     ;;
+  apply-playerbots-patches)
+    apply_playerbots_patches
+    ;;
   setup-ahbot)
     setup_ahbot
     ;;
   setup-playerbots)
     setup_playerbots
+    ;;
+  diagnose-playerbots-lfg)
+    diagnose_playerbots_lfg
     ;;
   setup-hybrid)
     setup_hybrid

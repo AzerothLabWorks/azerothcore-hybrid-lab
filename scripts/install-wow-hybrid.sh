@@ -30,7 +30,7 @@ Options:
 
 Examples:
   ./scripts/install-wow-hybrid.sh --profile base
-  ./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid
+  ./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid-dev
   ./scripts/install-wow-hybrid.sh --profile npcbots --no-build
 USAGE
 }
@@ -79,7 +79,7 @@ default_server_dir() {
   case "$PROFILE" in
     base) SERVER_DIR="$INSTALL_ROOT/wow-server-base-hybrid" ;;
     base-prebuilt) SERVER_DIR="$INSTALL_ROOT/wow-server-prebuilt-hybrid" ;;
-    playerbots) SERVER_DIR="$INSTALL_ROOT/wow-server-playerbots-hybrid" ;;
+    playerbots) SERVER_DIR="$INSTALL_ROOT/wow-server-playerbots-hybrid-dev" ;;
     npcbots) SERVER_DIR="$INSTALL_ROOT/wow-server-npcbots-hybrid" ;;
     *) die "Unknown profile: $PROFILE" ;;
   esac
@@ -196,6 +196,31 @@ apply_core_patches() {
   done
 }
 
+apply_playerbots_patches() {
+  [[ "$PROFILE" == "playerbots" ]] || return 0
+
+  local patch_dir="$REPO_ROOT/patches/playerbots"
+  [[ -d "$patch_dir" ]] || return 0
+
+  shopt -s nullglob
+  local patches=("$patch_dir"/*.patch)
+  shopt -u nullglob
+
+  [[ ${#patches[@]} -gt 0 ]] || return 0
+
+  log "Applying Hybrid Lab Playerbots patches..."
+  for patch_file in "${patches[@]}"; do
+    if (cd "$SERVER_DIR" && git apply --check --recount "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply --recount "$patch_file")
+      log "Applied $(basename "$patch_file")."
+    elif (cd "$SERVER_DIR" && git apply --reverse --check --recount "$patch_file"); then
+      warn "Already applied: $(basename "$patch_file")"
+    else
+      die "Could not apply Playerbots patch: $patch_file"
+    fi
+  done
+}
+
 build_and_start() {
   [[ "$BUILD_NOW" == "true" ]] || return 0
 
@@ -217,6 +242,7 @@ main() {
   confirm_target
   clone_profile
   apply_core_patches
+  apply_playerbots_patches
   install_hybrid_module
   build_and_start
 
