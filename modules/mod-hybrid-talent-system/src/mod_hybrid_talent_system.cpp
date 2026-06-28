@@ -124,6 +124,7 @@ namespace
     };
 
     void RemoveHybridTalentRanks(Player* player, TalentEntry const* talentInfo);
+    uint8 GetTalentMaxRank(TalentEntry const* talentInfo);
 
     uint32 GetHybridClassMask(uint32 classIndex)
     {
@@ -637,6 +638,31 @@ namespace
         return false;
     }
 
+    bool IsKnownHybridTalentActionSpell(ObjectGuid::LowType guid, uint32 actionSpellId, uint32& talentSpellId)
+    {
+        std::map<uint32, uint8> talentRanks = GetKnownHybridTalentRanks(guid);
+        for (auto const& pair : talentRanks)
+        {
+            TalentEntry const* talentInfo = sTalentStore.LookupEntry(pair.first);
+            if (!talentInfo)
+                continue;
+
+            uint8 maxRank = GetTalentMaxRank(talentInfo);
+            uint8 rank = std::min<uint8>(pair.second, maxRank);
+            if (!rank)
+                continue;
+
+            uint32 rankSpellId = talentInfo->RankID[rank - 1];
+            if (rankSpellId && rankSpellId == actionSpellId)
+            {
+                talentSpellId = rankSpellId;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void SaveHybridActionButtons(Player* player)
     {
         if (!player)
@@ -657,15 +683,16 @@ namespace
                 continue;
             }
 
-            uint32 baseSpellId = 0;
-            if (!IsKnownHybridActionSpell(guid, actionButton->GetAction(), baseSpellId))
+            uint32 managedSpellId = 0;
+            if (!IsKnownHybridActionSpell(guid, actionButton->GetAction(), managedSpellId) &&
+                !IsKnownHybridTalentActionSpell(guid, actionButton->GetAction(), managedSpellId))
             {
                 CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, spec, button);
                 continue;
             }
 
             CharacterDatabase.Execute("REPLACE INTO character_hybrid_action (guid, spec, button, spell_id) VALUES ({}, {}, {}, {})",
-                guid, spec, button, baseSpellId);
+                guid, spec, button, managedSpellId);
         }
     }
 
@@ -688,10 +715,15 @@ namespace
             uint8 button = fields[0].Get<uint8>();
             uint32 spellId = fields[1].Get<uint32>();
 
-            if (!HasHybridSpellInChain(guid, spellId))
+            uint32 bestSpellId = spellId;
+            uint32 talentSpellId = 0;
+            if (HasHybridSpellInChain(guid, spellId))
+                bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
+            else if (IsKnownHybridTalentActionSpell(guid, spellId, talentSpellId))
+                bestSpellId = talentSpellId;
+            else
                 continue;
 
-            uint32 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
             if (!player->HasSpell(bestSpellId))
                 continue;
 
@@ -1369,6 +1401,16 @@ namespace
         return talentInfo->RankID[0] && sSpellMgr->GetSpellInfo(talentInfo->RankID[0]);
     }
 
+    void RemoveHybridTalentActionButtons(Player* player, TalentEntry const* talentInfo)
+    {
+        if (!player || !talentInfo)
+            return;
+
+        for (uint8 rank = 0; rank < MAX_TALENT_RANK; ++rank)
+            if (talentInfo->RankID[rank])
+                RemoveHybridActionButtons(player, talentInfo->RankID[rank]);
+    }
+
     void RemoveHybridTalentRanks(Player* player, TalentEntry const* talentInfo)
     {
         if (!player || !talentInfo)
@@ -1896,6 +1938,7 @@ namespace
             return false;
         }
 
+        RemoveHybridTalentActionButtons(player, talentInfo);
         RemoveHybridTalentRanks(player, talentInfo);
 
         uint8 newRank = currentRank - 1;
