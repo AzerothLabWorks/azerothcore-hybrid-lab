@@ -103,7 +103,16 @@ grep -qxF 'sudo service docker start > /dev/null 2>&1' ~/.bashrc || \
   echo 'sudo service docker start > /dev/null 2>&1' >> ~/.bashrc
 ```
 
-## Part 3: Download This Repo
+## Part 3: Choose Stable or Development Source
+
+This project has two common source checkouts:
+
+- **Stable production**: branch `main`, source folder `~/azerothcore-hybrid-lab`, server folder `~/wow-server-playerbots-hybrid`.
+- **Development testing**: branch `codex/hybrid-talents-ui`, source folder `~/azerothcore-hybrid-lab-dev`, server folder `~/wow-server-playerbots-hybrid-dev`.
+
+Do not install both branches into the same server folder. Separate directories keep your stable characters, database, build, and Docker stack away from risky development changes.
+
+### Stable Main Branch
 
 Inside Ubuntu:
 
@@ -111,28 +120,52 @@ Inside Ubuntu:
 cd ~
 git clone https://github.com/AzerothLabWorks/azerothcore-hybrid-lab.git
 cd azerothcore-hybrid-lab
+git checkout main
 chmod +x scripts/*.sh
 ```
 
-## Part 4: Choose an Install Profile
+### Development Branch
 
-Recommended first choice for your project:
+Inside Ubuntu:
 
 ```bash
-./scripts/install-wow-hybrid.sh --profile playerbots
+cd ~
+git clone --branch codex/hybrid-talents-ui https://github.com/AzerothLabWorks/azerothcore-hybrid-lab.git azerothcore-hybrid-lab-dev
+cd azerothcore-hybrid-lab-dev
+chmod +x scripts/*.sh
 ```
 
-Other options:
+Development branch URL:
+
+```text
+https://github.com/AzerothLabWorks/azerothcore-hybrid-lab/tree/codex/hybrid-talents-ui
+```
+
+## Part 4: Choose an Install Profile and Server Folder
+
+Recommended profile for this project:
+
+```bash
+./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid
+```
+
+For the development branch, use the dev server folder:
+
+```bash
+./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid-dev
+```
+
+Other profile options:
 
 ```bash
 # AzerothCore source build with Hybrid Talent System
-./scripts/install-wow-hybrid.sh --profile base
+./scripts/install-wow-hybrid.sh --profile base --dir ~/wow-server-base-hybrid
 
 # Fast clean AzerothCore install, no custom C++ modules
-./scripts/install-wow-hybrid.sh --profile base-prebuilt
+./scripts/install-wow-hybrid.sh --profile base-prebuilt --dir ~/wow-server-prebuilt-hybrid
 
 # NPCBots source/fork with Hybrid Talent System
-./scripts/install-wow-hybrid.sh --profile npcbots
+./scripts/install-wow-hybrid.sh --profile npcbots --dir ~/wow-server-npcbots-hybrid
 ```
 
 Default install folders:
@@ -142,18 +175,18 @@ Default install folders:
 - `playerbots`: `~/wow-server-playerbots-hybrid`
 - `npcbots`: `~/wow-server-npcbots-hybrid`
 
-These `-hybrid` defaults are intentional. They keep this lab separate from any existing AzerothCore, DadsMmoLab, Playerbots, or NPCBots installs you already have.
-
-To use a custom folder:
-
-```bash
-./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/my-wow-server
-```
+These `-hybrid` defaults are intentional. They keep this lab separate from any existing AzerothCore, DadsMmoLab, Playerbots, or NPCBots installs you already have. Add `-dev` to the folder name for development branch testing.
 
 To clone/configure only and build later:
 
 ```bash
-./scripts/install-wow-hybrid.sh --profile playerbots --no-build
+./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid --no-build
+```
+
+For dev:
+
+```bash
+./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid-dev --no-build
 ```
 
 ## Part 5: Watch the Server Build
@@ -313,6 +346,8 @@ cd ~/azerothcore-hybrid-lab
 ./scripts/manage-wow-modules.sh list
 ```
 
+If you are using the development branch, run these commands from `~/azerothcore-hybrid-lab-dev` and change `--server-dir ~/wow-server-playerbots-hybrid` to `--server-dir ~/wow-server-playerbots-hybrid-dev`.
+
 Apply Hybrid Lab core patches, including combo point carry-over:
 
 ```bash
@@ -428,264 +463,39 @@ docker compose restart ac-worldserver
 
 ## Part 11: Hybrid Talent System Setup
 
-The installer copies the Hybrid Talent System module into the server source tree for source-build profiles.
-
-The current MVP is an NPC-first hybrid spell system. Players spend level-based hybrid points to learn cross-class spells from an allowlist. Cross-class talent support is planned as a later iteration after the spell flow is stable.
-
-After building and starting the server:
-
-1. Verify or import the Hybrid module SQL.
-
-   The helper command installs the Hybrid config file, safely imports Hybrid SQL, and normalizes the trainer NPC flags:
-
-   ```bash
-   cd ~/azerothcore-hybrid-lab
-   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
-   ```
-
-   If you only want to re-import SQL, this is safe to re-run because the Hybrid SQL uses `CREATE TABLE IF NOT EXISTS` and updates the starter spell templates without dropping learned character data.
-
-   ```bash
-   cd ~/azerothcore-hybrid-lab
-   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
-   ```
-
-   To check manually whether the table already exists:
-
-   ```bash
-   cd ~/wow-server-playerbots-hybrid
-   docker exec -it ac-database sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world -e "SHOW TABLES LIKE '\''hybrid_spell_template'\'';"'
-   ```
-
-   You do not need to know the MySQL root password when using the command above. It reads `MYSQL_ROOT_PASSWORD` from inside the database container.
-
-   If you connect from outside the container, AzerothCore's Docker default is:
-
-   ```text
-   username: root
-   password: password
-   database: acore_world
-   ```
-
-   That default changes if `DOCKER_DB_ROOT_PASSWORD` is set in your server environment.
-
-2. Create or update a trainer NPC in the world database.
-
-   The Hybrid Talent System uses a normal AzerothCore creature as its trainer NPC. The important fields are:
-
-   - `entry`: `190010`
-   - `name`: `Hybrid Talent Master`
-   - `npcflag`: must include gossip
-   - `ScriptName`: `npc_hybrid_talent_master`
-
-   In AzerothCore, `entry` is the creature template ID. The module config expects this value by default:
-
-   ```text
-   HybridTalentSystem.TrainerNpcEntry = 190010
-   ```
-
-   `ScriptName` is what connects the creature to the C++ module. If this value is wrong or blank, the NPC may spawn but the Hybrid Talent menu will not open.
-
-   `npcflag` controls what interaction icons/features the NPC has. Gossip is flag `1`, so the safest minimum is:
-
-   ```text
-   npcflag = 1
-   ```
-
-   If you copy an existing trainer NPC, it may already have other flags. That is fine. Just make sure gossip is included.
-
-   If you already created entry `190010`, run this after editing it:
-
-   ```bash
-   cd ~/azerothcore-hybrid-lab
-   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
-   ```
-
-3. Recommended NPC creation method: copy an existing simple gossip NPC.
-
-   The exact `creature_template` columns can vary between AzerothCore versions and forks, so copying an existing template is safer than writing a giant insert by hand.
-
-   Open a database shell for the world database:
-
-   ```bash
-   cd ~/wow-server-playerbots-hybrid
-   docker exec -it ac-database sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" acore_world'
-   ```
-
-   Inside MySQL, find a simple NPC template to copy:
-
-   ```sql
-   SELECT entry, name, npcflag, ScriptName
-   FROM creature_template
-   WHERE npcflag & 1
-   ORDER BY entry
-   LIMIT 20;
-   ```
-
-   Pick one harmless gossip NPC from the result. Then copy it into entry `190010`.
-
-   Example using source entry `68`:
-
-   ```sql
-   CREATE TEMPORARY TABLE tmp_hybrid_npc
-   AS SELECT * FROM creature_template WHERE entry = 68;
-
-   UPDATE tmp_hybrid_npc
-   SET entry = 190010,
-       name = 'Hybrid Talent Master',
-       subname = 'Cross-Class Trainer',
-       npcflag = npcflag | 1,
-       ScriptName = 'npc_hybrid_talent_master';
-
-   DELETE FROM creature_template WHERE entry = 190010;
-   INSERT INTO creature_template SELECT * FROM tmp_hybrid_npc;
-   DROP TEMPORARY TABLE tmp_hybrid_npc;
-   ```
-
-   If your selected source NPC does not have a `subname` column, remove this line:
-
-   ```sql
-   subname = 'Cross-Class Trainer',
-   ```
-
-   Verify it:
-
-   ```sql
-   SELECT entry, name, subname, npcflag, ScriptName
-   FROM creature_template
-   WHERE entry = 190010;
-   ```
-
-   Example using Lady Jaina Proudmoore as the trainer:
-
-   ```sql
-   SELECT entry, name, npcflag, ScriptName
-   FROM creature_template
-   WHERE name LIKE '%Jaina%' AND npcflag & 1
-   ORDER BY entry;
-   ```
-
-   On a typical AzerothCore WotLK database, entry `32346` is a good source template because it has gossip enabled and no special `ScriptName`.
-
-   Do not modify the original Jaina entry. Copy it into your custom trainer entry instead:
-
-   ```sql
-   CREATE TEMPORARY TABLE tmp_hybrid_npc
-   AS SELECT * FROM creature_template WHERE entry = 32346;
-
-   UPDATE tmp_hybrid_npc
-   SET entry = 190010,
-       name = 'Lady Jaina Proudmoore',
-       subname = 'Hybrid Talent Master',
-       npcflag = 1,
-       gossip_menu_id = 0,
-       AIName = '',
-       ScriptName = 'npc_hybrid_talent_master';
-
-   DELETE FROM creature_template WHERE entry = 190010;
-   INSERT INTO creature_template SELECT * FROM tmp_hybrid_npc;
-   DROP TEMPORARY TABLE tmp_hybrid_npc;
-   ```
-
-   Verify it:
-
-   ```sql
-   SELECT entry, name, subname, npcflag, gossip_menu_id, AIName, ScriptName
-   FROM creature_template
-   WHERE entry = 190010;
-   ```
-
-4. Alternative NPC creation method: use a database editor.
-
-   If you prefer a GUI such as HeidiSQL, DBeaver, or phpMyAdmin:
-
-   - Open the `acore_world` database.
-   - Open `creature_template`.
-   - Copy an existing simple gossip NPC row.
-   - Change `entry` to `190010`.
-   - Change `name` to `Hybrid Talent Master`.
-   - Change `subname` to `Cross-Class Trainer`, if that column exists.
-   - Make sure `npcflag` includes gossip. Minimum value: `1`.
-   - Set `ScriptName` to `npc_hybrid_talent_master`.
-   - Save the row.
-
-5. Restart the worldserver or reload creature templates.
-
-   The easiest option is to restart the server:
-
-   ```bash
-   cd ~/wow-server-playerbots-hybrid
-   docker compose restart ac-worldserver
-   ```
-
-   If you are attached to the worldserver console as a GM/admin, you can try:
-
-   ```text
-   reload creature_template
-   ```
-
-   A full worldserver restart is the more reliable path while setting this up.
-
-6. Spawn the NPC in game.
-
-   Log in with a GM account and go to the place where you want the trainer to stand.
-
-   Target your own location and run:
-
-   ```text
-   .npc add 190010
-   ```
-
-   The NPC should appear where your character is standing.
-
-   Quality-of-life tip: current versions also create item `1915`, `Hybrid Talent Beacon`, which is granted on login by default and summons a temporary trainer near you.
-
-   GM commands can still be placed in normal in-game macros if your account has permission to run them. Create a macro named `Hybrid Trainer` with:
-
-   ```text
-   .npc add 190010
-   ```
-
-   Put the macro on your action bar while testing so you do not have to remember the trainer entry ID.
-
-   If you want to remove a bad spawn:
-
-   ```text
-   .npc delete
-   ```
-
-   Make sure the NPC is targeted before running `.npc delete`.
-
-7. Test the NPC.
-
-   Level a character to at least 10:
-
-   ```text
-   .levelup 9
-   ```
-
-   Or use your normal leveling flow.
-
-   Talk to the `Hybrid Talent Master`. You should see options like:
-
-   - `View hybrid status`
-   - `Learn hybrid spells`
-   - `Reset hybrid build`
-
-   Learn a spell, relog, and confirm the spell is still known.
-
-   Recommended first validation path:
-
-   ```text
-   1. Use a level 10 character.
-   2. Click View hybrid status and confirm earned/spent/available points appear in chat.
-   3. Click Learn hybrid spells and learn one 1-point spell.
-   4. Cast the learned spell.
-   5. Relog and confirm the spell is still known.
-   6. Level to 12 and confirm available points increases by 1.
-   7. Continue leveling and confirm purchased hybrid spells automatically upgrade to the best rank available for the character's level.
-   8. Test Reset hybrid build when the character has enough gold.
-   ```
+Run these commands from the same repo branch you used for the install and point them at the matching server directory.
+
+For stable `main`:
+
+```bash
+cd ~/azerothcore-hybrid-lab
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+For development `codex/hybrid-talents-ui`:
+
+```bash
+cd ~/azerothcore-hybrid-lab-dev
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-core-patches
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
+```
+
+The development branch is addon-first:
+
+- Copy `client-addons/HybridTalentUI` into your WoW client's `Interface/AddOns` folder.
+- Use a separate dev client copy, for example `C:\Games\WoW-3.3.5a-HD-Dev`, if you also play on a stable production server.
+- Open the UI with the Hybrid microbar button or `/hybridui`.
+- Learn spells and talents from the addon UI instead of the old Hybrid Talent Master NPC.
+
+On the dev branch, `setup-hybrid` imports addon-backed Hybrid SQL and retires the old Hybrid trainer/beacon path. The legacy entries are kept here for reference only:
+
+- Legacy Hybrid trainer: `190010`, `Hybrid Talent Master`
+- Legacy Hybrid beacon item: `1915`, `Hybrid Talent Beacon`
 
 The module config is:
 
@@ -693,27 +503,50 @@ The module config is:
 modules/mod-hybrid-talent-system/conf/mod_hybrid_talent_system.conf.dist
 ```
 
-Important defaults:
+Important defaults on the dev branch:
 
-- Unlock level: `10`
-- Point curve: `1` point every `2` levels starting at level `10`
-- Max points: `35`
-- Reset cost: `100000` copper, or 10 gold
-- NPC entry: `190010`
-- Beacon item entry: `1915`
+- Spell unlock level: `10`
+- Spell point curve: `1` point every `2` levels starting at level `10`
+- Spell max points: `35`
+- Talent unlock level: `10`
+- Talent point curve: `1` point every `2` levels starting at level `10`
+- Talent max points: `35`
 - Auto-upgrade purchased hybrid spell ranks on login and level-up: enabled
+- Addon-first access through `HybridTalentUI` and `/hybridui`
+
+Recommended first validation path:
+
+```text
+1. Use a level 10 or higher character.
+2. Open HybridTalentUI from the microbar button or /hybridui.
+3. Learn one available hybrid spell.
+4. Cast the learned spell.
+5. Relog and confirm the spell and action-bar button remain.
+6. Learn a talent that grants a spell, such as Arcane Power.
+7. Relog and confirm the talent-granted spell and action-bar button remain.
+8. Level up and confirm spell/talent points update correctly.
+```
 
 ## Part 12: Profession Master Setup
 
 The Profession Master is an optional NPC module for learning professions, buying profession skill-ups, and learning recipes/abilities available at your current profession skill.
 
-Install and prepare it after your database containers are running:
+Install and prepare it after your database containers are running. For stable `main`:
 
 ```bash
 cd ~/azerothcore-hybrid-lab
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install professionmaster
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+For development `codex/hybrid-talents-ui`:
+
+```bash
+cd ~/azerothcore-hybrid-lab-dev
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install professionmaster
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
 The setup command automates the NPC template creation:

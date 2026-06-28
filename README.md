@@ -45,18 +45,46 @@ For the full Windows + WSL2 walkthrough, start here:
 
 [HOWTO-WINDOWS-WSL2.md](HOWTO-WINDOWS-WSL2.md)
 
+This repo has two common install paths:
+
+- **Stable production**: use the `main` branch and install into `~/wow-server-playerbots-hybrid`.
+- **Development testing**: use the `codex/hybrid-talents-ui` branch and install into `~/wow-server-playerbots-hybrid-dev`.
+
+Do not point both branches at the same server directory. Keeping the source folders and server folders separate lets you test dev changes without touching your stable server data or build.
+
+### Stable Main Branch
+
 Inside Ubuntu/WSL2:
 
 ```bash
-git clone <your-github-repo-url> ~/wow-hybrid-server-lab
-cd ~/wow-hybrid-server-lab
+cd ~
+git clone https://github.com/AzerothLabWorks/azerothcore-hybrid-lab.git
+cd azerothcore-hybrid-lab
+git checkout main
 chmod +x scripts/*.sh
-./scripts/install-wow-hybrid.sh
+./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid
 ```
 
-After installation, use:
+### Development Branch
+
+Inside Ubuntu/WSL2:
 
 ```bash
+cd ~
+git clone --branch codex/hybrid-talents-ui https://github.com/AzerothLabWorks/azerothcore-hybrid-lab.git azerothcore-hybrid-lab-dev
+cd azerothcore-hybrid-lab-dev
+chmod +x scripts/*.sh
+./scripts/install-wow-hybrid.sh --profile playerbots --dir ~/wow-server-playerbots-hybrid-dev
+```
+
+You can also view the development branch on GitHub:
+
+[https://github.com/AzerothLabWorks/azerothcore-hybrid-lab/tree/codex/hybrid-talents-ui](https://github.com/AzerothLabWorks/azerothcore-hybrid-lab/tree/codex/hybrid-talents-ui)
+
+After installation, run the module setup commands from the matching repo folder and point them at the matching server folder. For the stable branch, use:
+
+```bash
+cd ~/azerothcore-hybrid-lab
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid professionmaster startupqol ahbot transmog learnspells
@@ -66,6 +94,21 @@ After installation, use:
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+```
+
+For the development branch, use the same commands with the dev paths:
+
+```bash
+cd ~/azerothcore-hybrid-lab-dev
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev list
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-core-patches
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install hybrid professionmaster startupqol ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
 The Playerbots setup step writes `playerbots.conf` and tunes the random bot population to `1500` online bots.
