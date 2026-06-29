@@ -23,6 +23,8 @@ Commands:
   setup-playerbots      Install Playerbots config and tune random bot population.
   diagnose-playerbots-lfg
                          Show Playerbots LFG config and recent worldserver LFG logs.
+  diagnose-playerbots-pvp
+                         Show Playerbots BG/arena config and recent PvP queue logs.
   setup-hybrid          Install Hybrid config and import addon-backed Hybrid SQL.
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
@@ -40,6 +42,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-lfg
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-pvp
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
@@ -55,7 +58,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|apply-core-patches|apply-playerbots-patches|setup-ahbot|setup-playerbots|diagnose-playerbots-lfg|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
+    list|installed|install|import-sql|apply-core-patches|apply-playerbots-patches|setup-ahbot|setup-playerbots|diagnose-playerbots-lfg|diagnose-playerbots-pvp|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
       COMMAND="$1"
       shift
       break
@@ -455,6 +458,42 @@ diagnose_playerbots_lfg() {
   log "When reproducing a failed dungeon entry, note: dungeon name, bot names/classes, whether they were in combat/dead/taxiing, who accepted the proposal, and whether /reload or manual summon changed anything."
 }
 
+diagnose_playerbots_pvp() {
+  require_server_dir
+
+  local config_file="$SERVER_DIR/env/dist/etc/modules/playerbots.conf"
+  if [[ ! -f "$config_file" ]]; then
+    config_file="$SERVER_DIR/modules/mod-playerbots/conf/playerbots.conf"
+  fi
+
+  log "Playerbots BG/arena-related config"
+  if [[ -f "$config_file" ]]; then
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinBG|RandomBotAutoJoinBG|RandomBotAutoJoinArenaBracket|RandomBotAutoJoinBGRatedArena2v2Count|RandomBotAutoJoinBGRatedArena3v3Count|RandomBotAutoJoinBGRatedArena5v5Count|RandomBotArenaTeam2v2Count|RandomBotArenaTeam3v3Count|RandomBotArenaTeam5v5Count|RandomBotArenaTeamMinRating|RandomBotArenaTeamMaxRating|DeleteRandomBotArenaTeams|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers)[[:space:]]*=" "$config_file" || true
+  else
+    warn "Could not find playerbots.conf. Run setup-playerbots first."
+  fi
+
+  log "Docker override BG/arena-related environment"
+  if [[ -f "$SERVER_DIR/docker-compose.override.yml" ]]; then
+    grep -E "AC_AI_PLAYERBOT_(RANDOM_BOT_JOIN_BG|RANDOM_BOT_AUTO_JOIN_BG|RANDOM_BOT_AUTO_JOIN_ARENA_BRACKET|RANDOM_BOT_AUTO_JOIN_BG_RATED_ARENA|RANDOM_BOT_ARENA_TEAM|MIN_RANDOM_BOTS|MAX_RANDOM_BOTS|RANDOM_BOT_MIN_LEVEL|RANDOM_BOT_MAX_LEVEL|SYNC_LEVEL_WITH_PLAYERS)|AC_PLAYERBOTS" "$SERVER_DIR/docker-compose.override.yml" || true
+  else
+    warn "No docker-compose.override.yml found."
+  fi
+
+  log "Recent worldserver lines mentioning arena, battleground, rated queue, or playerbots"
+  local since="${PLAYERBOTS_PVP_LOG_SINCE:-45m}"
+  local lines="${PLAYERBOTS_PVP_LOG_LINES:-240}"
+  if (cd "$SERVER_DIR" && docker compose ps ac-worldserver >/dev/null 2>&1); then
+    (cd "$SERVER_DIR" && docker compose logs --since "$since" ac-worldserver 2>/dev/null \
+      | grep -Ei "playerbot|arena|rated|3v3|2v2|5v5|battleground|battlefield|bg queue|queue.*arena|arena.*queue|skirmish" \
+      | tail -n "$lines") || warn "No matching recent log lines found."
+  else
+    warn "Could not read ac-worldserver logs. Is Docker running and is the server started?"
+  fi
+
+  log "When reproducing a ranked 3v3 queue issue, note: player level, bracket, queue type, wait time, team/captain status, and whether bots are already in active arenas."
+}
+
 setup_hybrid() {
   require_server_dir
 
@@ -763,6 +802,9 @@ case "$COMMAND" in
     ;;
   diagnose-playerbots-lfg)
     diagnose_playerbots_lfg
+    ;;
+  diagnose-playerbots-pvp)
+    diagnose_playerbots_pvp
     ;;
   setup-hybrid)
     setup_hybrid

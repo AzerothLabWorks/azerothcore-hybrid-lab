@@ -15,6 +15,8 @@ Build a Living Server layer for the Playerbots profile:
 
 The first practical target is dungeon entry reliability across the full 1-80 dungeon progression, especially when using LFG.
 
+Status: initial dev validation is successful. After the population, role distribution, and LFG proposal changes, Deadmines formed through LFG, all bots ported in, and dungeon gameplay was reported as smooth. General chat activity also increased enough to make the server feel more alive.
+
 ### Setup
 
 Run this after installing `mod-playerbots`:
@@ -79,6 +81,11 @@ Capture these details when reproducing:
 - whether bots entered late, after combat ended, or after summon/reinvite
 - whether the issue affects all bots or specific roles/classes
 
+Current evidence:
+
+- Deadmines: queue formed, bots zoned in, and gameplay was smooth.
+- Continue smoke testing Vanilla, Burning Crusade, and Wrath dungeons before treating the LFG watchdog as necessary.
+
 ### Progression Coverage
 
 Track dungeon entry, role check, teleport, follow behavior, boss strategy, wipe recovery, and final completion for each expansion bucket.
@@ -110,7 +117,9 @@ For each dungeon, record:
 
 ## Iteration 2: LFG Watchdog Design
 
-If diagnostics confirm bots now accept LFG but still fail to enter, add a native watchdog in `mod-playerbots`:
+Status: deferred until more failures are observed. Since Deadmines worked with all bots zoning in, do not build this yet unless future dungeon tests show repeated accepted-but-not-teleported behavior.
+
+If diagnostics confirm bots accept LFG but fail to enter, add a native watchdog in `mod-playerbots`:
 
 - Track a pending dungeon proposal/teleport state per bot.
 - Retry LFG teleport if the bot is outside the instance after a short delay.
@@ -143,6 +152,29 @@ Next diagnostics to add:
 - eligible level 80 captains online
 - rated arena bot/player counts by bracket
 - average queue time before first pop
+
+After a ranked 3v3 test, run:
+
+```bash
+cd ~/azerothcore-hybrid-lab-dev
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-pvp
+```
+
+Optional knobs:
+
+```bash
+PLAYERBOTS_PVP_LOG_SINCE=90m PLAYERBOTS_PVP_LOG_LINES=400 \
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-pvp
+```
+
+Capture these details when reproducing:
+
+- player level and whether the queue is rated 3v3
+- queue wait time before first pop
+- whether the player has a valid 3v3 team and captain state
+- whether any bot teams enter rated 3v3
+- whether bots are already tied up in other arenas/BGs
+- whether the issue is no pop, late pop, failed accept, or failed arena entry
 
 ## Iteration 4: Social Explanation Layer
 
