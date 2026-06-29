@@ -34,6 +34,7 @@ The setup command now writes `playerbots.conf` and explicitly enables:
 - Docker override alignment so container environment does not cap bots below `playerbots.conf`
 - random bot levels start at 15 and sync their maximum level to online players for leveling-dungeon density
 - random bot LFG participation
+- PvP auto-join and conservative rated 3v3 seeding for level 80 arena queues
 - instance strategy application
 - summon-on-group
 - role-biased tank/healer specs for dungeon queues
@@ -117,7 +118,33 @@ If diagnostics confirm bots now accept LFG but still fail to enter, add a native
 - Tell the master a short reason when retry is blocked.
 - Clear the pending state once the bot is inside the expected map or leaves the group.
 
-## Iteration 3: Social Explanation Layer
+## Iteration 3: Ranked 3v3 Arena Reliability
+
+The next PvP target is reducing long ranked 3v3 queue times.
+
+Current conservative setup:
+
+- enables random bot BG/arena participation
+- enables bot auto-joining for BG/arena queues
+- uses rated arena bracket `14`, the level 80 bracket
+- seeds `2` rated 3v3 matches
+- increases random bot 3v3 arena teams from `10` to `40`
+
+Important notes:
+
+- Playerbots config says lower-level arena brackets require custom code changes, so start with level 80 ranked 3v3.
+- Arena teams are created when bots are initialized on server restart. Existing servers may need a bot arena-team reset/reinit if team counts were already generated with the old value.
+- Keep initial rated 3v3 match count conservative to avoid over-creating arena instances.
+
+Next diagnostics to add:
+
+- active rated 3v3 queue count
+- 3v3 bot arena team count
+- eligible level 80 captains online
+- rated arena bot/player counts by bracket
+- average queue time before first pop
+
+## Iteration 4: Social Explanation Layer
 
 Add event-driven messages for real friction points:
 
@@ -129,7 +156,7 @@ Add event-driven messages for real friction points:
 
 These should use `PlayerbotTextMgr` text keys and probability/rate limits.
 
-## Iteration 4: Personality And Memory
+## Iteration 5: Personality And Memory
 
 After reliability is stable:
 
