@@ -220,7 +220,24 @@ set_compose_environment_value() {
   if grep -qE "^[[:space:]]+${key}:" "$file"; then
     sed -i -E "s|^([[:space:]]+${key}:).*|\\1 \"${value}\"|" "$file"
   else
-    warn "Docker override does not define $key. Leaving $file unchanged for this key."
+    local temp_file
+    temp_file="$(mktemp)"
+    if awk -v key="$key" -v value="$value" '
+      {
+        print
+        if (!inserted && $0 ~ /^[[:space:]]+environment:[[:space:]]*$/) {
+          match($0, /^[[:space:]]+/)
+          print substr($0, RSTART, RLENGTH) "  " key ": \"" value "\""
+          inserted = 1
+        }
+      }
+      END { exit inserted ? 0 : 1 }
+    ' "$file" > "$temp_file"; then
+      mv "$temp_file" "$file"
+    else
+      rm -f "$temp_file"
+      warn "Docker override does not define an environment block. Leaving $file unchanged for $key."
+    fi
   fi
 }
 
@@ -384,6 +401,8 @@ setup_playerbots() {
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MIN_LEVEL" "15"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MAX_LEVEL" "80"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_SYNC_LEVEL_WITH_PLAYERS" "1"
+  set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_ENABLE" "1"
+  set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_MAX_LEVEL" "80"
 
   log "Installed Playerbots config to $target_config"
   log "Configured Playerbots random bot population, leveling-range density, LFG participation, dungeon strategies, role-biased specs, greetings, and broadcasts."
