@@ -113,7 +113,7 @@ cd ~/azerothcore-hybrid-lab-dev
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
-The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead. The Playerbots setup step writes `playerbots.conf` and tunes the random bot population to `1500` online bots, LFG participation, instance strategies, summon-on-group behavior, role-biased tank/healer specs, greetings, and bot broadcasts. The LFG diagnostic command prints relevant config and recent worldserver log lines after a failed dungeon entry attempt. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
+The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead. The Playerbots setup step writes `playerbots.conf`, aligns Docker overrides, and tunes the random bot population to `1500` online bots, player-level-synced leveling density, LFG participation, instance strategies, summon-on-group behavior, role-biased tank/healer specs, greetings, and bot broadcasts. The LFG diagnostic command prints relevant config and recent worldserver log lines after a failed dungeon entry attempt. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
 
 Playerbot improvement planning lives in [docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md](docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md).
 

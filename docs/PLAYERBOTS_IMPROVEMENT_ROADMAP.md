@@ -31,6 +31,8 @@ The setup command now writes `playerbots.conf` and explicitly enables:
 
 - random bot autologin
 - 1500 configured online random bots
+- Docker override alignment so container environment does not cap bots below `playerbots.conf`
+- random bot levels start at 15 and sync their maximum level to online players for leveling-dungeon density
 - random bot LFG participation
 - instance strategy application
 - summon-on-group

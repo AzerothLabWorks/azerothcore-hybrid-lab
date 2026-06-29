@@ -210,6 +210,20 @@ set_conf_value() {
   fi
 }
 
+set_compose_environment_value() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  [[ -f "$file" ]] || return 0
+
+  if grep -qE "^[[:space:]]+${key}:" "$file"; then
+    sed -i -E "s|^([[:space:]]+${key}:).*|\\1 \"${value}\"|" "$file"
+  else
+    warn "Docker override does not define $key. Leaving $file unchanged for this key."
+  fi
+}
+
 setup_ahbot() {
   require_server_dir
 
@@ -332,6 +346,9 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.MinRandomBots" "1500"
   set_conf_value "$target_config" "AiPlayerbot.MaxRandomBots" "1500"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotAccountCount" "0"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotMinLevel" "15"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotMaxLevel" "80"
+  set_conf_value "$target_config" "AiPlayerbot.SyncLevelWithPlayers" "1"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotJoinLfg" "1"
   set_conf_value "$target_config" "AiPlayerbot.ApplyInstanceStrategies" "1"
   set_conf_value "$target_config" "AiPlayerbot.SummonWhenGroup" "1"
@@ -361,8 +378,15 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.2" "35"
   set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.3" "15"
 
+  local compose_override="$SERVER_DIR/docker-compose.override.yml"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_MIN_RANDOM_BOTS" "1500"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_MAX_RANDOM_BOTS" "1500"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MIN_LEVEL" "15"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MAX_LEVEL" "80"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_SYNC_LEVEL_WITH_PLAYERS" "1"
+
   log "Installed Playerbots config to $target_config"
-  log "Configured Playerbots random bot population, LFG participation, dungeon strategies, role-biased specs, greetings, and broadcasts."
+  log "Configured Playerbots random bot population, leveling-range density, LFG participation, dungeon strategies, role-biased specs, greetings, and broadcasts."
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
@@ -376,14 +400,14 @@ diagnose_playerbots_lfg() {
 
   log "Playerbots LFG-related config"
   if [[ -f "$config_file" ]]; then
-    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|EnableGreet|RandomBotTalk|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers|EnableGreet|RandomBotTalk|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
   else
     warn "Could not find playerbots.conf. Run setup-playerbots first."
   fi
 
   log "Docker override LFG-related environment"
   if [[ -f "$SERVER_DIR/docker-compose.override.yml" ]]; then
-    grep -E "AC_AI_PLAYERBOT_(RANDOM_BOT_JOIN_LFG|APPLY_INSTANCE_STRATEGIES|SUMMON_WHEN_GROUP|MIN_RANDOM_BOTS|MAX_RANDOM_BOTS)|AC_PLAYERBOTS" "$SERVER_DIR/docker-compose.override.yml" || true
+    grep -E "AC_AI_PLAYERBOT_(RANDOM_BOT_JOIN_LFG|RANDOM_BOT_MIN_LEVEL|RANDOM_BOT_MAX_LEVEL|SYNC_LEVEL_WITH_PLAYERS|APPLY_INSTANCE_STRATEGIES|SUMMON_WHEN_GROUP|MIN_RANDOM_BOTS|MAX_RANDOM_BOTS)|AC_PLAYERBOTS" "$SERVER_DIR/docker-compose.override.yml" || true
   else
     warn "No docker-compose.override.yml found."
   fi
