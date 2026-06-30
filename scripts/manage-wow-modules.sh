@@ -377,8 +377,9 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.RandomBotArenaTeam3v3Count" "40"
   set_conf_value "$target_config" "AiPlayerbot.ApplyInstanceStrategies" "1"
   set_conf_value "$target_config" "AiPlayerbot.SummonWhenGroup" "1"
-  set_conf_value "$target_config" "AiPlayerbot.EnableGreet" "1"
+  set_conf_value "$target_config" "AiPlayerbot.EnableGreet" "0"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotTalk" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotEmote" "0"
   set_conf_value "$target_config" "AiPlayerbot.EnableBroadcasts" "1"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotSayWithoutMaster" "0"
 
@@ -414,11 +415,13 @@ setup_playerbots() {
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_AUTO_JOIN_ARENA_BRACKET" "14"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_AUTO_JOIN_BG_RATED_ARENA_3V3_COUNT" "2"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_ARENA_TEAM_3V3_COUNT" "40"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_ENABLE_GREET" "0"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_EMOTE" "0"
   set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_ENABLE" "1"
   set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_MAX_LEVEL" "80"
 
   log "Installed Playerbots config to $target_config"
-  log "Configured Playerbots random bot population, leveling-range density, LFG participation, rated 3v3 seeding, dungeon strategies, role-biased specs, greetings, and broadcasts."
+  log "Configured Playerbots random bot population, leveling-range density, LFG participation, rated 3v3 seeding, dungeon strategies, role-biased specs, chat broadcasts, and quiet greetings."
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
@@ -432,7 +435,7 @@ diagnose_playerbots_lfg() {
 
   log "Playerbots LFG-related config"
   if [[ -f "$config_file" ]]; then
-    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers|EnableGreet|RandomBotTalk|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers|EnableGreet|RandomBotTalk|RandomBotEmote|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
   else
     warn "Could not find playerbots.conf. Run setup-playerbots first."
   fi

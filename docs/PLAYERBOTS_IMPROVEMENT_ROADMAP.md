@@ -40,7 +40,7 @@ The setup command now writes `playerbots.conf` and explicitly enables:
 - instance strategy application
 - summon-on-group
 - role-biased tank/healer specs for dungeon queues
-- greetings
+- quiet greetings: nearby-player greet emotes disabled to avoid chat floods
 - random bot talk
 - broadcasts
 
@@ -84,6 +84,7 @@ Capture these details when reproducing:
 Current evidence:
 
 - Deadmines: queue formed, bots zoned in, and gameplay was smooth.
+- Crossroads/Barrens: high bot population and General chat made the zone feel alive, but greet emotes were noisy. Setup now keeps General chat/broadcasts enabled while disabling the repeated nearby-player hello emote.
 - Continue smoke testing Vanilla, Burning Crusade, and Wrath dungeons before treating the LFG watchdog as necessary.
 
 ### Progression Coverage
