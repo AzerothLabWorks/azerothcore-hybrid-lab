@@ -15,7 +15,7 @@ Build a Living Server layer for the Playerbots profile:
 
 The first practical target is dungeon entry reliability across the full 1-80 dungeon progression, especially when using LFG.
 
-Status: initial dev validation is successful. After the population, role distribution, and LFG proposal changes, Deadmines formed through LFG, all bots ported in, and dungeon gameplay was reported as smooth. General chat activity also increased enough to make the server feel more alive.
+Status: initial dev validation is successful, with one follow-up reliability fix now added. After the population, role distribution, and LFG proposal changes, Deadmines formed through LFG, all bots ported in, and dungeon gameplay was reported as smooth. Ragefire Chasm later reproduced a partial-entry case where two bots joined the LFG group but stayed outside until vote-kicked, so the LFG teleport watchdog has been promoted from design to implementation. General chat activity also increased enough to make the server feel more alive.
 
 ### Setup
 
@@ -44,7 +44,12 @@ The setup command now writes `playerbots.conf` and explicitly enables:
 - random bot talk
 - broadcasts
 
-The current Playerbots patch prevents bots from explicitly declining LFG proposals just because they are in combat or dead. This targets failed dungeon pops where one questing bot collapses the proposal for the whole group.
+The current Playerbots patches improve LFG reliability in two places:
+
+- bots no longer explicitly decline LFG proposals just because they are in combat or dead
+- bots in an active LFG dungeon group retry the native LFG teleport action when they are still outside the dungeon
+
+Together these target the two observed failure modes: one questing bot collapsing the proposal for the whole group, and bots accepting the group but not zoning in.
 
 The current setup also biases random bot specs toward dungeon viability:
 
@@ -84,8 +89,9 @@ Capture these details when reproducing:
 Current evidence:
 
 - Deadmines: queue formed, bots zoned in, and gameplay was smooth.
+- Ragefire Chasm: queue formed and the player teleported in, but two bots stayed outside. Added the LFG teleport watchdog for the next validation pass.
 - Crossroads/Barrens: high bot population and General chat made the zone feel alive, but greet emotes were noisy. Setup now keeps General chat/broadcasts enabled while disabling the repeated nearby-player hello emote.
-- Continue smoke testing Vanilla, Burning Crusade, and Wrath dungeons before treating the LFG watchdog as necessary.
+- Continue smoke testing Vanilla, Burning Crusade, and Wrath dungeons to confirm the watchdog resolves partial-entry cases.
 
 ### Progression Coverage
 
@@ -116,17 +122,21 @@ For each dungeon, record:
 - final boss killed
 - bots leave/requeue cleanly
 
-## Iteration 2: LFG Watchdog Design
+## Iteration 2: LFG Watchdog
 
-Status: deferred until more failures are observed. Since Deadmines worked with all bots zoning in, do not build this yet unless future dungeon tests show repeated accepted-but-not-teleported behavior.
+Status: implemented for validation after Ragefire Chasm reproduced accepted-but-not-teleported behavior.
 
-If diagnostics confirm bots accept LFG but fail to enter, add a native watchdog in `mod-playerbots`:
+The current native watchdog in `mod-playerbots`:
 
-- Track a pending dungeon proposal/teleport state per bot.
-- Retry LFG teleport if the bot is outside the instance after a short delay.
-- Avoid retrying while the bot is in combat, taxiing, teleporting, or being removed from world.
+- watches bots that are in an LFG group whose bot or group state is already `LFG_STATE_DUNGEON`
+- skips bots that are dead, in combat, in a battleground/arena, already teleporting, or already inside a dungeon map
+- retries the existing native `lfg teleport` action every 10 seconds while the bot remains outside
+
+Next watchdog improvements if needed:
+
+- Avoid retrying while a bot is taxiing or being removed from world if that proves noisy in logs.
 - Tell the master a short reason when retry is blocked.
-- Clear the pending state once the bot is inside the expected map or leaves the group.
+- Add diagnostics that show which group members are outside after teleport retry.
 
 ## Iteration 3: Ranked 3v3 Arena Reliability
 
