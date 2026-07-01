@@ -507,7 +507,7 @@ The development branch is addon-first. Install the client addon after the server
 Recommended user-facing addon source:
 
 ```text
-https://github.com/AzerothLabWorks/addons/tree/main/HybridTalentUI
+https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI
 ```
 
 Download or clone `AzerothLabWorks/addons`, then copy the `HybridTalentUI` folder to:

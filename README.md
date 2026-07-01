@@ -133,7 +133,7 @@ Brand-new characters receive the configured starter package on first login: ridi
 Hybrid spell/talent access is now addon-first on this branch:
 
 - Hybrid UI addon source in this repo: `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
-- User-facing addon repo: `https://github.com/AzerothLabWorks/addons/tree/main/HybridTalentUI`
+- User-facing addon repo: `https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI`
 - Addon install helper: `scripts/install-hybrid-addon.sh --client-dir <WoW client path>`
 - In-game command path: `/hybridui`
 - Legacy Hybrid trainer: `190010`, `Hybrid Talent Master`, retired on this branch
