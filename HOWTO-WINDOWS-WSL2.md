@@ -502,12 +502,46 @@ cd ~/azerothcore-hybrid-lab-dev
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
-The development branch is addon-first:
+The development branch is addon-first. Install the client addon after the server module is set up.
 
-- Copy `client-addons/HybridTalentUI` into your WoW client's `Interface/AddOns` folder.
-- Use a separate dev client copy, for example `C:\Games\WoW-3.3.5a-HD-Dev`, if you also play on a stable production server.
-- Open the UI with the Hybrid microbar button or `/hybridui`.
-- Learn spells and talents from the addon UI instead of the old Hybrid Talent Master NPC.
+Recommended user-facing addon source:
+
+```text
+https://github.com/AzerothLabWorks/addons/tree/main/HybridTalentUI
+```
+
+Download or clone `AzerothLabWorks/addons`, then copy the `HybridTalentUI` folder to:
+
+```text
+<WoW client>/Interface/AddOns/HybridTalentUI
+```
+
+Example Windows target:
+
+```text
+C:\Games\WoW-3.3.5a-HD-Dev\Interface\AddOns\HybridTalentUI
+```
+
+If you are already working from this dev repo checkout, the addon source is also available at:
+
+```text
+modules/mod-hybrid-talent-system/addon/HybridTalentUI
+```
+
+You can install that local copy with the helper command from Ubuntu/WSL2:
+
+```bash
+cd ~/azerothcore-hybrid-lab-dev
+./scripts/install-hybrid-addon.sh --client-dir 'C:\Games\WoW-3.3.5a-HD-Dev'
+```
+
+Or with a WSL path:
+
+```bash
+./scripts/install-hybrid-addon.sh --client-dir /mnt/c/Games/WoW-3.3.5a-HD-Dev
+```
+
+Use a separate dev client copy, for example `C:\Games\WoW-3.3.5a-HD-Dev`, if you also play on a stable production server. Restart WoW or reload the UI, enable `HybridTalentUI` on the character select AddOns screen, then open it with the Hybrid microbar button or `/hybridui`. Learn spells and talents from the addon UI instead of the old Hybrid Talent Master NPC.
 
 On the dev branch, `setup-hybrid` imports addon-backed Hybrid SQL and retires the old Hybrid trainer/beacon path. The legacy entries are kept here for reference only:
 

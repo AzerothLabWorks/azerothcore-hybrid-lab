@@ -7,7 +7,7 @@ This repo owns the custom work:
 - `modules/mod-hybrid-talent-system`
 - `modules/mod-profession-master`
 - `modules/mod-startup-qol`
-- `client-addons/HybridTalentUI`
+- `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
 - `patches/core` AzerothCore source patches
 - WSL2/Docker installer scripts
 - Module management scripts
@@ -132,7 +132,9 @@ Brand-new characters receive the configured starter package on first login: ridi
 
 Hybrid spell/talent access is now addon-first on this branch:
 
-- Hybrid UI addon: `client-addons/HybridTalentUI`
+- Hybrid UI addon source in this repo: `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
+- User-facing addon repo: `https://github.com/AzerothLabWorks/addons/tree/main/HybridTalentUI`
+- Addon install helper: `scripts/install-hybrid-addon.sh --client-dir <WoW client path>`
 - In-game command path: `/hybridui`
 - Legacy Hybrid trainer: `190010`, `Hybrid Talent Master`, retired on this branch
 - Legacy Hybrid beacon item: `1915`, `Hybrid Talent Beacon`, retired on this branch
