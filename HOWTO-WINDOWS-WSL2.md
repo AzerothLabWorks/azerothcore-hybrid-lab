@@ -38,7 +38,24 @@ wsl --install
 
 Restart Windows if prompted.
 
-After restart, open Ubuntu from the Start menu and create your Linux username/password.
+After restart, Windows may automatically finish installing Ubuntu and open a new Ubuntu terminal. If it does, create your Linux username/password when prompted.
+
+If Ubuntu does not open automatically, install it manually from PowerShell:
+
+```powershell
+wsl --list --online
+wsl --install -d Ubuntu
+```
+
+Then launch Ubuntu from the Start menu, or run:
+
+```powershell
+wsl -d Ubuntu
+```
+
+Create your Linux username/password when prompted.
+
+If `wsl --install -d Ubuntu` says Ubuntu is already installed, just launch Ubuntu from the Start menu or run `wsl -d Ubuntu`.
 
 Verify WSL2 from PowerShell:
 
