@@ -2,6 +2,28 @@
 
 This roadmap keeps native Playerbot AI responsible for gameplay decisions while improving reliability, observability, and social presence around it.
 
+## Current State
+
+Status for branch `codex/hybrid-talents-ui`:
+
+| Area | State | Notes |
+|---|---|---|
+| Bot population | Live | Playerbots profile configures 1500 online random bots and aligns Docker overrides so container environment does not cap the value lower than `playerbots.conf`. |
+| Leveling density | Live | Random bots start at level 15 and their maximum random level follows online player levels to improve leveling dungeon availability. |
+| LFG participation | Live | Random bot LFG participation is enabled, summon-on-group is enabled, and bots are biased toward tank/healer-capable specs for healthier role coverage. |
+| LFG proposal reliability | Live | Bots no longer explicitly decline LFG proposals only because they are in combat or dead. |
+| LFG teleport watchdog | Live, validating | Bots in an active LFG dungeon group retry the native `lfg teleport` action when they accepted but remain outside the dungeon. Added after a Ragefire Chasm partial-entry reproduction. |
+| Social chatter | Live | Random bot talk and broadcasts remain enabled so zones feel active. Repeated nearby-player hello emotes are disabled to reduce chat noise. |
+| Ranked 3v3 seed config | Live, needs level-80 validation | Rated 3v3 bot participation is conservatively seeded for the level 80 bracket. Queue-time diagnostics still need more real playtest data. |
+| Diagnostics | Live | `diagnose-playerbots-lfg` and `diagnose-playerbots-pvp` helpers are available through `scripts/manage-wow-modules.sh`. |
+
+Recent player validation:
+
+- Deadmines LFG formed successfully, bots entered, and dungeon gameplay was smooth.
+- Wailing Caverns LFG popped quickly after the population and role-distribution changes.
+- Ragefire Chasm reproduced a partial-entry case before the teleport watchdog was added; this is the main regression scenario to retest.
+- Barrens/Crossroads felt much more populated with 1500 bots and active General chat.
+
 ## End State
 
 Build a Living Server layer for the Playerbots profile:
@@ -15,7 +37,7 @@ Build a Living Server layer for the Playerbots profile:
 
 The first practical target is dungeon entry reliability across the full 1-80 dungeon progression, especially when using LFG.
 
-Status: initial dev validation is successful, with one follow-up reliability fix now added. After the population, role distribution, and LFG proposal changes, Deadmines formed through LFG, all bots ported in, and dungeon gameplay was reported as smooth. Ragefire Chasm later reproduced a partial-entry case where two bots joined the LFG group but stayed outside until vote-kicked, so the LFG teleport watchdog has been promoted from design to implementation. General chat activity also increased enough to make the server feel more alive.
+Status: live on `codex/hybrid-talents-ui`, still expanding dungeon coverage. After the population, role distribution, and LFG proposal changes, Deadmines formed through LFG, all bots ported in, and dungeon gameplay was reported as smooth. Wailing Caverns also popped quickly during progression testing. Ragefire Chasm later reproduced a partial-entry case where two bots joined the LFG group but stayed outside until vote-kicked, so the LFG teleport watchdog has been implemented and should be retested against that scenario. General chat activity increased enough to make the server feel more alive.
 
 ### Setup
 
@@ -89,6 +111,7 @@ Capture these details when reproducing:
 Current evidence:
 
 - Deadmines: queue formed, bots zoned in, and gameplay was smooth.
+- Wailing Caverns: queue was effectively instant after bot population and role distribution changes.
 - Ragefire Chasm: queue formed and the player teleported in, but two bots stayed outside. Added the LFG teleport watchdog for the next validation pass.
 - Crossroads/Barrens: high bot population and General chat made the zone feel alive, but greet emotes were noisy. Setup now keeps General chat/broadcasts enabled while disabling the repeated nearby-player hello emote.
 - Continue smoke testing Vanilla, Burning Crusade, and Wrath dungeons to confirm the watchdog resolves partial-entry cases.
@@ -124,7 +147,7 @@ For each dungeon, record:
 
 ## Iteration 2: LFG Watchdog
 
-Status: implemented for validation after Ragefire Chasm reproduced accepted-but-not-teleported behavior.
+Status: live on `codex/hybrid-talents-ui`, validating across more dungeon queues.
 
 The current native watchdog in `mod-playerbots`:
 
@@ -141,6 +164,8 @@ Next watchdog improvements if needed:
 ## Iteration 3: Ranked 3v3 Arena Reliability
 
 The next PvP target is reducing long ranked 3v3 queue times.
+
+Status: configuration is live, but gameplay validation is still pending.
 
 Current conservative setup:
 
@@ -189,6 +214,8 @@ Capture these details when reproducing:
 
 ## Iteration 4: Social Explanation Layer
 
+Status: planned. Basic social chatter is live through Playerbots text/broadcast systems, but targeted explanation messages are not implemented yet.
+
 Add event-driven messages for real friction points:
 
 - "I am still in combat, trying to zone in after this."
@@ -200,6 +227,8 @@ Add event-driven messages for real friction points:
 These should use `PlayerbotTextMgr` text keys and probability/rate limits.
 
 ## Iteration 5: Personality And Memory
+
+Status: planned for later after dungeon and PvP reliability are stable.
 
 After reliability is stable:
 
