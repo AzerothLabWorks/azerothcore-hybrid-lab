@@ -55,7 +55,16 @@ HybridTalentSystem.AutoUpgradeRanks = 1
 # demons.
 HybridTalentSystem.MirrorPetBuffs = 1
 
-# Comma-separated spell IDs to mirror to pets. Only the first rank of each
+# Mirror the same selected self-cast friendly buff spell families onto nearby
+# party/raid members. This supports solo-friendly hybrid group play without
+# requiring manual rebuffing of every group member.
+HybridTalentSystem.MirrorGroupBuffs = 1
+
+# Maximum distance for mirrored group buffs. Group members outside this range
+# are skipped; pet mirroring is not range-limited by this value.
+HybridTalentSystem.MirrorGroupBuffRange = 100
+
+# Comma-separated spell IDs to mirror to pets and group members. Only the first rank of each
 # spell family is required; higher ranks are matched automatically.
 # Defaults include Fortitude, Spirit, Shadow Protection, Arcane Intellect,
 # Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift, and Thorns.

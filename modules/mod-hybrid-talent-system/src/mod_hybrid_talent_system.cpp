@@ -6,6 +6,7 @@
 #include "DBCStores.h"
 #include "DatabaseEnv.h"
 #include "GossipDef.h"
+#include "Group.h"
 #include "Item.h"
 #include "ItemScript.h"
 #include "Log.h"
@@ -81,6 +82,8 @@ namespace
     bool EnableSynergies = true;
     bool AutoUpgradeRanks = true;
     bool MirrorPetBuffs = true;
+    bool MirrorGroupBuffs = true;
+    float MirrorGroupBuffRange = 100.0f;
     std::unordered_set<uint32> PetBuffSpellIds;
     std::map<uint32, std::set<uint32>> SpellDependencyGrants;
 
@@ -304,32 +307,59 @@ namespace
         return dependencyGrants;
     }
 
-    bool IsPetBuffSpell(uint32 spellId)
+    bool IsMirroredBuffSpell(uint32 spellId)
     {
         return PetBuffSpellIds.count(spellId) != 0 || PetBuffSpellIds.count(GetFirstRankSpellId(spellId)) != 0;
     }
 
-    void MirrorBuffToPet(Player* player, Spell* spell)
+    void CastMirroredBuff(Player* caster, Unit* target, uint32 spellId, bool checkRange)
     {
-        if (!Enabled || !MirrorPetBuffs || !player || !spell)
+        if (!caster || !target || !target->IsAlive())
+            return;
+
+        if (checkRange && !caster->IsWithinDistInMap(target, MirrorGroupBuffRange, true, false, false))
+            return;
+
+        if (target->HasAura(spellId))
+            return;
+
+        caster->CastSpell(target, spellId, true);
+    }
+
+    void MirrorBuffToPetAndGroup(Player* player, Spell* spell)
+    {
+        if (!Enabled || (!MirrorPetBuffs && !MirrorGroupBuffs) || !player || !spell)
             return;
 
         SpellInfo const* spellInfo = spell->GetSpellInfo();
-        if (!spellInfo || !IsPetBuffSpell(spellInfo->Id))
+        if (!spellInfo || !IsMirroredBuffSpell(spellInfo->Id))
             return;
 
         Unit* target = spell->m_targets.GetUnitTarget();
         if (target && target != player)
             return;
 
-        Pet* pet = player->GetPet();
-        if (!pet || !pet->IsAlive())
+        if (MirrorPetBuffs)
+        {
+            if (Pet* pet = player->GetPet())
+                CastMirroredBuff(player, pet, spellInfo->Id, false);
+        }
+
+        if (!MirrorGroupBuffs)
             return;
 
-        if (pet->HasAura(spellInfo->Id))
+        Group* group = player->GetGroup();
+        if (!group)
             return;
 
-        player->CastSpell(pet, spellInfo->Id, true);
+        for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            Player* member = itr->GetSource();
+            if (!member || member == player)
+                continue;
+
+            CastMirroredBuff(player, member, spellInfo->Id, true);
+        }
     }
 
     bool HasHybridSpellInChain(ObjectGuid::LowType guid, uint32 spellId)
@@ -1009,6 +1039,8 @@ namespace
         EnableSynergies = sConfigMgr->GetOption<bool>("HybridTalentSystem.EnableSynergies", true);
         AutoUpgradeRanks = sConfigMgr->GetOption<bool>("HybridTalentSystem.AutoUpgradeRanks", true);
         MirrorPetBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorPetBuffs", true);
+        MirrorGroupBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorGroupBuffs", true);
+        MirrorGroupBuffRange = sConfigMgr->GetOption<float>("HybridTalentSystem.MirrorGroupBuffRange", 100.0f);
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
@@ -2036,7 +2068,7 @@ public:
 
     void OnPlayerSpellCast(Player* player, Spell* spell, bool /*skipCheck*/) override
     {
-        MirrorBuffToPet(player, spell);
+        MirrorBuffToPetAndGroup(player, spell);
     }
 };
 
