@@ -104,19 +104,52 @@ local HIDDEN_KNOWN_SUPPORT_SPELLS = {
 }
 
 local STANCE_RELAXED_SPELLS = {
-    [100] = true,   -- Charge
-    [6178] = true,  -- Charge
-    [11578] = true, -- Charge
+    [100] = "Charge",
+    [6178] = "Charge",
+    [11578] = "Charge",
+    [20252] = "Intercept",
+    [20616] = "Intercept",
+    [20617] = "Intercept",
+    [25272] = "Intercept",
+    [25275] = "Intercept",
+    [7384] = "Overpower",
+    [7887] = "Overpower",
+    [11584] = "Overpower",
+    [11585] = "Overpower",
+    [694] = "Mocking Blow",
+    [7400] = "Mocking Blow",
+    [7402] = "Mocking Blow",
+    [20559] = "Mocking Blow",
+    [20560] = "Mocking Blow",
+    [25266] = "Mocking Blow",
+    [6572] = "Revenge",
+    [6574] = "Revenge",
+    [7379] = "Revenge",
+    [11600] = "Revenge",
+    [11601] = "Revenge",
+    [25288] = "Revenge",
+    [25269] = "Revenge",
+    [30357] = "Revenge",
+    [57823] = "Revenge",
+    [676] = "Disarm",
+    [871] = "Shield Wall",
+    [20230] = "Retaliation",
+    [1719] = "Recklessness",
+    [18499] = "Berserker Rage",
+    [6552] = "Pummel",
+    [6554] = "Pummel",
+    [1680] = "Whirlwind",
 }
 
-local function RemoveTooltipLineText(tooltip, text)
-    if not tooltip or not text or not tooltip.NumLines then
+local function RemoveTooltipStanceRequirementLines(tooltip)
+    if not tooltip or not tooltip.NumLines then
         return
     end
 
     for index = 1, tooltip:NumLines() do
         local line = _G[tooltip:GetName() .. "TextLeft" .. index]
-        if line and line.GetText and line:GetText() == text then
+        local text = line and line.GetText and line:GetText()
+        if text and string.find(text, "Requires", 1, true) and string.find(text, "Stance", 1, true) then
             line:SetText("")
         end
     end
@@ -127,9 +160,10 @@ local function ApplyHybridTooltipNotes(tooltip, spellId)
         return
     end
 
-    if STANCE_RELAXED_SPELLS[spellId] then
-        RemoveTooltipLineText(tooltip, "Requires Battle Stance")
-        tooltip:AddLine("Hybrid rule: Battle Stance is not required for Charge.", 0.6, 0.8, 1)
+    local spellName = STANCE_RELAXED_SPELLS[spellId]
+    if spellName then
+        RemoveTooltipStanceRequirementLines(tooltip)
+        tooltip:AddLine("Hybrid rule: stance is not required for " .. spellName .. ".", 0.6, 0.8, 1)
     end
 end
 

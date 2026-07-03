@@ -63,7 +63,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added known/available/locked/unaffordable status handling.
 - Added action bar preservation for hybrid spells and talent-granted spells.
 - Added logic to respect intentionally removed action buttons.
-- Added stance requirement relaxation for selected Warrior abilities only: Charge, Intercept, Overpower, Mocking Blow, Revenge, Disarm, Shield Wall, Retaliation, Recklessness, Berserker Rage, Pummel, and Whirlwind.
+- Added stance requirement relaxation and Hybrid UI tooltip notes for selected Warrior abilities only: Charge, Intercept, Overpower, Mocking Blow, Revenge, Disarm, Shield Wall, Retaliation, Recklessness, Berserker Rage, Pummel, and Whirlwind.
 
 ### Hunter Pet Support
 
