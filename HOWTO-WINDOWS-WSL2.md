@@ -524,25 +524,6 @@ Example Windows target:
 C:\Games\WoW-3.3.5a-HD-Dev\Interface\AddOns\HybridTalentUI
 ```
 
-If you are already working from this dev repo checkout, the addon source is also available at:
-
-```text
-modules/mod-hybrid-talent-system/addon/HybridTalentUI
-```
-
-You can install that local copy with the helper command from Ubuntu/WSL2:
-
-```bash
-cd ~/azerothcore-hybrid-lab-dev
-./scripts/install-hybrid-addon.sh --client-dir 'C:\Games\WoW-3.3.5a-HD-Dev'
-```
-
-Or with a WSL path:
-
-```bash
-./scripts/install-hybrid-addon.sh --client-dir /mnt/c/Games/WoW-3.3.5a-HD-Dev
-```
-
 Use a separate dev client copy, for example `C:\Games\WoW-3.3.5a-HD-Dev`, if you also play on a stable production server. Restart WoW or reload the UI, enable `HybridTalentUI` on the character select AddOns screen, then open it with the Hybrid microbar button or `/hybridui`. Learn spells and talents from the addon UI instead of the old Hybrid Talent Master NPC.
 
 ### Retired Hybrid NPC Reference

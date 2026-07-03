@@ -7,7 +7,6 @@ This repo owns the custom work:
 - `modules/mod-hybrid-talent-system`
 - `modules/mod-profession-master`
 - `modules/mod-startup-qol`
-- `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
 - `patches/core` AzerothCore source patches
 - WSL2/Docker installer scripts
 - Module management scripts
@@ -150,12 +149,6 @@ C:\Games\WoW-3.3.5a-HD-Dev\Interface\AddOns\HybridTalentUI
 ```
 
 Restart WoW or reload the UI, enable `HybridTalentUI` on the character select AddOns screen, then open it in game with the Hybrid button or `/hybridui`.
-
-For contributors working from this repo checkout, the addon source is also mirrored at `modules/mod-hybrid-talent-system/addon/HybridTalentUI`, and can be installed with:
-
-```bash
-./scripts/install-hybrid-addon.sh --client-dir 'C:\Games\WoW-3.3.5a-HD-Dev'
-```
 
 ## Custom NPCs
 
