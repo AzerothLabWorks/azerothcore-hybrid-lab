@@ -195,6 +195,47 @@ local function FormatNextPointText(label, nextLevel)
     return label .. " points maxed"
 end
 
+local function GetTalentProgressText(row)
+    if not row then
+        return ""
+    end
+
+    if row.knownRank >= row.maxRank then
+        return "Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Maxed"
+    end
+
+    return "Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Next " .. (row.knownRank + 1) .. "/" .. row.maxRank
+end
+
+local function GetTalentStateText(row)
+    if not row then
+        return ""
+    end
+
+    if row.knownRank >= row.maxRank then
+        return "Max rank learned."
+    end
+
+    if row.canLearn then
+        return "Available: learn rank " .. (row.knownRank + 1) .. "/" .. row.maxRank .. " for 1 hybrid talent point."
+    end
+
+    local reason = row.reason or ""
+    if reason == "" or reason == "Browse only" then
+        reason = "Locked"
+    end
+
+    return "Locked: " .. reason .. "."
+end
+
+local function GetTalentRulesText(row)
+    if not row then
+        return ""
+    end
+
+    return "Free-pick hybrid talent: no prior points in this tree are required."
+end
+
 local function DebugPetActions()
     Print("pet exists: " .. FormatBoolean(UnitExists and UnitExists("pet")) .. ", name: " .. tostring(UnitName and UnitName("pet") or "none"))
 
@@ -437,8 +478,8 @@ local function UpdateDetails()
     mainFrame.detailName:SetText(row.name)
     if state.mode == "talents" then
         mainFrame.detailMeta:SetText(GetTalentTabName(row) .. "  Row " .. (row.row + 1) .. "  Column " .. (row.col + 1))
-        mainFrame.detailDesc:SetText("Talent ID " .. row.talentId .. "  Spell ID " .. row.spellId .. "  Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Cost 1")
-        mainFrame.detailReason:SetText(row.reason or "Browse only")
+        mainFrame.detailDesc:SetText(GetTalentProgressText(row) .. "\n" .. GetTalentRulesText(row))
+        mainFrame.detailReason:SetText(GetTalentStateText(row))
     else
         mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
         mainFrame.detailDesc:SetText(row.description ~= "" and row.description or "No description available.")
@@ -478,16 +519,16 @@ local function UpdateRows()
             button.name:SetText(data.name)
             if state.mode == "talents" then
                 button.meta:SetText(GetTalentTabName(data) .. "  Row " .. (data.row + 1) .. " Col " .. (data.col + 1))
-                button.desc:SetText("Rank " .. data.knownRank .. "/" .. data.maxRank .. "  Cost 1")
-                button.reason:SetText(data.reason or "")
+                button.desc:SetText(GetTalentProgressText(data))
+                button.reason:SetText(data.canLearn and "Cost 1 point" or (data.reason or ""))
                 if data.knownRank >= data.maxRank then
                     button.status:SetText("Known")
                     button.status:SetTextColor(0.25, 0.9, 0.35)
                 elseif data.canLearn then
-                    button.status:SetText("Available")
+                    button.status:SetText("Learn rank " .. (data.knownRank + 1))
                     button.status:SetTextColor(0.95, 0.82, 0.35)
                 elseif data.knownRank > 0 then
-                    button.status:SetText("Partial")
+                    button.status:SetText("Rank " .. data.knownRank)
                     button.status:SetTextColor(0.6, 0.8, 1)
                 else
                     button.status:SetText("Locked")
