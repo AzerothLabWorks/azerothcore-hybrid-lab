@@ -15,7 +15,7 @@ This repo owns the custom work:
 
 It does not vendor the full AzerothCore source tree. Installer scripts clone the upstream server source that matches the selected profile.
 
-## Legal And Ethical Notes
+## Usage And Legal Statement
 
 This project is an independent educational and personal-use lab built around open source AzerothCore server software. It is not affiliated with, endorsed by, sponsored by, or associated with Blizzard Entertainment, World of Warcraft, or any related Blizzard products or services.
 
