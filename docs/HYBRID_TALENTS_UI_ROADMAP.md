@@ -24,8 +24,9 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Spell browsing | Live | Class filters, search, availability filters, icons, native tooltips, known/available/locked states, learn, and unlearn are working. |
 | Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. |
 | Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, and use separate hybrid talent points. |
-| Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, and support dependency checks such as requiring Charge before Improved Charge. |
+| Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, allow free picks across trees without native tree point requirements, and support dependency checks such as requiring Charge before Improved Charge. |
 | Progression clarity | Live | The addon shows when the next spell point and next talent point will be earned during leveling. |
+| Progression balance | Playtesting | Current defaults are playable, but point cadence, costs, level gates, and long-term leveling feel still need more character progression data. |
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
@@ -56,6 +57,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added server protocol for addon refresh, learn, and unlearn commands.
 - Added point display and refresh behavior after learning/unlearning.
 - Added next spell/talent point display for leveling clarity.
+- Added free-pick hybrid talent selection across talent trees without requiring prior points in that tree.
 - Added known/available/locked/unaffordable status handling.
 - Added action bar preservation for hybrid spells and talent-granted spells.
 - Added logic to respect intentionally removed action buttons.
@@ -84,6 +86,8 @@ These are the main areas we can pick from for the next development cycle.
 
 Goal: make spell and talent acquisition feel good over a full leveling journey.
 
+Current state: the progression display work is live and validated. The broader balance pass remains open until point gain, costs, level gates, and late-level progression have been tested through more normal gameplay.
+
 Candidate work:
 
 - Tune hybrid spell point gain rate.
@@ -103,6 +107,7 @@ Candidate work:
 
 - Show learned talent rank more clearly in the list/detail panel.
 - Improve locked talent explanations.
+- Document and preserve free-pick talent behavior across trees.
 - Add clearer dependency text for talents that require base spells or other talents.
 - Add tree/category labels where useful.
 - Review talents that grant active spells and ensure action bar behavior remains stable.

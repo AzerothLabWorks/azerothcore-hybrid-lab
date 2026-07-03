@@ -19,7 +19,7 @@ It does not vendor the full AzerothCore source tree. Installer scripts clone the
 
 - **HybridTalentUI addon**: Addon-first cross-class spell and talent interface inspired by Project Ascension. It opens from a movable microbar button, supports spell/talent tabs, class browsing, search, availability filters, icons, in-game tooltip descriptions, and next spell/talent point visibility while leveling.
 - **Hybrid spell learning**: Cross-class spell learning unlocks at level 10, uses configurable hybrid spell points, supports left-click learning and right-click unlearning, refunds points correctly, preserves learned spells through relog, upgrades ranks automatically, and restores learned spell action buttons where possible.
-- **Hybrid talent browsing and learning**: Cross-class talent browsing is available in the same UI with separate hybrid talent points, tooltip descriptions, learn/unlearn support, relog persistence, next-point progression clarity, and dependency checks such as requiring Charge before Improved Charge.
+- **Hybrid talent browsing and learning**: Cross-class talent browsing is available in the same UI with separate hybrid talent points, tooltip descriptions, learn/unlearn support, relog persistence, next-point progression clarity, free-pick talent selection across trees without native tree point requirements, and dependency checks such as requiring Charge before Improved Charge.
 - **Cross-class hunter pet support**: Hybrid Hunter support includes Tame Beast dependency grants, Mend/Call/Dismiss/Revive/Feed/Beast Training support, non-Hunter pet taming, pet persistence, pet action bar restoration, pet spellbook tab support, and pet autocast persistence.
 - **Retired Hybrid trainer/beacon path on this branch**: The legacy Hybrid Talent Master NPC and Hybrid Talent Beacon have been disabled/removed in the dev build. Hybrid progression now flows through the addon and `/hybridui` command path.
 - **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item. This NPC remains active.
@@ -122,7 +122,7 @@ Playerbot improvement planning lives in [docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md]
 
 This branch, `codex/hybrid-talents-ui`, is the active development build for the addon-first Hybrid spell/talent project. The stable production branch remains `main`; use a separate development server directory such as `~/wow-server-playerbots-hybrid-dev` and a separate client copy such as `C:\Games\WoW-3.3.5a-HD-Dev` when testing this branch.
 
-The current development direction is to make the addon the main user experience for hybrid progression while keeping the server module responsible for validation, persistence, point accounting, next-point progression data, dependency grants, and cross-class engine support.
+The current development direction is to make the addon the main user experience for hybrid progression while keeping the server module responsible for validation, persistence, point accounting, next-point progression data, free-pick hybrid talent rules, dependency grants, and cross-class engine support.
 
 ## Startup QoL
 
@@ -152,7 +152,7 @@ The Hybrid setup step imports addon-backed Hybrid SQL and removes old Hybrid bea
 
 ## Current Status
 
-The dev branch is playable and being tested through normal progression. Confirmed areas include Hybrid spell learning/unlearning, Hybrid talent learning/unlearning, point spending/refunds, next spell/talent point display while leveling, relog persistence, spell/talent tooltips, class browsing, dependency checks, cross-class Hunter pet taming, pet action bars, pet spellbook tab support, and pet autocast persistence.
+The dev branch is playable and being tested through normal progression. Confirmed areas include Hybrid spell learning/unlearning, Hybrid talent learning/unlearning, free-pick talent selection across trees, point spending/refunds, next spell/talent point display while leveling, relog persistence, spell/talent tooltips, class browsing, dependency checks, cross-class Hunter pet taming, pet action bars, pet spellbook tab support, and pet autocast persistence.
 
 Known near-term development areas include broader class-by-class balance testing, additional dependency rules, talent progression tuning, pet talent edge cases, and continued UI polish.
 
