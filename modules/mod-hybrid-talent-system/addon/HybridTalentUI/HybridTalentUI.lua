@@ -1024,11 +1024,7 @@ local function ToggleMainFrame()
         mainFrame:Hide()
     else
         mainFrame:Show()
-        if not state.loaded then
-            Refresh()
-        else
-            UpdateRows()
-        end
+        Refresh()
     end
 end
 
@@ -1149,6 +1145,7 @@ end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
@@ -1157,6 +1154,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         SlashCmdList.HYBRIDTALENTUI = HandleSlash
         CreateOpenButton()
         Print("loaded. Click the Hybrid button or use /hybridui.")
+    elseif event == "PLAYER_LEVEL_UP" then
+        state.loaded = false
+        if mainFrame and mainFrame:IsVisible() then
+            Refresh()
+        end
     elseif event == "CHAT_MSG_ADDON" then
         HandleAddonMessage(...)
     end
