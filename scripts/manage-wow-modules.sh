@@ -17,9 +17,15 @@ Commands:
   install MODULE...     Install one or more modules into SERVER_DIR/modules.
   import-sql MODULE...  Apply module SQL files to running Docker databases.
   apply-core-patches    Apply Hybrid Lab AzerothCore core patches.
+  apply-playerbots-patches
+                         Apply Hybrid Lab mod-playerbots patches.
   setup-ahbot           Create/update AHBot account, owner character, and config.
   setup-playerbots      Install Playerbots config and tune random bot population.
-  setup-hybrid          Install Hybrid config and normalize trainer NPC fields.
+  diagnose-playerbots-lfg
+                         Show Playerbots LFG config and recent worldserver LFG logs.
+  diagnose-playerbots-pvp
+                         Show Playerbots BG/arena config and recent PvP queue logs.
+  setup-hybrid          Install Hybrid config and import addon-backed Hybrid SQL.
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
   setup-startup-qol    Install Startup QoL config.
@@ -28,16 +34,19 @@ Commands:
 Known modules are defined in configs/modules.conf.
 
 Examples:
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid list
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install hybrid ahbot transmog
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid import-sql hybrid
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid apply-core-patches
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev list
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install hybrid ahbot transmog
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev import-sql hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-core-patches
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-playerbots-patches
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-lfg
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-pvp
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 USAGE
 }
 
@@ -49,7 +58,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|apply-core-patches|setup-ahbot|setup-playerbots|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
+    list|installed|install|import-sql|apply-core-patches|apply-playerbots-patches|setup-ahbot|setup-playerbots|diagnose-playerbots-lfg|diagnose-playerbots-pvp|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
       COMMAND="$1"
       shift
       break
@@ -62,7 +71,7 @@ COMMAND="${COMMAND:-}"
 [[ -n "$COMMAND" ]] || { usage; exit 1; }
 
 if [[ -z "$SERVER_DIR" ]]; then
-  for candidate in "$HOME/wow-server-playerbots-hybrid" "$HOME/wow-server-npcbots-hybrid" "$HOME/wow-server-base-hybrid" "$HOME/wow-server-prebuilt-hybrid"; do
+  for candidate in "$HOME/wow-server-playerbots-hybrid-dev"; do
     if [[ -f "$candidate/docker-compose.yml" ]]; then
       SERVER_DIR="$candidate"
       break
@@ -204,6 +213,37 @@ set_conf_value() {
   fi
 }
 
+set_compose_environment_value() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  [[ -f "$file" ]] || return 0
+
+  if grep -qE "^[[:space:]]+${key}:" "$file"; then
+    sed -i -E "s|^([[:space:]]+${key}:).*|\\1 \"${value}\"|" "$file"
+  else
+    local temp_file
+    temp_file="$(mktemp)"
+    if awk -v key="$key" -v value="$value" '
+      {
+        print
+        if (!inserted && $0 ~ /^[[:space:]]+environment:[[:space:]]*$/) {
+          match($0, /^[[:space:]]+/)
+          print substr($0, RSTART, RLENGTH) "  " key ": \"" value "\""
+          inserted = 1
+        }
+      }
+      END { exit inserted ? 0 : 1 }
+    ' "$file" > "$temp_file"; then
+      mv "$temp_file" "$file"
+    else
+      rm -f "$temp_file"
+      warn "Docker override does not define an environment block. Leaving $file unchanged for $key."
+    fi
+  fi
+}
+
 setup_ahbot() {
   require_server_dir
 
@@ -326,10 +366,135 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.MinRandomBots" "1500"
   set_conf_value "$target_config" "AiPlayerbot.MaxRandomBots" "1500"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotAccountCount" "0"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotMinLevel" "15"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotMaxLevel" "80"
+  set_conf_value "$target_config" "AiPlayerbot.SyncLevelWithPlayers" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotJoinLfg" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotJoinBG" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotAutoJoinBG" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotAutoJoinArenaBracket" "14"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotAutoJoinBGRatedArena3v3Count" "2"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotArenaTeam3v3Count" "40"
+  set_conf_value "$target_config" "AiPlayerbot.ApplyInstanceStrategies" "1"
+  set_conf_value "$target_config" "AiPlayerbot.SummonWhenGroup" "1"
+  set_conf_value "$target_config" "AiPlayerbot.EnableGreet" "0"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotTalk" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotEmote" "0"
+  set_conf_value "$target_config" "AiPlayerbot.EnableBroadcasts" "1"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotSayWithoutMaster" "0"
+
+  # Bias random bot specs toward dungeon-viable LFG roles while keeping DPS variety.
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.1.0" "20"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.1.1" "25"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.1.2" "55"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.2.0" "40"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.2.1" "40"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.2.2" "20"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.5.0" "45"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.5.1" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.5.2" "20"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.6.0" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.6.1" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.6.2" "30"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.7.0" "25"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.7.1" "25"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.7.2" "50"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.0" "15"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.1" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.2" "35"
+  set_conf_value "$target_config" "AiPlayerbot.RandomClassSpecProb.11.3" "15"
+
+  local compose_override="$SERVER_DIR/docker-compose.override.yml"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_MIN_RANDOM_BOTS" "1500"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_MAX_RANDOM_BOTS" "1500"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MIN_LEVEL" "15"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MAX_LEVEL" "80"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_SYNC_LEVEL_WITH_PLAYERS" "1"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_JOIN_BG" "1"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_AUTO_JOIN_BG" "1"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_AUTO_JOIN_ARENA_BRACKET" "14"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_AUTO_JOIN_BG_RATED_ARENA_3V3_COUNT" "2"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_ARENA_TEAM_3V3_COUNT" "40"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_ENABLE_GREET" "0"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_EMOTE" "0"
+  set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_ENABLE" "1"
+  set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_MAX_LEVEL" "80"
 
   log "Installed Playerbots config to $target_config"
-  log "Configured Playerbots random bot population for 1500 online bots."
+  log "Configured Playerbots random bot population, leveling-range density, LFG participation, rated 3v3 seeding, dungeon strategies, role-biased specs, chat broadcasts, and quiet greetings."
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
+}
+
+diagnose_playerbots_lfg() {
+  require_server_dir
+
+  local config_file="$SERVER_DIR/env/dist/etc/modules/playerbots.conf"
+  if [[ ! -f "$config_file" ]]; then
+    config_file="$SERVER_DIR/modules/mod-playerbots/conf/playerbots.conf"
+  fi
+
+  log "Playerbots LFG-related config"
+  if [[ -f "$config_file" ]]; then
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers|EnableGreet|RandomBotTalk|RandomBotEmote|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
+  else
+    warn "Could not find playerbots.conf. Run setup-playerbots first."
+  fi
+
+  log "Docker override LFG-related environment"
+  if [[ -f "$SERVER_DIR/docker-compose.override.yml" ]]; then
+    grep -E "AC_AI_PLAYERBOT_(RANDOM_BOT_JOIN_LFG|RANDOM_BOT_MIN_LEVEL|RANDOM_BOT_MAX_LEVEL|SYNC_LEVEL_WITH_PLAYERS|APPLY_INSTANCE_STRATEGIES|SUMMON_WHEN_GROUP|MIN_RANDOM_BOTS|MAX_RANDOM_BOTS)|AC_PLAYERBOTS" "$SERVER_DIR/docker-compose.override.yml" || true
+  else
+    warn "No docker-compose.override.yml found."
+  fi
+
+  log "Recent worldserver lines mentioning LFG, dungeon, teleport, proposal, or playerbots"
+  local since="${PLAYERBOTS_LFG_LOG_SINCE:-45m}"
+  local lines="${PLAYERBOTS_LFG_LOG_LINES:-240}"
+  if (cd "$SERVER_DIR" && docker compose ps ac-worldserver >/dev/null 2>&1); then
+    (cd "$SERVER_DIR" && docker compose logs --since "$since" ac-worldserver 2>/dev/null \
+      | grep -Ei "playerbot|lfg|dungeon|proposal|role check|teleport|summon|group invite|instance" \
+      | tail -n "$lines") || warn "No matching recent log lines found."
+  else
+    warn "Could not read ac-worldserver logs. Is Docker running and is the server started?"
+  fi
+
+  log "When reproducing a failed dungeon entry, note: dungeon name, bot names/classes, whether they were in combat/dead/taxiing, who accepted the proposal, and whether /reload or manual summon changed anything."
+}
+
+diagnose_playerbots_pvp() {
+  require_server_dir
+
+  local config_file="$SERVER_DIR/env/dist/etc/modules/playerbots.conf"
+  if [[ ! -f "$config_file" ]]; then
+    config_file="$SERVER_DIR/modules/mod-playerbots/conf/playerbots.conf"
+  fi
+
+  log "Playerbots BG/arena-related config"
+  if [[ -f "$config_file" ]]; then
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinBG|RandomBotAutoJoinBG|RandomBotAutoJoinArenaBracket|RandomBotAutoJoinBGRatedArena2v2Count|RandomBotAutoJoinBGRatedArena3v3Count|RandomBotAutoJoinBGRatedArena5v5Count|RandomBotArenaTeam2v2Count|RandomBotArenaTeam3v3Count|RandomBotArenaTeam5v5Count|RandomBotArenaTeamMinRating|RandomBotArenaTeamMaxRating|DeleteRandomBotArenaTeams|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers)[[:space:]]*=" "$config_file" || true
+  else
+    warn "Could not find playerbots.conf. Run setup-playerbots first."
+  fi
+
+  log "Docker override BG/arena-related environment"
+  if [[ -f "$SERVER_DIR/docker-compose.override.yml" ]]; then
+    grep -E "AC_AI_PLAYERBOT_(RANDOM_BOT_JOIN_BG|RANDOM_BOT_AUTO_JOIN_BG|RANDOM_BOT_AUTO_JOIN_ARENA_BRACKET|RANDOM_BOT_AUTO_JOIN_BG_RATED_ARENA|RANDOM_BOT_ARENA_TEAM|MIN_RANDOM_BOTS|MAX_RANDOM_BOTS|RANDOM_BOT_MIN_LEVEL|RANDOM_BOT_MAX_LEVEL|SYNC_LEVEL_WITH_PLAYERS)|AC_PLAYERBOTS" "$SERVER_DIR/docker-compose.override.yml" || true
+  else
+    warn "No docker-compose.override.yml found."
+  fi
+
+  log "Recent worldserver lines mentioning arena, battleground, rated queue, or playerbots"
+  local since="${PLAYERBOTS_PVP_LOG_SINCE:-45m}"
+  local lines="${PLAYERBOTS_PVP_LOG_LINES:-240}"
+  if (cd "$SERVER_DIR" && docker compose ps ac-worldserver >/dev/null 2>&1); then
+    (cd "$SERVER_DIR" && docker compose logs --since "$since" ac-worldserver 2>/dev/null \
+      | grep -Ei "playerbot|arena|rated|3v3|2v2|5v5|battleground|battlefield|bg queue|queue.*arena|arena.*queue|skirmish" \
+      | tail -n "$lines") || warn "No matching recent log lines found."
+  else
+    warn "Could not read ac-worldserver logs. Is Docker running and is the server started?"
+  fi
+
+  log "When reproducing a ranked 3v3 queue issue, note: player level, bracket, queue type, wait time, team/captain status, and whether bots are already in active arenas."
 }
 
 setup_hybrid() {
@@ -349,30 +514,28 @@ setup_hybrid() {
   log "Ensuring Hybrid SQL has been imported..."
   import_module_sql hybrid
 
-  log "Normalizing Hybrid trainer creature_template entry 190010..."
+  log "Retiring legacy Hybrid trainer/beacon access path..."
   mysql_query acore_world "
+DELETE FROM creature WHERE id = 190010;
 UPDATE creature_template
 SET
-  npcflag = 1,
+  npcflag = 0,
   gossip_menu_id = 0,
-  faction = 35,
-  \`rank\` = 0,
-  unit_flags = 0,
-  unit_flags2 = 0,
-  dynamicflags = 0,
-  type_flags = 0,
-  flags_extra = 0,
   AIName = '',
-  ScriptName = 'npc_hybrid_talent_master'
+  ScriptName = ''
 WHERE entry = 190010;
+DELETE FROM item_template WHERE entry = 1915;
 "
 
-  local script_name
-  script_name="$(mysql_query acore_world "SELECT ScriptName FROM creature_template WHERE entry = 190010;" | tr -d '\r')"
-  [[ "$script_name" == "npc_hybrid_talent_master" ]] || die "Hybrid trainer entry 190010 was not found or could not be updated."
+  mysql_query acore_characters "
+DELETE ci FROM character_inventory ci
+JOIN item_instance ii ON ii.guid = ci.item
+WHERE ii.itemEntry = 1915;
+DELETE FROM item_instance WHERE itemEntry = 1915;
+"
 
-  log "Hybrid setup complete."
-  log "Restart ac-worldserver, then delete and respawn the trainer if it was already spawned."
+  log "Hybrid setup complete. Use the HybridTalentUI addon/microbar button for spells and talents."
+
 }
 
 setup_profession_master() {
@@ -482,7 +645,7 @@ import_module_sql() {
       */sql/auth/*|*/sql/db_auth/*|*/sql/db-auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
       *) warn "Skipping SQL with unknown target: $sql_file" ;;
     esac
-  done < <(find "$module_dir/sql" -type f -name '*.sql' -print0 2>/dev/null || true)
+  done < <(find "$module_dir/sql" -type f -name '*.sql' -print0 2>/dev/null | sort -z || true)
 
   while IFS= read -r -d '' sql_file; do
     case "$sql_file" in
@@ -491,7 +654,7 @@ import_module_sql() {
       */data/sql/db-auth/*) mysql_exec_file acore_auth "$sql_file"; applied=true ;;
       *) warn "Skipping SQL with unknown target: $sql_file" ;;
     esac
-  done < <(find "$module_dir/data/sql" -type f -name '*.sql' -print0 2>/dev/null || true)
+  done < <(find "$module_dir/data/sql" -type f -name '*.sql' -print0 2>/dev/null | sort -z || true)
 
   if [[ "$applied" == false ]]; then
     warn "No SQL files applied for $name."
@@ -527,6 +690,34 @@ core_patch_already_present() {
       [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
       grep -q "CanUseHybridEquipmentSkillLine" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
       ;;
+    0005-hybrid-tame-beast-non-hunters.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/SpellEffects.cpp" ]] || return 1
+      grep -q "canHybridTame = m_spellInfo->Id == 1515" "$SERVER_DIR/src/server/game/Spells/SpellEffects.cpp"
+      ;;
+    0006-preserve-hybrid-managed-spells.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
+      grep -q "IsHybridManagedSpell" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
+      ;;
+    0007-hybrid-tame-beast-aura-completion.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/Auras/SpellAuraEffects.cpp" ]] || return 1
+      grep -q "Hybrid Tame Beast failed" "$SERVER_DIR/src/server/game/Spells/Auras/SpellAuraEffects.cpp"
+      ;;
+    0008-hybrid-hunter-pet-load.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp" ]] || return 1
+      grep -q "owner->ToPlayer()->HasSpell(1515)" "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp"
+      ;;
+    0009-hybrid-pet-action-bar-restore.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp" ]] || return 1
+      grep -q "ACTION_BAR_INDEX_PET_SPELL_START" "$SERVER_DIR/src/server/game/Entities/Pet/Pet.cpp"
+      ;;
+    0010-hybrid-warrior-stance-requirements.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/SpellInfoCorrections.cpp" ]] || return 1
+      grep -q "let cross-class Warrior actives work without requiring Warrior stances" "$SERVER_DIR/src/server/game/Spells/SpellInfoCorrections.cpp"
+      ;;
+    0011-preserve-hybrid-managed-action-buttons.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
+      grep -q "!HasSpell(action) && !IsHybridManagedSpell" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
+      ;;
     *)
       return 1
       ;;
@@ -558,6 +749,33 @@ apply_core_patches() {
   done
 }
 
+apply_playerbots_patches() {
+  require_server_dir
+
+  local module_dir="$SERVER_DIR/modules/mod-playerbots"
+  [[ -d "$module_dir" ]] || die "mod-playerbots is not installed at: $module_dir"
+
+  local patch_dir="$REPO_ROOT/patches/playerbots"
+  [[ -d "$patch_dir" ]] || die "No Playerbots patch directory found: $patch_dir"
+
+  shopt -s nullglob
+  local patches=("$patch_dir"/*.patch)
+  shopt -u nullglob
+
+  [[ ${#patches[@]} -gt 0 ]] || die "No Playerbots patches found in: $patch_dir"
+
+  for patch_file in "${patches[@]}"; do
+    if (cd "$SERVER_DIR" && git apply --check --recount "$patch_file"); then
+      (cd "$SERVER_DIR" && git apply --recount "$patch_file")
+      log "Applied $(basename "$patch_file")."
+    elif (cd "$SERVER_DIR" && git apply --reverse --check --recount "$patch_file"); then
+      warn "Already applied: $(basename "$patch_file")"
+    else
+      die "Could not apply Playerbots patch: $patch_file"
+    fi
+  done
+}
+
 case "$COMMAND" in
   list)
     list_modules
@@ -576,11 +794,20 @@ case "$COMMAND" in
   apply-core-patches)
     apply_core_patches
     ;;
+  apply-playerbots-patches)
+    apply_playerbots_patches
+    ;;
   setup-ahbot)
     setup_ahbot
     ;;
   setup-playerbots)
     setup_playerbots
+    ;;
+  diagnose-playerbots-lfg)
+    diagnose_playerbots_lfg
+    ;;
+  diagnose-playerbots-pvp)
+    diagnose_playerbots_pvp
     ;;
   setup-hybrid)
     setup_hybrid

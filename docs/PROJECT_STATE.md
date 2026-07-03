@@ -5,7 +5,8 @@ This file is the durable handoff note for continuing AzerothCore Hybrid Lab work
 ## Repository
 
 - GitHub: `https://github.com/AzerothLabWorks/azerothcore-hybrid-lab`
-- Windows repo path: `C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab`
+- Stable Windows repo path: `C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab`
+- Development Windows repo path: `C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab-dev`
 - Main branch: `main`
 - Current stable commit at migration recovery: `2fdf488 Add single hybrid spell unlearning`
 - Dev branch reserved for future Ascension-style UI/talent work: `codex/hybrid-talents-ui`
@@ -13,8 +14,10 @@ This file is the durable handoff note for continuing AzerothCore Hybrid Lab work
 ## WSL Runtime
 
 - Ubuntu user: `ryan`
-- WSL lab repo path: `~/azerothcore-hybrid-lab`
-- Restored server path: `~/wow-server-playerbots-hybrid`
+- Stable WSL lab repo path: `~/azerothcore-hybrid-lab`
+- Development WSL lab repo path: `~/azerothcore-hybrid-lab-dev`
+- Stable server path: `~/wow-server-playerbots-hybrid`
+- Development server path: `~/wow-server-playerbots-hybrid-dev`
 - Restored backup source: `C:\MetaPC_Data\MetaPain_Backup\Wow Server Backup`
 - Docker is available inside Ubuntu.
 
@@ -57,32 +60,33 @@ CREATE INDEX idx_creature_id1 ON creature (id1);
 Windows/Codex side:
 
 ```powershell
-cd "C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab"
+cd "C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab-dev"
 git status --short --branch
 ```
 
 WSL/server side:
 
 ```bash
-cd ~/azerothcore-hybrid-lab
+cd ~/azerothcore-hybrid-lab-dev
 git pull
 
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid install playerbots hybrid professionmaster startupqol ahbot transmog learnspells
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-hybrid
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-profession-master
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-startup-qol
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-playerbots
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev install playerbots hybrid professionmaster startupqol ahbot transmog learnspells
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev apply-playerbots-patches
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
 
 AHBOT_ACCOUNT=ahbot AHBOT_CHARACTER=Auctioneer \
-  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid setup-ahbot
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
 
-./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid rebuild
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
 Server status checks:
 
 ```bash
-cd ~/wow-server-playerbots-hybrid
+cd ~/wow-server-playerbots-hybrid-dev
 docker compose ps
 docker compose logs --tail=160 ac-worldserver
 ```

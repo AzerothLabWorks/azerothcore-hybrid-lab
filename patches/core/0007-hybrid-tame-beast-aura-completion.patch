@@ -1,0 +1,42 @@
+diff --git a/src/server/game/Spells/Auras/SpellAuraEffects.cpp b/src/server/game/Spells/Auras/SpellAuraEffects.cpp
+index 9c4fa8fe8..618276386 100644
+--- a/src/server/game/Spells/Auras/SpellAuraEffects.cpp
++++ b/src/server/game/Spells/Auras/SpellAuraEffects.cpp
+@@ -5277,6 +5277,37 @@ void AuraEffect::HandleAuraDummy(AuraApplication const* aurApp, uint8 mode, bool
+         // AT REMOVE
+         else
+         {
++            if (GetId() == 1515 && caster && caster->IsPlayer() && target && target->IsAlive() && aurApp->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
++            {
++                Player* player = caster->ToPlayer();
++                Creature* creatureTarget = target->ToCreature();
++                bool canHybridTame = player->HasSpell(1515);
++
++                if (creatureTarget && !creatureTarget->IsPet() && !player->GetPetGUID() && (player->IsClass(CLASS_HUNTER, CLASS_CONTEXT_PET) || canHybridTame))
++                {
++                    Pet* pet = player->CreateTamedPetFrom(creatureTarget, GetId());
++                    if (pet)
++                    {
++                        creatureTarget->DespawnOrUnsummon();
++
++                        uint8 level = (creatureTarget->GetLevel() < (player->GetLevel() - 5)) ? (player->GetLevel() - 5) : creatureTarget->GetLevel();
++
++                        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level - 1);
++                        pet->GetMap()->AddToMap(pet->ToCreature(), true);
++                        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level);
++
++                        player->SetMinion(pet, true);
++                        pet->InitTalentForLevel();
++                        pet->SavePetToDB(PET_SAVE_AS_CURRENT);
++                        player->PetSpellInitialize();
++                    }
++                    else
++                    {
++                        LOG_ERROR("module.hybridtalents", "Hybrid Tame Beast failed: CreateTamedPetFrom returned null for player {} target {}.", player->GetGUID().ToString(), creatureTarget->GetGUID().ToString());
++                    }
++                }
++            }
++
+             if ((GetSpellInfo()->IsQuestTame()) && caster && caster->IsAlive() && target->IsAlive() && aurApp->GetRemoveMode() != AURA_REMOVE_BY_CANCEL)
+             {
+                 uint32 finalSpelId = 0;

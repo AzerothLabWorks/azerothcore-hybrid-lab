@@ -1,0 +1,68 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -139,6 +139,55 @@
+     return sWorld->getBoolConfig(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY) && IsHybridEquipmentSkillLine(skillLine);
+ }
+ 
++static bool AreHybridCharacterTablesAvailable()
++{
++    static bool checked = false;
++    static bool available = false;
++
++    if (!checked)
++    {
++        checked = true;
++        available = CharacterDatabase.Query("SHOW TABLES LIKE 'character_hybrid_spell'") &&
++            CharacterDatabase.Query("SHOW TABLES LIKE 'character_hybrid_spell_dependency'") &&
++            CharacterDatabase.Query("SHOW TABLES LIKE 'character_hybrid_talent'");
++    }
++
++    return available;
++}
++
++static bool IsHybridManagedSpell(ObjectGuid::LowType guid, uint32 spellId)
++{
++    if (!AreHybridCharacterTablesAvailable())
++        return false;
++
++    if (CharacterDatabase.Query("SELECT 1 FROM character_hybrid_spell WHERE guid = {} AND spell_id = {} LIMIT 1", guid, spellId))
++        return true;
++
++    if (CharacterDatabase.Query("SELECT 1 FROM character_hybrid_spell_dependency WHERE guid = {} AND granted_spell_id = {} LIMIT 1", guid, spellId))
++        return true;
++
++    QueryResult result = CharacterDatabase.Query("SELECT talent_id, `rank` FROM character_hybrid_talent WHERE guid = {}", guid);
++    if (!result)
++        return false;
++
++    do
++    {
++        Field* fields = result->Fetch();
++        uint32 talentId = fields[0].Get<uint32>();
++        uint8 savedRank = fields[1].Get<uint8>();
++
++        TalentEntry const* talentInfo = sTalentStore.LookupEntry(talentId);
++        if (!talentInfo)
++            continue;
++
++        for (uint8 rank = 0; rank < savedRank && rank < MAX_TALENT_RANK; ++rank)
++            if (talentInfo->RankID[rank] == spellId)
++                return true;
++    } while (result->NextRow());
++
++    return false;
++}
++
+ enum CharacterFlags
+ {
+     CHARACTER_FLAG_NONE                 = 0x00000000,
+@@ -3139,7 +3188,7 @@
+         if (!pSkill)
+             continue;
+ 
+-        if (GetSkillRaceClassInfo(pSkill->id, getRace(), getClass()) || CanUseHybridEquipmentSkillLine(pSkill->id))
++        if (GetSkillRaceClassInfo(pSkill->id, getRace(), getClass()) || CanUseHybridEquipmentSkillLine(pSkill->id) || IsHybridManagedSpell(GetGUID().GetCounter(), spellId))
+             return true;
+         else
+             errorSkill = pSkill->id;

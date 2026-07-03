@@ -1,0 +1,55 @@
+diff --git a/src/server/game/Entities/Pet/Pet.cpp b/src/server/game/Entities/Pet/Pet.cpp
+index 2fa2c62..a442b38 100644
+--- a/src/server/game/Entities/Pet/Pet.cpp
++++ b/src/server/game/Entities/Pet/Pet.cpp
+@@ -414,7 +414,7 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
+         owner->ToPlayer()->SetLastPetNumber(petInfo->PetNumber);
+ 
+     owner->GetSession()->AddQueryHolderCallback(CharacterDatabase.DelayQueryHolder(std::make_shared<PetLoadQueryHolder>(ownerid, petInfo->PetNumber)))
+-        .AfterComplete([this, owner, session = owner->GetSession(), isTemporarySummon, current, lastSaveTime = petInfo->LastSaveTime, savedhealth = petInfo->Health, savedmana = petInfo->Mana, healthPct, fullMana]
++        .AfterComplete([this, owner, session = owner->GetSession(), isTemporarySummon, current, lastSaveTime = petInfo->LastSaveTime, savedhealth = petInfo->Health, savedmana = petInfo->Mana, healthPct, fullMana, createdBySpell = petInfo->CreatedBySpellId]
+         (SQLQueryHolderBase const& holder)
+     {
+         if (session->GetPlayer() != owner || owner->GetPet() != this)
+@@ -445,6 +445,41 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
+ 
+         CleanupActionBar();                                     // remove unknown spells from action bar after load
+ 
++        if (getPetType() == HUNTER_PET && (owner->HasSpell(1515) || createdBySpell == 1515))
++        {
++            if (QueryResult result = CharacterDatabase.Query("SELECT spell, active FROM pet_spell WHERE guid = {}", m_charmInfo->GetPetNumber()))
++            {
++                do
++                {
++                    Field* fields = result->Fetch();
++                    uint32 spellId = fields[0].Get<uint32>();
++                    ActiveStates active = ActiveStates(fields[1].Get<uint8>());
++
++                    if (!sSpellMgr->GetSpellInfo(spellId))
++                        continue;
++
++                    PetSpell petSpell;
++                    petSpell.state = PETSPELL_UNCHANGED;
++                    petSpell.type = PETSPELL_NORMAL;
++                    petSpell.active = active;
++                    m_spells[spellId] = petSpell;
++                } while (result->NextRow());
++            }
++
++            m_charmInfo->InitPetActionBar();
++
++            uint8 petSpellSlot = ACTION_BAR_INDEX_PET_SPELL_START;
++            for (PetSpellMap::const_iterator itr = m_spells.begin(); itr != m_spells.end() && petSpellSlot < ACTION_BAR_INDEX_PET_SPELL_END; ++itr)
++            {
++                if (itr->second.state == PETSPELL_REMOVED)
++                    continue;
++
++                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
++                if (spellInfo && itr->second.active != ACT_PASSIVE)
++                    m_charmInfo->SetActionBar(petSpellSlot++, itr->first, itr->second.active);
++            }
++        }
++
+         LOG_DEBUG("entities.pet", "New Pet has {}", GetGUID().ToString());
+ 
+         owner->PetSpellInitialize();

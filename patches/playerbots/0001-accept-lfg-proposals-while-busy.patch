@@ -1,0 +1,34 @@
+diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp
+index 000000000..000000000 100644
+--- a/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp
++++ b/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp
+@@ -199,14 +199,6 @@ bool LfgAcceptAction::Execute(Event event)
+     // Try accept if already stored
+     if (id)
+     {
+-        if (bot->IsInCombat() || bot->isDead())
+-        {
+-            WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
+-            *packet << id << false;
+-            bot->GetSession()->QueuePacket(packet);
+-            return true;
+-        }
+-
+         botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
+         bot->ClearUnitState(UNIT_STATE_ALL_STATE);
+ 
+@@ -229,14 +221,6 @@ bool LfgAcceptAction::Execute(Event event)
+ 
+         if (id)
+         {
+-            if (bot->IsInCombat() || bot->isDead())
+-            {
+-                WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
+-                *packet << id << false;
+-                bot->GetSession()->QueuePacket(packet);
+-                return true;
+-            }
+-
+             botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
+             bot->ClearUnitState(UNIT_STATE_ALL_STATE);
+ 

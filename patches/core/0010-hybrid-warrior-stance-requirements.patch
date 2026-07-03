@@ -1,0 +1,32 @@
+diff --git a/src/server/game/Spells/SpellInfoCorrections.cpp b/src/server/game/Spells/SpellInfoCorrections.cpp
+index 0f71208b0..0e5aeb959 100644
+--- a/src/server/game/Spells/SpellInfoCorrections.cpp
++++ b/src/server/game/Spells/SpellInfoCorrections.cpp
+@@ -57,6 +57,27 @@ void SpellMgr::LoadSpellInfoCorrections()
+         spellInfo->AttributesEx3 |= SPELL_ATTR3_ALWAYS_HIT;
+     });
+ 
++    // Hybrid Lab: let cross-class Warrior actives work without requiring Warrior stances.
++    ApplySpellFix({
++        100, 6178, 11578,                                  // Charge
++        20252, 20616, 20617, 25272, 25275,                 // Intercept
++        7384, 7887, 11584, 11585,                          // Overpower
++        694, 7400, 7402, 20559, 20560, 25266,              // Mocking Blow
++        6572, 6574, 7379, 11600, 11601, 25288, 25269, 30357, 57823, // Revenge
++        676,                                               // Disarm
++        871,                                               // Shield Wall
++        20230,                                             // Retaliation
++        1719,                                              // Recklessness
++        18499,                                             // Berserker Rage
++        6552, 6554,                                        // Pummel
++        1680                                               // Whirlwind
++        }, [](SpellInfo* spellInfo)
++    {
++        spellInfo->Stances = 0;
++        spellInfo->StancesNot = 0;
++        spellInfo->AttributesEx2 |= SPELL_ATTR2_ALLOW_WHILE_NOT_SHAPESHIFTED;
++    });
++
+     // Scarlet Raven Priest Image
+     ApplySpellFix({ 48763, 48761 }, [](SpellInfo* spellInfo)
+     {

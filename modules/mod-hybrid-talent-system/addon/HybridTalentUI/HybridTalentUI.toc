@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Hybrid Talent UI
+## Notes: Browser for AzerothCore Hybrid Talent System spells.
+## Author: AzerothLabWorks
+## Version: 0.1.0-dev
+## SavedVariables: HybridTalentUIDB
+
+HybridTalentUI.lua

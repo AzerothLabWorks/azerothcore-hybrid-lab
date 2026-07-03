@@ -12,7 +12,7 @@ NPC-first hybrid spell system for AzerothCore 3.3.5a.
 - Players can unlearn individual hybrid spells from the trainer to refund only that spell's points.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
-- Selected self-cast buffs can mirror onto active hunter pets and warlock demons.
+- Selected self-cast buffs can mirror onto active hunter pets, warlock demons, and nearby group members.
 - Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
 - `Hybrid Talent Beacon` item can summon a temporary trainer near the player.
 
@@ -48,11 +48,33 @@ The world SQL creates item `1915`, `Hybrid Talent Beacon`, with `ScriptName` set
 
 By default, the module grants the item to players on login. Using the item summons a temporary Hybrid Talent Master near the player. Temporary trainers show a `Dismiss summoned trainer` gossip option.
 
-## Pet Buff Mirroring
+## Addon UI
+
+The development branch includes an optional Wrath client addon at `addon/HybridTalentUI`.
+
+To test it, copy the `HybridTalentUI` folder into the client's `Interface/AddOns` folder, enable it at the character screen, then use `/hybridui` or `/hyui` in game.
+
+The addon talks to the server through AzerothCore addon-channel commands:
+
+- `hybridui refresh`
+- `hybridui learn <spellId>`
+- `hybridui unlearn <spellId>`
+
+The server remains authoritative. Learn and unlearn requests are validated by the same module logic used by the gossip trainer.
+
+## Buff Mirroring
 
 When `HybridTalentSystem.MirrorPetBuffs` is enabled, selected self-cast friendly buff spell families also apply to the player's active pet. This is meant for hybrid builds using warlock demons or hunter beasts.
 
+When `HybridTalentSystem.MirrorGroupBuffs` is enabled, the same selected self-cast buff families also apply to nearby party or raid members within `HybridTalentSystem.MirrorGroupBuffRange` yards. This makes hybrid group play smoother without requiring every single buff to be manually targeted.
+
 The default `HybridTalentSystem.PetBuffSpellIds` list includes common buff families such as Power Word: Fortitude, Divine Spirit, Shadow Protection, Arcane Intellect, Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift of the Wild, and Thorns. Add only the first rank of a spell family; higher ranks are matched automatically.
+
+## Spell Dependency Grants
+
+`HybridTalentSystem.SpellDependencyGrants` can grant support spells when a hybrid spell is learned. The default rule makes `Tame Beast` grant the hunter pet toolkit: Call Pet, Dismiss Pet, Revive Pet, Feed Pet, Beast Training, and Eye of the Beast.
+
+Dependency grants are tracked per character. When the trigger spell is unlearned or the hybrid build is reset, the module removes only support spells it granted and leaves pre-existing or separately learned spells alone.
 
 ## Admin Commands
 
