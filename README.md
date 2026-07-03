@@ -129,13 +129,38 @@ The current development direction is to make the addon the main user experience 
 
 Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those hybrid proficiencies are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
 
-## Custom NPCs and Addon Access
+## Required Client Addon
 
-Hybrid spell/talent access is now addon-first on this branch:
+Hybrid spell/talent access is addon-first and requires the `HybridTalentUI` client addon. Install this addon into the WoW client you use for this server branch.
 
-- Hybrid UI addon source in this repo: `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
-- User-facing addon repo: `https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI`
-- Addon install helper: `scripts/install-hybrid-addon.sh --client-dir <WoW client path>`
+Recommended user-facing addon source:
+
+[https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI](https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI)
+
+Copy the `HybridTalentUI` folder into:
+
+```text
+<WoW client>/Interface/AddOns/HybridTalentUI
+```
+
+Example dev client path:
+
+```text
+C:\Games\WoW-3.3.5a-HD-Dev\Interface\AddOns\HybridTalentUI
+```
+
+Restart WoW or reload the UI, enable `HybridTalentUI` on the character select AddOns screen, then open it in game with the Hybrid button or `/hybridui`.
+
+For contributors working from this repo checkout, the addon source is also mirrored at `modules/mod-hybrid-talent-system/addon/HybridTalentUI`, and can be installed with:
+
+```bash
+./scripts/install-hybrid-addon.sh --client-dir 'C:\Games\WoW-3.3.5a-HD-Dev'
+```
+
+## Custom NPCs
+
+Hybrid spell/talent progression is no longer NPC-driven on this branch:
+
 - In-game command path: `/hybridui`
 - Legacy Hybrid trainer: `190010`, `Hybrid Talent Master`, retired on this branch
 - Legacy Hybrid beacon item: `1915`, `Hybrid Talent Beacon`, retired on this branch
@@ -150,6 +175,13 @@ The Hybrid setup step imports addon-backed Hybrid SQL and removes old Hybrid bea
 ```text
 .npc add 190020
 ```
+
+## Companion Repositories
+
+These optional AzerothLabWorks repositories provide additional tuning tools that pair well with this server lab:
+
+- [AzerothLabWorks/playerbots-tuner](https://github.com/AzerothLabWorks/playerbots-tuner): helper scripts and tuning workflow for Playerbots behavior, population, grouping, and world activity.
+- [AzerothLabWorks/wotlk-tuning](https://github.com/AzerothLabWorks/wotlk-tuning): broader WotLK tuning scripts and data adjustments for making the private server experience feel better for solo or small-group play.
 
 ## Current Status
 

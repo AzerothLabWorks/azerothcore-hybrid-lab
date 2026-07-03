@@ -502,7 +502,9 @@ cd ~/azerothcore-hybrid-lab-dev
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
-The development branch is addon-first. Install the client addon after the server module is set up.
+### Required HybridTalentUI Client Addon
+
+The development branch is addon-first. Install the `HybridTalentUI` client addon after the server module is set up. This is required for the intended spell and talent learning experience; the old Hybrid Talent Master NPC and Hybrid Talent Beacon are retired on this branch.
 
 Recommended user-facing addon source:
 
@@ -510,7 +512,7 @@ Recommended user-facing addon source:
 https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI
 ```
 
-Download or clone `AzerothLabWorks/addons`, then copy the `HybridTalentUI` folder to:
+Download or clone `AzerothLabWorks/addons` from the matching `codex/hybrid-talents-ui` branch, then copy the `HybridTalentUI` folder to:
 
 ```text
 <WoW client>/Interface/AddOns/HybridTalentUI
@@ -542,6 +544,8 @@ Or with a WSL path:
 ```
 
 Use a separate dev client copy, for example `C:\Games\WoW-3.3.5a-HD-Dev`, if you also play on a stable production server. Restart WoW or reload the UI, enable `HybridTalentUI` on the character select AddOns screen, then open it with the Hybrid microbar button or `/hybridui`. Learn spells and talents from the addon UI instead of the old Hybrid Talent Master NPC.
+
+### Retired Hybrid NPC Reference
 
 On the dev branch, `setup-hybrid` imports addon-backed Hybrid SQL and retires the old Hybrid trainer/beacon path. The legacy entries are kept here for reference only:
 
@@ -578,7 +582,14 @@ Recommended first validation path:
 8. Level up and confirm spell/talent points update correctly.
 ```
 
-## Part 12: Profession Master Setup
+## Part 12: Optional Companion Tuning Repositories
+
+These repositories are not required for the Hybrid Talent System, but they provide useful scripts and tuning workflows for a more polished solo/small-group WotLK server:
+
+- [AzerothLabWorks/playerbots-tuner](https://github.com/AzerothLabWorks/playerbots-tuner): Playerbots tuning helpers for population, grouping, dungeon/LFG behavior, and world activity.
+- [AzerothLabWorks/wotlk-tuning](https://github.com/AzerothLabWorks/wotlk-tuning): broader WotLK tuning scripts and data adjustments for the private server experience.
+
+## Part 13: Profession Master Setup
 
 The Profession Master is an optional NPC module for learning professions, buying profession skill-ups, and learning recipes/abilities available at your current profession skill.
 
