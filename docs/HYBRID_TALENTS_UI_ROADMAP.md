@@ -1,114 +1,266 @@
-# Hybrid Talents UI Roadmap
+# Hybrid Talent System Roadmap
 
-This document tracks the first development objectives for the `codex/hybrid-talents-ui` branch. The intent is to keep higher-risk spell, talent, UI, and server work isolated from `main` until it has been tested on a separate development server.
+This is the living roadmap for the Hybrid spell/talent project. It tracks what is already live, what is being validated through play, and what we may build next on `codex/hybrid-talents-ui` before another promotion to `main`.
 
-## Branch Scope
+## Branch And Environment Model
 
-- Stable branch: `main`
-- Development branch: `codex/hybrid-talents-ui`
-- Stable Windows checkout: `C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab`
-- Development Windows checkout: `C:\Users\User\OneDrive\Documents\Wow Modules\wow-hybrid-server-lab-dev`
+- Stable source branch: `main`
+- Active development branch: `codex/hybrid-talents-ui`
 - Stable WSL server: `~/wow-server-playerbots-hybrid`
-- Planned development WSL server: `~/wow-server-playerbots-hybrid-dev`
+- Development WSL server: `~/wow-server-playerbots-hybrid-dev`
+- Stable client example: `C:\Games\WoW-3.3.5a-HD`
+- Development client example: `C:\Games\WoW-3.3.5a-HD-Dev`
+- Disposable client experiment copy: `C:\Games\WoW-3.3.5a-HD-Test`
 
-All work in this roadmap should happen on `codex/hybrid-talents-ui` first.
+Use `main` for stable source and production deployment. Use `codex/hybrid-talents-ui` for new work. Client-side experiments should happen only in the disposable test client until proven safe.
 
-## Objectives
+## Current State
 
-### 1. Custom Hybrid Spell And Talent UI
+Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 
-Build an Ascension-inspired in-game UI for browsing, learning, and unlearning cross-class spells and eventually talents.
+| Area | State | Notes |
+|---|---|---|
+| Addon-first Hybrid UI | Live | `HybridTalentUI` provides the primary spell/talent interface with a movable launcher button and `/hybridui`. |
+| Spell browsing | Live | Class filters, search, availability filters, icons, native tooltips, known/available/locked states, learn, and unlearn are working. |
+| Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. |
+| Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, and use separate hybrid talent points. |
+| Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, and support dependency checks such as requiring Charge before Improved Charge. |
+| Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
+| Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
+| Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
+| Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
+| Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
+| Client race/class unlocks | Not started | Requires isolated client testing and likely DBC/GlueXML work. Do not patch the dev client directly. |
 
-The first useful version should support:
+## Completed Milestones
 
-- Class tabs or filters.
-- Spell lists by class.
-- Search or simple filtering.
-- Spell icons, names, ranks, and descriptions.
-- Known, available, locked, and unlearnable states.
-- Learn and unlearn actions.
-- Server-side validation for every action.
+### Foundation
 
-The UI should be implemented as our own addon/server integration. The Ascension client can be used as a reference for broad interaction ideas, but proprietary code, art, modified Blizzard files, or packed client assets should not be copied into this project unless their license clearly allows reuse.
+- Created isolated development branch and dev server workflow.
+- Added safer stable/dev install paths and documentation.
+- Added module management commands for install, SQL import, setup, rebuild, diagnostics, and addon install.
+- Promoted the first stable development cycle to `main` through PR #1.
 
-### 2. Talent Count Restriction Removal
+### Hybrid UI
 
-Allow players to select talents without requiring the normal deep investment path through a single tree.
+- Built custom addon-first spell UI.
+- Added class filters, search, status filters, pagination, icons, and native tooltips.
+- Added known spell filtering across all classes.
+- Added talent browsing and learning views.
+- Added movable Hybrid launcher button near the microbar.
+- Moved user-facing addon distribution to `AzerothLabWorks/addons` on the matching dev branch.
 
-This needs careful scoping because native WotLK talent rules are enforced by both server behavior and client UI assumptions. Initial development should prefer a separate hybrid talent layer represented by learned spells or passive auras, rather than immediately patching the native talent frame.
+### Spell And Talent Mechanics
 
-Initial goals:
+- Added server protocol for addon refresh, learn, and unlearn commands.
+- Added point display and refresh behavior after learning/unlearning.
+- Added known/available/locked/unaffordable status handling.
+- Added action bar preservation for hybrid spells and talent-granted spells.
+- Added logic to respect intentionally removed action buttons.
+- Added stance requirement relaxation for selected Warrior abilities.
 
-- Identify where the current server enforces talent prerequisites and row requirements.
-- Decide whether to bypass native requirements globally or only for the hybrid system.
-- Avoid breaking normal class talent resets, dual spec behavior, or bot/player expectations.
+### Hunter Pet Support
 
-### 3. Hunter Dependency Learning
+- Added dependency grants for Tame Beast.
+- Added Mend Pet and hunter pet support spells.
+- Allowed hybrid characters to tame beasts.
+- Completed Tame Beast behavior on aura expiration.
+- Loaded hybrid tamed pets as Hunter pets.
+- Restored pet action bars, pet spell slots, pet spellbook tab, and autocast state.
 
-When a character learns key Hunter spells such as `Tame Beast`, automatically grant required supporting spells, skills, or passive dependencies needed for the feature to work.
+### Buff And Group Quality Of Life
 
-Initial target:
+- Mirrored selected buffs to pets.
+- Mirrored selected buffs to nearby group members.
+- Kept behavior configurable through module config.
 
-- Learning `Tame Beast` should grant the required Hunter pet-management toolkit.
-- Unlearning should be safe and should not remove unrelated spells the player legitimately has.
-- Dependency grants should be data-driven where possible, not hardcoded only for one spell.
+## Active Planning Lanes
 
-## Recommended Phase Order
+These are the main areas we can pick from for the next development cycle.
 
-### Phase 1: Development Server And Safety Harness
+### 1. Progression And Balance
 
-- Create or confirm WSL checkout for `codex/hybrid-talents-ui`.
-- Create or confirm `~/wow-server-playerbots-hybrid-dev`.
-- Ensure deploy scripts can install/rebuild the dev branch without touching the stable server.
-- Add a small manual test checklist for learning, unlearning, reset, relog, and server restart behavior.
+Goal: make spell and talent acquisition feel good over a full leveling journey.
 
-### Phase 2: Spell UI Foundation
+Candidate work:
 
-- Build a first custom addon window for the existing hybrid spell system.
-- Keep server authority in the module.
-- Reuse existing spell data and descriptions already available from the server/client where possible.
-- Support learning and unlearning spells before attempting full talent browsing.
+- Tune hybrid spell point gain rate.
+- Tune hybrid talent point gain rate.
+- Review spell costs by power, role, cooldown, utility, and class identity.
+- Review talent costs and rank pacing.
+- Add level gates for especially powerful spells/talents.
+- Add a simple balance notes table to document why key costs differ.
 
-### Phase 3: Dependency Learning
+Why this matters: the system works mechanically, but pacing determines whether hybrid progression feels rewarding instead of chaotic or overpowered.
 
-- Add a data-driven dependency table for spells that require bundled supporting spells.
-- Implement Hunter `Tame Beast` as the first real dependency case.
-- Test learn, unlearn, relog, reset, and class edge cases.
+### 2. Talent UI And Talent Rules
 
-### Phase 4: Hybrid Talent Browsing
+Goal: make talent choices easier to understand and safer to use.
 
-- Add talent browsing to the custom UI.
-- Treat talents as a separate hybrid progression layer first.
-- Only consider native talent-tree rule removal after the custom layer is stable.
+Candidate work:
 
-### Phase 5: Native Talent Rule Changes
+- Show learned talent rank more clearly in the list/detail panel.
+- Improve locked talent explanations.
+- Add clearer dependency text for talents that require base spells or other talents.
+- Add tree/category labels where useful.
+- Review talents that grant active spells and ensure action bar behavior remains stable.
+- Expand data-driven talent dependency rules.
 
-- Investigate server and client behavior around normal talent prerequisites.
-- Prototype on the development branch only.
-- Merge to `main` only after focused testing confirms native character progression is not destabilized.
+Why this matters: talents are now usable, but the UI can do more to explain why a talent is available, locked, or valuable.
 
-## Ascension Client Reference Decision
+### 3. Class Fantasy Dependency Packages
 
-Local Ascension files were found under:
+Goal: make cross-class mechanics feel complete when a player learns class-defining spells.
 
-`C:\MetaPC_Data\MetaPain_Backup\Project Ascension\Ascension Launcher\resources\client\Interface\AddOns`
+Candidate work:
 
-The folder contains normal addons, Blizzard UI folders, and an old trainer UI folder. It does not appear to expose an obvious standalone reusable Ascension talent-picker addon by name.
+- Review Rogue stealth/combo-point support dependencies.
+- Review Warlock demon support and missing companion spells.
+- Review Shaman totem support and totem prerequisites.
+- Review Paladin aura/blessing behavior.
+- Review Druid shapeshift spell and form edge cases.
+- Review Warrior stance-less ability coverage after more playtesting.
+- Add dependency rules through `HybridTalentSystem.SpellDependencyGrants` where possible.
 
-Project rule:
+Why this matters: Tame Beast showed that one iconic spell often needs a supporting kit. Other class fantasies may need similar packages.
 
-- We can inspect behavior and high-level UX concepts.
-- We should build our own addon and server protocol.
-- We should not copy Ascension-specific code, art, modified Blizzard UI files, packed client data, or proprietary assets into this repository unless reuse rights are clear.
+### 4. Stability And Persistence Hardening
 
-This keeps the project clean, portable, and safe to maintain in GitHub.
+Goal: reduce edge-case bugs after relog, death, reset, unlearn, or server restart.
 
-## Merge Rule
+Candidate work:
 
-Nothing from this roadmap should be merged into `main` until:
+- Add more manual test cases for learn/unlearn/relog/reset/restart.
+- Verify action bars after removing and re-adding spells/talents.
+- Verify talent-granted spells across logout/login.
+- Verify pets after stable, dismiss, call, abandon, and tame-new-pet flows.
+- Reduce recurring duplicate `character_spell` log noise where safe.
+- Audit hybrid-managed spells that teach class-restricted skill lines.
 
-- The development branch builds cleanly.
-- The dev server deploy path is known.
-- New behavior is tested in game.
-- Regressions against current stable hybrid trainer behavior are checked.
-- The changes are reviewed through a controlled merge or PR.
+Why this matters: this project touches core assumptions in AzerothCore. Persistence bugs are the ones players notice most.
+
+### 5. Addon Polish
+
+Goal: keep the current lightweight addon-first approach but make it feel cleaner.
+
+Candidate work:
+
+- Better detail panel for selected spells/talents.
+- Clearer point display and next-point progress.
+- Better empty states for filters.
+- Optional compact/dense view.
+- Better visual distinction for known, available, locked, and unaffordable rows.
+- Add a lightweight help/about panel with version and branch compatibility.
+
+Why this matters: the addon is already useful. Small UI polish can make it feel intentional and approachable for non-developers.
+
+### 6. Playerbots Hybrid Awareness
+
+Goal: eventually let bots interact better with the custom hybrid world.
+
+Candidate work:
+
+- Keep Playerbots roadmap separate for LFG/world behavior.
+- Later, evaluate whether bots should learn or use hybrid spells.
+- Start with diagnostics and passive compatibility before giving bots custom hybrid progression.
+
+Why this matters: bots already make the world feel alive. Hybrid-aware bots could be powerful, but it is a larger design problem and should wait until player progression is stable.
+
+## Later Experiments
+
+These are interesting but higher risk. They should not be mixed into normal incremental work.
+
+### Any Race / Any Class
+
+Potential value: complete class fantasy freedom at character creation.
+
+Known layers:
+
+- Server layer: `playercreateinfo`, starting spells, skills, actions, class/race validation, and cleanup logic.
+- Client layer: character creation UI likely requires DBC and/or GlueXML changes. Normal addons do not run on the character creation screen.
+
+Safety rule:
+
+- Use `C:\Games\WoW-3.3.5a-HD-Test` only.
+- Start with one race/class pair, not every combination.
+- Do not patch the dev client until the test client is proven recoverable.
+
+### Native Talent Tree Rule Removal
+
+Potential value: more Ascension-like talent freedom in the native talent UI.
+
+Risk:
+
+- Native talent rules are assumed by both client and server.
+- Breaking dual spec, normal class talents, resets, or bot assumptions would be easy.
+
+Current preference:
+
+- Continue treating hybrid talents as a separate addon/server progression layer.
+- Consider native talent frame changes only after the custom hybrid talent system is mature.
+
+### Larger Ascension-Style UI Rewrite
+
+Potential value: richer spellbook/talent-tree style experience.
+
+Risk:
+
+- Larger UI work can become fragile, especially on the 3.3.5a client.
+- Current addon-first list UI is lightweight and stable.
+
+Current preference:
+
+- Keep improving the current addon until a concrete limitation justifies a larger rewrite.
+- If we start a large UI rewrite, consider creating a separate branch.
+
+## Suggested Next Iterations
+
+Recommended order for the next few work sessions:
+
+1. **Roadmap and documentation refresh**
+   Keep current/future state accurate so new work starts from a shared understanding.
+
+2. **Hybrid progression balance pass**
+   Review point gain, costs, unlock pacing, and early-level feel.
+
+3. **Talent UI clarity pass**
+   Improve learned rank, dependency, and locked-state messaging.
+
+4. **Class dependency package pass**
+   Pick one class fantasy after Hunter pets and make it complete end to end.
+
+5. **Persistence/log cleanup pass**
+   Reduce recurring log noise and harden action-bar/spell restoration edge cases.
+
+## Manual Test Checklist
+
+Use this after meaningful Hybrid changes:
+
+- New character reaches level 10 and receives/display points correctly.
+- Learn a spell, relog, and confirm it remains known.
+- Unlearn a spell and confirm points refund.
+- Remove a learned spell from the action bar, relog, and confirm it is not forcibly re-added.
+- Learn a talent, relog, and confirm rank/state persists.
+- Unlearn a talent and confirm points refund.
+- Test a talent-granted active spell on the action bar.
+- Test known/available/locked filters.
+- Test Tame Beast, Call Pet, Dismiss Pet, pet action bar, pet spellbook tab, and autocast if pet code changed.
+- Test selected self-buffs with pet and group member nearby if buff code changed.
+- Restart worldserver and repeat one spell, one talent, and one pet persistence check.
+
+## Promotion Rule
+
+New work should stay on `codex/hybrid-talents-ui` until:
+
+- The branch builds cleanly.
+- Dev server setup/rebuild path is known.
+- The feature has been tested in game.
+- Known regressions are documented or fixed.
+- The stable source branch has a backup point if the promotion is large.
+- Changes are reviewed through a controlled PR into `main`.
+
+## Reference Policy
+
+Project Ascension and similar projects may be used for high-level interaction inspiration only.
+
+Do not copy proprietary code, art, modified Blizzard UI files, packed client data, or private-server-specific assets unless reuse rights are clear. Build our own addon, server protocol, SQL, and documentation so the project remains portable and maintainable.
