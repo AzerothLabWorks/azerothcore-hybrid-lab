@@ -25,6 +25,7 @@ local state = {
     talentPointsPerInterval = 0,
     talentInterval = 0,
     talentMaxPoints = 0,
+    nextTalentPointLevel = 0,
     rows = {},
     talents = {},
     byClass = {},
@@ -42,6 +43,7 @@ local state = {
     pointsPerInterval = 0,
     interval = 0,
     maxPoints = 0,
+    nextPointLevel = 0,
 }
 
 local mainFrame
@@ -182,6 +184,15 @@ local function FormatBoolean(value)
     end
 
     return "no"
+end
+
+local function FormatNextPointText(label, nextLevel)
+    nextLevel = tonumber(nextLevel or 0) or 0
+    if nextLevel > 0 then
+        return label .. " next point at " .. nextLevel
+    end
+
+    return label .. " points maxed"
 end
 
 local function DebugPetActions()
@@ -450,10 +461,10 @@ local function UpdateRows()
 
     if state.mode == "talents" then
         mainFrame.points:SetText("Hybrid talent points: " .. state.talentAvailable .. " available / " .. state.talentEarned .. " earned")
-        mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.talentMinLevel .. "  +" .. state.talentPointsPerInterval .. " point / " .. state.talentInterval .. " levels  Max " .. state.talentMaxPoints)
+        mainFrame.status:SetText("Level " .. state.level .. "  " .. FormatNextPointText("Talent", state.nextTalentPointLevel) .. "  +" .. state.talentPointsPerInterval .. " / " .. state.talentInterval .. " levels  Max " .. state.talentMaxPoints)
     else
         mainFrame.points:SetText("Hybrid points: " .. state.available .. " available / " .. state.earned .. " earned")
-        mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.minLevel .. "  +" .. state.pointsPerInterval .. " point / " .. state.interval .. " levels  Max " .. state.maxPoints)
+        mainFrame.status:SetText("Level " .. state.level .. "  " .. FormatNextPointText("Spell", state.nextPointLevel) .. "  +" .. state.pointsPerInterval .. " / " .. state.interval .. " levels  Max " .. state.maxPoints)
     end
     mainFrame.page:SetText("Page " .. state.page .. " / " .. pageCount)
 
@@ -599,6 +610,7 @@ local function HandleServerMessage(body)
         state.pointsPerInterval = tonumber(parts[5] or "0") or 0
         state.interval = tonumber(parts[6] or "0") or 0
         state.maxPoints = tonumber(parts[7] or "0") or 0
+        state.nextPointLevel = tonumber(parts[8] or "0") or 0
     elseif parts[2] == "TALENTSTATUS" then
         state.talentEarned = tonumber(parts[3] or "0") or 0
         state.talentSpent = tonumber(parts[4] or "0") or 0
@@ -607,6 +619,7 @@ local function HandleServerMessage(body)
         state.talentPointsPerInterval = tonumber(parts[7] or "0") or 0
         state.talentInterval = tonumber(parts[8] or "0") or 0
         state.talentMaxPoints = tonumber(parts[9] or "0") or 0
+        state.nextTalentPointLevel = tonumber(parts[10] or "0") or 0
     elseif parts[2] == "END" then
         state.loaded = true
         UpdateRows()

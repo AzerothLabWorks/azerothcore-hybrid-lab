@@ -25,6 +25,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. |
 | Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, and use separate hybrid talent points. |
 | Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, and support dependency checks such as requiring Charge before Improved Charge. |
+| Progression clarity | In progress | The addon is being expanded to show when the next spell point and next talent point will be earned during leveling. |
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
@@ -86,6 +87,7 @@ Candidate work:
 
 - Tune hybrid spell point gain rate.
 - Tune hybrid talent point gain rate.
+- Show next spell/talent point levels in the addon before changing point cadence.
 - Review spell costs by power, role, cooldown, utility, and class identity.
 - Review talent costs and rank pacing.
 - Add level gates for especially powerful spells/talents.

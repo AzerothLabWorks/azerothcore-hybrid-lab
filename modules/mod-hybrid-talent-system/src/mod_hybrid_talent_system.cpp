@@ -165,6 +165,35 @@ namespace
         return std::min<uint16>(points, TalentMaxPoints);
     }
 
+    uint8 GetNextPointLevel(uint8 currentLevel, uint8 minLevel, uint8 intervalLevels, uint16 pointsPerInterval, uint16 maxPoints)
+    {
+        if (!pointsPerInterval || !maxPoints)
+            return 0;
+
+        uint8 interval = intervalLevels ? intervalLevels : 1;
+
+        for (uint16 level = currentLevel + 1; level <= DEFAULT_MAX_LEVEL; ++level)
+        {
+            if (level < minLevel)
+                continue;
+
+            uint16 earned = static_cast<uint16>(((level - minLevel) / interval + 1) * pointsPerInterval);
+            if (earned > maxPoints)
+                earned = maxPoints;
+
+            uint16 currentEarned = currentLevel < minLevel
+                ? 0
+                : static_cast<uint16>(((currentLevel - minLevel) / interval + 1) * pointsPerInterval);
+            if (currentEarned > maxPoints)
+                currentEarned = maxPoints;
+
+            if (earned > currentEarned)
+                return static_cast<uint8>(level);
+        }
+
+        return 0;
+    }
+
     uint16 GetSpentPoints(ObjectGuid::LowType guid)
     {
         QueryResult result = CharacterDatabase.Query("SELECT spell_id FROM character_hybrid_spell WHERE guid = {}", guid);
@@ -1571,8 +1600,10 @@ namespace
         std::vector<uint32> talentIds = GetHybridUiTalentIds();
 
         handler->PSendSysMessage("HYUI\tBEGIN\t1\t{}\t{}\t{}\t{}", earned, spent, available, static_cast<uint32>(spellIds.size()));
-        handler->PSendSysMessage("HYUI\tSTATUS\t{}\t{}\t{}\t{}\t{}", player->GetLevel(), MinLevel, PointsPerInterval, PointIntervalLevels ? PointIntervalLevels : 1, MaxPoints);
-        handler->PSendSysMessage("HYUI\tTALENTSTATUS\t{}\t{}\t{}\t{}\t{}\t{}\t{}", talentEarned, talentSpent, talentAvailable, TalentMinLevel, TalentPointsPerInterval, TalentPointIntervalLevels ? TalentPointIntervalLevels : 1, TalentMaxPoints);
+        handler->PSendSysMessage("HYUI\tSTATUS\t{}\t{}\t{}\t{}\t{}\t{}", player->GetLevel(), MinLevel, PointsPerInterval, PointIntervalLevels ? PointIntervalLevels : 1, MaxPoints,
+            GetNextPointLevel(player->GetLevel(), MinLevel, PointIntervalLevels, PointsPerInterval, MaxPoints));
+        handler->PSendSysMessage("HYUI\tTALENTSTATUS\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", talentEarned, talentSpent, talentAvailable, TalentMinLevel, TalentPointsPerInterval, TalentPointIntervalLevels ? TalentPointIntervalLevels : 1, TalentMaxPoints,
+            GetNextPointLevel(player->GetLevel(), TalentMinLevel, TalentPointIntervalLevels, TalentPointsPerInterval, TalentMaxPoints));
 
         for (uint32 spellId : spellIds)
         {
