@@ -103,6 +103,36 @@ local HIDDEN_KNOWN_SUPPORT_SPELLS = {
     [15590] = true, -- Fist Weapons
 }
 
+local STANCE_RELAXED_SPELLS = {
+    [100] = true,   -- Charge
+    [6178] = true,  -- Charge
+    [11578] = true, -- Charge
+}
+
+local function RemoveTooltipLineText(tooltip, text)
+    if not tooltip or not text or not tooltip.NumLines then
+        return
+    end
+
+    for index = 1, tooltip:NumLines() do
+        local line = _G[tooltip:GetName() .. "TextLeft" .. index]
+        if line and line.GetText and line:GetText() == text then
+            line:SetText("")
+        end
+    end
+end
+
+local function ApplyHybridTooltipNotes(tooltip, spellId)
+    if not tooltip or not spellId then
+        return
+    end
+
+    if STANCE_RELAXED_SPELLS[spellId] then
+        RemoveTooltipLineText(tooltip, "Requires Battle Stance")
+        tooltip:AddLine("Hybrid rule: Battle Stance is not required for Charge.", 0.6, 0.8, 1)
+    end
+end
+
 local function GetSpellIcon(spellId)
     local _, _, icon = GetSpellInfo(spellId)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -116,6 +146,7 @@ local function ShowSpellTooltip(owner, row)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if GameTooltip.SetHyperlink then
         GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        ApplyHybridTooltipNotes(GameTooltip, row.spellId)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(row.reason or "", 0.95, 0.82, 0.35)
         GameTooltip:AddLine("Left-click: learn if available", 0.6, 0.8, 1)
@@ -151,6 +182,7 @@ local function ShowTalentTooltip(owner, row)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if GameTooltip.SetHyperlink then
         GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        ApplyHybridTooltipNotes(GameTooltip, row.spellId)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(GetTalentTabName(row) .. "  Rank " .. row.knownRank .. "/" .. row.maxRank, 0.95, 0.82, 0.35)
         GameTooltip:AddLine("Left-click: learn next rank if available", 0.6, 0.8, 1)
@@ -704,7 +736,7 @@ local function OnSpellRowClick(self, mouseButton)
         elseif row.knownRank >= row.maxRank then
             Print(row.name .. " is already at maximum rank.")
         else
-            Print(row.name .. " is locked or unaffordable.")
+            Print(row.name .. " is locked: " .. (row.reason or "requirements not met") .. ".")
         end
         return
     end
@@ -726,7 +758,7 @@ local function OnSpellRowClick(self, mouseButton)
     elseif row.canLearn then
         SendCommand("hybridui learn " .. row.spellId)
     else
-        Print(row.name .. " is locked or unaffordable.")
+        Print(row.name .. " is locked: " .. (row.reason or "requirements not met") .. ".")
     end
 end
 
