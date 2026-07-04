@@ -14,6 +14,22 @@ This repo owns the custom work:
 
 It does not vendor the full AzerothCore source tree. Installer scripts clone the upstream server source that matches the selected profile.
 
+## Usage And Legal Statement
+
+This project is an independent educational and personal-use lab built around open source AzerothCore server software. It is not affiliated with, endorsed by, sponsored by, or associated with Blizzard Entertainment, World of Warcraft, or any related Blizzard products or services.
+
+This repository does not include, distribute, or provide links to Blizzard game clients, game data, copyrighted assets, account services, or other proprietary game files. Users are responsible for supplying their own legally obtained client and for complying with any laws, licenses, and terms that apply in their jurisdiction.
+
+This project is intended for private learning, experimentation, and offline or personal server use. It is not intended to help operate, advertise, monetize, or provide support for public or third-party game servers.
+
+In short, this project:
+
+- Uses open source server emulator code and custom educational modules.
+- Does not distribute game clients, game assets, or proprietary Blizzard content.
+- Requires users to provide their own legally obtained game client.
+- Is intended for private, personal, educational, and experimental use.
+- Does not provide hosting, account services, monetization support, or public-server operations support.
+
 ## Features
 
 - **HybridTalentUI addon**: Addon-first cross-class spell and talent interface inspired by Project Ascension. It opens from a movable microbar button, supports spell/talent tabs, class browsing, search, availability filters, icons, in-game tooltip descriptions, and next spell/talent point visibility while leveling.
