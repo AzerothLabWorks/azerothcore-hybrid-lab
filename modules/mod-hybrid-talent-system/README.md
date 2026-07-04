@@ -65,9 +65,11 @@ Dependency grants are tracked per character. When the trigger spell is unlearned
 
 ## Spell Dependency Items
 
-`HybridTalentSystem.SpellDependencyItems` can grant support items when a hybrid spell is learned or restored. The default rules make current earth totem spells, including `Earthbind Totem` and `Strength of Earth Totem`, grant the `Earth Totem` item required by earth totem spells.
+The module automatically grants Shaman totem tool items declared by spell data when a hybrid totem spell is learned or restored. This covers Earth, Fire, Water, and Air totem tools.
 
-Dependency items are not removed on unlearn because they are harmless class-kit reagents and may be shared by multiple future spells.
+`HybridTalentSystem.SpellDependencyItems` can grant extra support items when a hybrid spell is learned or restored. Use it for support items that are not declared directly on the spell.
+
+Dependency items are removed on unlearn when no other learned hybrid spell still requires the same item.
 
 ## Admin Commands
 

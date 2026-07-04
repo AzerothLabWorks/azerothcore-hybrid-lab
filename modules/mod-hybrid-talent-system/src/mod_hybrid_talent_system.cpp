@@ -23,6 +23,7 @@
 #include "WorldScript.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <exception>
@@ -76,6 +77,10 @@ namespace
     constexpr uint32 LegacyBeaconItemEntry1 = 900010;
     constexpr uint32 LegacyBeaconItemEntry2 = 65010;
     constexpr uint32 LegacyBeaconItemEntry3 = 1854;
+    constexpr uint32 EarthTotemItemEntry = 5175;
+    constexpr uint32 FireTotemItemEntry = 5176;
+    constexpr uint32 WaterTotemItemEntry = 5177;
+    constexpr uint32 AirTotemItemEntry = 5178;
     uint32 BeaconItemEntry = 1915;
     bool GrantBeaconOnLogin = false;
     uint32 BeaconSummonDurationSeconds = 300;
@@ -969,21 +974,81 @@ namespace
         return 0;
     }
 
+    void AddConfiguredDependencyItems(uint32 spellId, std::map<uint32, uint32>& requiredItems)
+    {
+        uint32 triggerSpellId = GetDependencyItemTriggerSpellId(spellId);
+        if (!triggerSpellId)
+            return;
+
+        auto itr = SpellDependencyItems.find(triggerSpellId);
+        if (itr == SpellDependencyItems.end())
+            return;
+
+        for (auto const& pair : itr->second)
+        {
+            uint32 itemId = pair.first;
+            uint32 count = std::max<uint32>(1, pair.second);
+            if (itemId)
+                requiredItems[itemId] = std::max(requiredItems[itemId], count);
+        }
+    }
+
+    uint32 GetDefaultTotemItemForCategory(Player const* player, uint32 requiredTotemCategoryId)
+    {
+        if (!player || !requiredTotemCategoryId)
+            return 0;
+
+        static std::array<uint32, 4> const defaultTotemItems =
+        {
+            EarthTotemItemEntry,
+            FireTotemItemEntry,
+            WaterTotemItemEntry,
+            AirTotemItemEntry
+        };
+
+        for (uint32 itemId : defaultTotemItems)
+            if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId))
+                if (player->IsTotemCategoryCompatiableWith(itemTemplate, requiredTotemCategoryId))
+                    return itemId;
+
+        return 0;
+    }
+
+    std::map<uint32, uint32> GetHybridSpellRequiredItems(Player const* player, uint32 spellId, bool includeSatisfiedCategories = false)
+    {
+        std::map<uint32, uint32> requiredItems;
+
+        AddConfiguredDependencyItems(spellId, requiredItems);
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+        if (!spellInfo)
+            return requiredItems;
+
+        for (uint8 index = 0; index < 2; ++index)
+        {
+            if (spellInfo->Totem[index])
+                requiredItems[spellInfo->Totem[index]] = std::max<uint32>(requiredItems[spellInfo->Totem[index]], 1);
+
+            uint32 requiredCategory = spellInfo->TotemCategory[index];
+            if (!requiredCategory || (!includeSatisfiedCategories && player && player->HasItemTotemCategory(requiredCategory)))
+                continue;
+
+            uint32 defaultItemId = GetDefaultTotemItemForCategory(player, requiredCategory);
+            if (defaultItemId)
+                requiredItems[defaultItemId] = std::max<uint32>(requiredItems[defaultItemId], 1);
+        }
+
+        return requiredItems;
+    }
+
     uint32 ApplyHybridSpellDependencyItems(Player* player, uint32 spellId, bool announce)
     {
         if (!player)
             return 0;
 
-        uint32 triggerSpellId = GetDependencyItemTriggerSpellId(spellId);
-        if (!triggerSpellId)
-            return 0;
-
-        auto itr = SpellDependencyItems.find(triggerSpellId);
-        if (itr == SpellDependencyItems.end())
-            return 0;
-
+        std::map<uint32, uint32> requiredItems = GetHybridSpellRequiredItems(player, spellId);
         std::vector<std::string> addedNames;
-        for (auto const& pair : itr->second)
+        for (auto const& pair : requiredItems)
         {
             uint32 itemId = pair.first;
             uint32 requiredCount = std::max<uint32>(1, pair.second);
@@ -1018,6 +1083,43 @@ namespace
         }
 
         return static_cast<uint32>(addedNames.size());
+    }
+
+    bool KnownHybridSpellRequiresItem(Player const* player, uint32 ignoredSpellId, uint32 requiredItemId)
+    {
+        if (!player || !requiredItemId)
+            return false;
+
+        std::set<uint32> knownSpellIds = GetKnownHybridSpellIds(player->GetGUID().GetCounter());
+        for (uint32 knownSpellId : knownSpellIds)
+        {
+            if (IsSameSpellChain(knownSpellId, ignoredSpellId))
+                continue;
+
+            std::map<uint32, uint32> requiredItems = GetHybridSpellRequiredItems(player, knownSpellId, true);
+            if (requiredItems.count(requiredItemId))
+                return true;
+        }
+
+        return false;
+    }
+
+    void RemoveHybridSpellDependencyItems(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return;
+
+        std::map<uint32, uint32> requiredItems = GetHybridSpellRequiredItems(player, spellId, true);
+        for (auto const& pair : requiredItems)
+        {
+            uint32 itemId = pair.first;
+            if (!itemId || KnownHybridSpellRequiresItem(player, spellId, itemId))
+                continue;
+
+            uint32 currentCount = player->GetItemCount(itemId, true);
+            if (currentCount)
+                player->DestroyItemCount(itemId, currentCount, true, false);
+        }
     }
 
     uint32 ApplyHybridSpellDependencyGrants(Player* player, uint32 spellId, bool announce)
@@ -1208,7 +1310,7 @@ namespace
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
             "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120"));
         SpellDependencyItems = ParseSpellDependencyItemMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyItems",
-            "2484:5175;8075:5175"));
+            ""));
     }
 
     void EnsureCharacterTables()
@@ -1990,6 +2092,7 @@ namespace
 
         RemoveHybridActionButtons(player, spellId);
         RemoveHybridSpellDependencyGrants(player, spellId);
+        RemoveHybridSpellDependencyItems(player, spellId);
         RemoveHybridSpellRanks(player, spellId);
         DeletePersistedHybridSpellRanks(guid, spellId);
         DeleteHybridSpell(guid, spellId);
