@@ -84,9 +84,8 @@ HybridTalentSystem.SpellDependencyGrants = "1515:883,2641,982,6991,5149,1002,136
 # trigger:item=count,item=count. When a hybrid spell is learned or restored,
 # missing support items are added if needed. These items are not removed on
 # unlearn because they are harmless class-kit reagents.
-# Default: Strength of Earth Totem grants the Earth Totem item required by
-# Shaman earth totem spells.
-HybridTalentSystem.SpellDependencyItems = "8075:5175"
+# Default: current Shaman earth totem spells grant the Earth Totem item.
+HybridTalentSystem.SpellDependencyItems = "2484:5175;8075:5175"
 
 # Learn synergy reward spells when requirements are met.
 HybridTalentSystem.EnableSynergies = 1

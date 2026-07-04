@@ -1208,7 +1208,7 @@ namespace
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
             "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120"));
         SpellDependencyItems = ParseSpellDependencyItemMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyItems",
-            "8075:5175"));
+            "2484:5175;8075:5175"));
     }
 
     void EnsureCharacterTables()

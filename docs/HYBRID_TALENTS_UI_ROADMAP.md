@@ -30,7 +30,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Progression balance | Playtesting | Current defaults are playable, but point cadence, costs, level gates, and long-term leveling feel still need more character progression data. |
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
-| Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, and Shaman totem spells can grant required totem items through configurable dependency item rules. |
+| Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, and current Shaman earth totem spells can grant the required Earth Totem item through configurable dependency item rules. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -85,7 +85,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 ### Class Dependency Packages
 
 - Expanded spell dependency grants so Voidwalker, Succubus, and Felhunter summon spells grant Drain Soul support for soul shards.
-- Added Shaman totem item dependency support so Strength of Earth Totem can grant the Earth Totem item required by earth totem spells.
+- Added Shaman totem item dependency support so Earthbind Totem and Strength of Earth Totem can grant the Earth Totem item required by earth totem spells.
 
 ## Active Planning Lanes
 
