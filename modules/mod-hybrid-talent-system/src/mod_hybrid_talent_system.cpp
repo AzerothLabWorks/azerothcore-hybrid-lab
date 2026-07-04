@@ -10,6 +10,7 @@
 #include "Item.h"
 #include "ItemScript.h"
 #include "Log.h"
+#include "ObjectMgr.h"
 #include "Pet.h"
 #include "Player.h"
 #include "PlayerScript.h"
@@ -86,6 +87,7 @@ namespace
     float MirrorGroupBuffRange = 100.0f;
     std::unordered_set<uint32> PetBuffSpellIds;
     std::map<uint32, std::set<uint32>> SpellDependencyGrants;
+    std::map<uint32, std::map<uint32, uint32>> SpellDependencyItems;
 
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
@@ -334,6 +336,76 @@ namespace
         }
 
         return dependencyGrants;
+    }
+
+    std::map<uint32, std::map<uint32, uint32>> ParseSpellDependencyItemMap(std::string const& value)
+    {
+        std::map<uint32, std::map<uint32, uint32>> dependencyItems;
+        std::stringstream entryStream(value);
+        std::string entry;
+
+        while (std::getline(entryStream, entry, ';'))
+        {
+            entry.erase(std::remove_if(entry.begin(), entry.end(), [](unsigned char c) { return std::isspace(c); }), entry.end());
+            if (entry.empty())
+                continue;
+
+            std::size_t separator = entry.find(':');
+            if (separator == std::string::npos || separator == 0 || separator + 1 >= entry.length())
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item entry '{}'. Expected trigger:item or trigger:item=count,item=count.", entry);
+                continue;
+            }
+
+            uint32 triggerSpellId = 0;
+            try
+            {
+                triggerSpellId = static_cast<uint32>(std::stoul(entry.substr(0, separator)));
+            }
+            catch (std::exception const&)
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item trigger in '{}'.", entry);
+                continue;
+            }
+
+            std::stringstream itemStream(entry.substr(separator + 1));
+            std::string itemToken;
+            while (std::getline(itemStream, itemToken, ','))
+            {
+                if (itemToken.empty())
+                    continue;
+
+                uint32 count = 1;
+                std::string itemIdText = itemToken;
+                std::size_t countSeparator = itemToken.find('=');
+                if (countSeparator != std::string::npos)
+                {
+                    itemIdText = itemToken.substr(0, countSeparator);
+                    try
+                    {
+                        count = std::max<uint32>(1, static_cast<uint32>(std::stoul(itemToken.substr(countSeparator + 1))));
+                    }
+                    catch (std::exception const&)
+                    {
+                        LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item count '{}' in '{}'.", itemToken.substr(countSeparator + 1), entry);
+                        continue;
+                    }
+                }
+
+                try
+                {
+                    uint32 itemId = static_cast<uint32>(std::stoul(itemIdText));
+                    if (itemId)
+                        dependencyItems[triggerSpellId][itemId] = count;
+                }
+                catch (std::exception const&)
+                {
+                    LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item '{}' in '{}'.", itemToken, entry);
+                }
+            }
+        }
+
+        return dependencyItems;
     }
 
     bool IsMirroredBuffSpell(uint32 spellId)
@@ -888,6 +960,66 @@ namespace
         return 0;
     }
 
+    uint32 GetDependencyItemTriggerSpellId(uint32 spellId)
+    {
+        for (auto const& pair : SpellDependencyItems)
+            if (IsSameSpellChain(pair.first, spellId))
+                return pair.first;
+
+        return 0;
+    }
+
+    uint32 ApplyHybridSpellDependencyItems(Player* player, uint32 spellId, bool announce)
+    {
+        if (!player)
+            return 0;
+
+        uint32 triggerSpellId = GetDependencyItemTriggerSpellId(spellId);
+        if (!triggerSpellId)
+            return 0;
+
+        auto itr = SpellDependencyItems.find(triggerSpellId);
+        if (itr == SpellDependencyItems.end())
+            return 0;
+
+        std::vector<std::string> addedNames;
+        for (auto const& pair : itr->second)
+        {
+            uint32 itemId = pair.first;
+            uint32 requiredCount = std::max<uint32>(1, pair.second);
+            uint32 currentCount = player->GetItemCount(itemId, true);
+            if (currentCount >= requiredCount)
+                continue;
+
+            uint32 addCount = requiredCount - currentCount;
+            if (!player->AddItem(itemId, addCount))
+            {
+                LOG_WARN("module.hybridtalents", "Could not add hybrid dependency item {} x{} to player {}.", itemId, addCount, player->GetGUID().ToString());
+                continue;
+            }
+
+            if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId))
+                addedNames.push_back(itemTemplate->Name1);
+            else
+                addedNames.push_back(std::to_string(itemId));
+        }
+
+        if (announce && !addedNames.empty())
+        {
+            std::string message = "Hybrid support item added: ";
+            for (std::size_t index = 0; index < addedNames.size(); ++index)
+            {
+                if (index)
+                    message += ", ";
+                message += addedNames[index];
+            }
+            message += ".";
+            ChatHandler(player->GetSession()).PSendSysMessage("{}", message);
+        }
+
+        return static_cast<uint32>(addedNames.size());
+    }
+
     uint32 ApplyHybridSpellDependencyGrants(Player* player, uint32 spellId, bool announce)
     {
         if (!player)
@@ -1008,6 +1140,7 @@ namespace
 
             LearnBestHybridSpellRank(player, spellId);
             ApplyHybridSpellDependencyGrants(player, spellId, false);
+            ApplyHybridSpellDependencyItems(player, spellId, false);
         }
 
         ApplySynergies(player);
@@ -1073,7 +1206,9 @@ namespace
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
-            "1515:883,2641,982,6991,5149,1002,136"));
+            "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120"));
+        SpellDependencyItems = ParseSpellDependencyItemMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyItems",
+            "8075:5175"));
     }
 
     void EnsureCharacterTables()
@@ -1920,6 +2055,7 @@ namespace
         SaveHybridSpell(guid, spellId);
         uint32 learnedSpellId = LearnBestHybridSpellRank(player, spellId);
         ApplyHybridSpellDependencyGrants(player, spellId, true);
+        ApplyHybridSpellDependencyItems(player, spellId, true);
         ApplySynergies(player);
         RestoreHybridActionButtons(player);
         ScheduleHybridActionRestore(player);

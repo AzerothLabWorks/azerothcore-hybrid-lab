@@ -25,11 +25,12 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. |
 | Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, and use separate hybrid talent points. |
 | Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, allow free picks across trees without native tree point requirements, and support dependency checks such as requiring Charge before Improved Charge. |
-| Talent UI clarity | In progress | Talent rows, details, and chat feedback are being improved to show next rank, max-rank state, locked reasons, and free-pick rules more clearly. |
+| Talent UI clarity | In progress | Talent rows, details, and chat feedback show next rank, max-rank state, locked reasons, and free-pick rules more clearly. |
 | Progression clarity | Live | The addon shows when the next spell point and next talent point will be earned during leveling. |
 | Progression balance | Playtesting | Current defaults are playable, but point cadence, costs, level gates, and long-term leveling feel still need more character progression data. |
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
+| Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, and Shaman totem spells can grant required totem items through configurable dependency item rules. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -64,6 +65,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added action bar preservation for hybrid spells and talent-granted spells.
 - Added logic to respect intentionally removed action buttons.
 - Added stance requirement relaxation and Hybrid UI tooltip notes for selected Warrior abilities only: Charge, Intercept, Overpower, Mocking Blow, Revenge, Disarm, Shield Wall, Retaliation, Recklessness, Berserker Rage, Pummel, and Whirlwind.
+- Added configurable dependency item packages through `HybridTalentSystem.SpellDependencyItems`.
 
 ### Hunter Pet Support
 
@@ -79,6 +81,11 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Mirrored selected buffs to pets.
 - Mirrored selected buffs to nearby group members.
 - Kept behavior configurable through module config.
+
+### Class Dependency Packages
+
+- Expanded spell dependency grants so Voidwalker, Succubus, and Felhunter summon spells grant Drain Soul support for soul shards.
+- Added Shaman totem item dependency support so Strength of Earth Totem can grant the Earth Totem item required by earth totem spells.
 
 ## Active Planning Lanes
 
@@ -129,7 +136,7 @@ Candidate work:
 - Review Paladin aura/blessing behavior.
 - Review Druid shapeshift spell and form edge cases.
 - Review Warrior stance-less ability coverage after more playtesting. Current stance relaxation is intentionally limited to selected Warrior hybrid abilities and should not be treated as a global stance/form/resource removal.
-- Add dependency rules through `HybridTalentSystem.SpellDependencyGrants` where possible.
+- Add dependency spell rules through `HybridTalentSystem.SpellDependencyGrants` and dependency item rules through `HybridTalentSystem.SpellDependencyItems` where possible.
 
 Why this matters: Tame Beast showed that one iconic spell often needs a supporting kit. Other class fantasies may need similar packages.
 
