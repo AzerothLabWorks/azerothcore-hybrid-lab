@@ -368,6 +368,18 @@ setup_playerbots() {
   set_conf_value "$target_config" "AiPlayerbot.RandomBotAccountCount" "0"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotMinLevel" "15"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotMaxLevel" "80"
+  set_conf_value "$target_config" "AiPlayerbot.RandomBotMinLevelChance" "0.02"
+  set_conf_value "$target_config" "AiPlayerbot.DowngradeMaxLevelBot" "0"
+  set_conf_value "$target_config" "AiPlayerbot.BotActiveAloneForceWhenInZone" "0"
+  set_conf_value "$target_config" "AiPlayerbot.BotActiveAloneForceWhenInRadius" "120"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.1" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.12" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.14" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.85" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.141" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.215" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.3430" "8,12"
+  set_conf_value "$target_config" "AiPlayerbot.ZoneBracket.3524" "8,12"
   set_conf_value "$target_config" "AiPlayerbot.SyncLevelWithPlayers" "1"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotJoinLfg" "1"
   set_conf_value "$target_config" "AiPlayerbot.RandomBotJoinBG" "1"
@@ -409,6 +421,10 @@ setup_playerbots() {
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_MAX_RANDOM_BOTS" "1500"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MIN_LEVEL" "15"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MAX_LEVEL" "80"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_MIN_LEVEL_CHANCE" "0.02"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_DOWNGRADE_MAX_LEVEL_BOT" "0"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_BOT_ACTIVE_ALONE_FORCE_WHEN_IN_ZONE" "0"
+  set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_BOT_ACTIVE_ALONE_FORCE_WHEN_IN_RADIUS" "120"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_SYNC_LEVEL_WITH_PLAYERS" "1"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_JOIN_BG" "1"
   set_compose_environment_value "$compose_override" "AC_AI_PLAYERBOT_RANDOM_BOT_AUTO_JOIN_BG" "1"
@@ -421,7 +437,7 @@ setup_playerbots() {
   set_compose_environment_value "$compose_override" "AC_LEARN_SPELLS_MAX_LEVEL" "80"
 
   log "Installed Playerbots config to $target_config"
-  log "Configured Playerbots random bot population, leveling-range density, LFG participation, rated 3v3 seeding, dungeon strategies, role-biased specs, chat broadcasts, and quiet greetings."
+  log "Configured Playerbots random bot population, leveling-range density, starter-zone relief, LFG participation, rated 3v3 seeding, dungeon strategies, role-biased specs, chat broadcasts, and quiet greetings."
   log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
 }
 
@@ -435,7 +451,7 @@ diagnose_playerbots_lfg() {
 
   log "Playerbots LFG-related config"
   if [[ -f "$config_file" ]]; then
-    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|SyncLevelWithPlayers|EnableGreet|RandomBotTalk|RandomBotEmote|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
+    grep -E "^[[:space:]]*AiPlayerbot\\.(RandomBotJoinLfg|ApplyInstanceStrategies|SummonWhenGroup|GroupInvitationPermission|RandomBotAutologin|MinRandomBots|MaxRandomBots|RandomBotMinLevel|RandomBotMaxLevel|RandomBotMinLevelChance|DowngradeMaxLevelBot|BotActiveAloneForceWhenInZone|BotActiveAloneForceWhenInRadius|ZoneBracket\\.(1|12|14|85|141|215|3430|3524)|SyncLevelWithPlayers|EnableGreet|RandomBotTalk|RandomBotEmote|EnableBroadcasts|RandomBotSayWithoutMaster|RandomClassSpecProb\\.(1|2|5|6|7|11)\\.[0-3])[[:space:]]*=" "$config_file" || true
   else
     warn "Could not find playerbots.conf. Run setup-playerbots first."
   fi

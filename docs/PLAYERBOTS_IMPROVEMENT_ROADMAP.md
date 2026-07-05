@@ -10,6 +10,7 @@ Status for branch `codex/hybrid-talents-ui`:
 |---|---|---|
 | Bot population | Live | Playerbots profile configures 1500 online random bots and aligns Docker overrides so container environment does not cap the value lower than `playerbots.conf`. |
 | Leveling density | Live | Random bots start at level 15 and their maximum random level follows online player levels to improve leveling dungeon availability. |
+| Starter-zone relief | Live | Starter zones are capped to a tighter 8-12 bot bracket, forced alone-zone activation is disabled, and minimum-level bot chance is lowered to reduce crowding around new characters. |
 | LFG participation | Live | Random bot LFG participation is enabled, summon-on-group is enabled, and bots are biased toward tank/healer-capable specs for healthier role coverage. |
 | LFG proposal reliability | Live | Bots no longer explicitly decline LFG proposals only because they are in combat or dead. |
 | LFG teleport watchdog | Live, validating | Bots in an active LFG dungeon group retry the native `lfg teleport` action when they accepted but remain outside the dungeon. Added after a Ragefire Chasm partial-entry reproduction. |
@@ -57,6 +58,7 @@ The setup command now writes `playerbots.conf` and explicitly enables:
 - 1500 configured online random bots
 - Docker override alignment so container environment does not cap bots below `playerbots.conf`
 - random bot levels start at 15 and sync their maximum level to online players for leveling-dungeon density
+- starter-zone relief for early zones such as Elwynn, Durotar, Teldrassil, Mulgore, Dun Morogh, Tirisfal, Eversong, and Azuremyst
 - random bot LFG participation
 - PvP auto-join and conservative rated 3v3 seeding for level 80 arena queues
 - instance strategy application
@@ -72,6 +74,8 @@ The current Playerbots patches improve LFG reliability in two places:
 - bots in an active LFG dungeon group retry the native LFG teleport action when they are still outside the dungeon
 
 Together these target the two observed failure modes: one questing bot collapsing the proposal for the whole group, and bots accepting the group but not zoning in.
+
+The current Hybrid Lab baseline intentionally bakes in the safer, config-only parts of `playerbots-tuner`, including dungeon/LFG density, role-biased specs, quiet social behavior, conservative 3v3 seeding, and starter-zone relief. More experimental tuner patch sets, such as lower-bracket rated arenas and group trade item offers, should stay optional until they are validated through more playthrough testing.
 
 The current setup also biases random bot specs toward dungeon viability:
 
