@@ -1,0 +1,34 @@
+diff --git a/src/server/game/Globals/ObjectMgr.cpp b/src/server/game/Globals/ObjectMgr.cpp
+--- a/src/server/game/Globals/ObjectMgr.cpp
++++ b/src/server/game/Globals/ObjectMgr.cpp
+@@ -1837,7 +1837,29 @@ uint32 ObjectMgr::GetModelForTotem(SummonSlot totemSlot, Races race) const
+     if (itr != _playerTotemModel.end())
+         return itr->second;
+ 
+-    LOG_ERROR("misc", "TotemSlot {} with RaceID ({}) have no totem model data defined, set to default model.", totemSlot, race);
++    Races fallbackRace = RACE_ORC;
++    switch (race)
++    {
++        case RACE_HUMAN:
++        case RACE_DWARF:
++        case RACE_NIGHTELF:
++        case RACE_GNOME:
++        case RACE_DRAENEI:
++            fallbackRace = RACE_DWARF;
++            break;
++        default:
++            fallbackRace = RACE_ORC;
++            break;
++    }
++
++    itr = _playerTotemModel.find(std::make_pair(totemSlot, fallbackRace));
++    if (itr != _playerTotemModel.end())
++    {
++        LOG_DEBUG("misc", "TotemSlot {} with RaceID ({}) has no totem model data defined, using fallback RaceID ({}).", totemSlot, race, fallbackRace);
++        return itr->second;
++    }
++
++    LOG_ERROR("misc", "TotemSlot {} with RaceID ({}) has no totem model data defined and fallback RaceID ({}) is missing, set to default model.", totemSlot, race, fallbackRace);
+     return 0;
+ }
+ 
