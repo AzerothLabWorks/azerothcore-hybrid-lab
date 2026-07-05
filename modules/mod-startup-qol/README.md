@@ -10,6 +10,7 @@ Default package:
 - `20000` gold
 - All weapon proficiency skill rows and passive proficiency spells
 - All armor proficiency skill rows and passive proficiency spells
+- All faction-appropriate flight paths
 
 Install with:
 
@@ -20,5 +21,5 @@ Install with:
 ```
 
 The full package is granted by AzerothCore's first-login player hook. Equipment
-proficiencies are also repaired on login so existing characters can receive the
-weapon and armor skill/spell updates without receiving extra bags or gold.
+proficiencies and flight paths are also repaired on login so existing characters
+can receive those quality-of-life updates without receiving extra bags or gold.

@@ -219,6 +219,46 @@ void GrantEquipmentSkills(Player* player)
     LearnConfiguredSpells(player, EquipmentProficiencySpells);
 }
 
+bool GrantFactionFlightPaths(Player* player)
+{
+    TaxiMask const* mask = nullptr;
+
+    switch (player->GetTeamId(true))
+    {
+        case TEAM_ALLIANCE:
+            mask = &sAllianceTaxiNodesMask;
+            break;
+        case TEAM_HORDE:
+            mask = &sHordeTaxiNodesMask;
+            break;
+        default:
+            return false;
+    }
+
+    bool changed = false;
+    for (uint8 field = 0; field < TaxiMaskSize; ++field)
+    {
+        uint32 nodes = (*mask)[field];
+
+        if (player->IsClass(CLASS_DEATH_KNIGHT, CLASS_CONTEXT_TAXI))
+            nodes |= sDeathKnightTaxiNodesMask[field];
+
+        for (uint8 bit = 0; bit < 32; ++bit)
+        {
+            if ((nodes & (1u << bit)) == 0)
+                continue;
+
+            uint32 nodeId = uint32(field) * 32 + bit + 1;
+            if (!sTaxiNodesStore.LookupEntry(nodeId))
+                continue;
+
+            changed = player->m_taxi.SetTaximaskNode(nodeId) || changed;
+        }
+    }
+
+    return changed;
+}
+
 void GrantStartupPackage(Player* player)
 {
     LearnConfiguredSpells(player, RidingSpells);
@@ -229,6 +269,8 @@ void GrantStartupPackage(Player* player)
         player->ModifyMoney(static_cast<int32>(MoneyCopper));
 
     GrantEquipmentSkills(player);
+
+    GrantFactionFlightPaths(player);
 
     if (NotifyPlayer)
         ChatHandler(player->GetSession()).SendNotification("Startup QoL package granted.");
@@ -268,11 +310,21 @@ public:
 
     void OnPlayerLogin(Player* player) override
     {
-        if (Enabled && ReapplyEquipmentSkillsOnLogin)
+        if (!Enabled)
+            return;
+
+        bool shouldSave = false;
+
+        if (ReapplyEquipmentSkillsOnLogin)
         {
             GrantEquipmentSkills(player);
-            player->SaveToDB(false, false);
+            shouldSave = true;
         }
+
+        shouldSave = GrantFactionFlightPaths(player) || shouldSave;
+
+        if (shouldSave)
+            player->SaveToDB(false, false);
     }
 };
 

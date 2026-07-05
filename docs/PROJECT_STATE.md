@@ -91,5 +91,5 @@ docker compose ps
 docker compose logs --tail=160 ac-worldserver
 ```
 
-- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, and weapon/armor proficiencies on first login. Core patches let startup weapon/armor proficiencies and Dual Wield persist across class restrictions and let equipment bypass normal class/proficiency restrictions while preserving item level and other non-class gates.
+- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, weapon/armor proficiencies, and faction-appropriate flight paths on first login. Existing characters can be backfilled on login for equipment proficiencies and flight paths. Core patches let startup weapon/armor proficiencies and Dual Wield persist across class restrictions and let equipment bypass normal class/proficiency restrictions while preserving item level and other non-class gates.
 - Hybrid Shaman totem support grants required totem tool items and uses Dwarf/Orc fallback totem models for races that have no native `player_totem_model` row.

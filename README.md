@@ -40,7 +40,7 @@ In short, this project:
 - **Class dependency packages**: Hybrid spells can grant supporting spells or items through config. Current packages include Hunter pet tools, Drain Soul support for shard-based Warlock demon summons, Shaman totem tools, fallback totem models for non-Shaman races, and Rogue starter utility for Stealth/Poisons.
 - **Retired Hybrid trainer/beacon path on this branch**: The legacy Hybrid Talent Master NPC and Hybrid Talent Beacon have been disabled/removed in the dev build. Hybrid progression now flows through the addon and `/hybridui` command path.
 - **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item. This NPC remains active.
-- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, and an optional equipment-proficiency override for hybrid gearing.
+- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, faction flight paths, and optional login repair for hybrid gearing/travel quality-of-life.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Hybrid equipment proficiency**: Core patch that lets weapon and armor equipment bypass normal class/proficiency restrictions while preserving race, faction, level, reputation, and profession gates.
 - **Escort quest pacing**: Core patch adds `Rate.MoveSpeed.Escort` so escort quest NPCs can move faster without globally speeding up all NPCs. The default is `2.0`.
@@ -144,7 +144,7 @@ The current development direction is to make the addon the main user experience 
 
 ## Startup QoL
 
-Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those hybrid proficiencies and Dual Wield are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
+Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, all weapon/armor proficiencies, and all faction-appropriate flight paths. Existing characters can be backfilled on login for equipment proficiencies and flight paths without receiving duplicate bags, gold, riding spells, or mount spells. With core patches applied, those hybrid proficiencies and Dual Wield are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
 
 ## Required Client Addon
 
