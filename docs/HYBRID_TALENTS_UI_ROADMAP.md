@@ -31,6 +31,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, and Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
+| Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -151,7 +152,7 @@ Candidate work:
 - Verify action bars after removing and re-adding spells/talents.
 - Verify talent-granted spells across logout/login.
 - Verify pets after stable, dismiss, call, abandon, and tame-new-pet flows.
-- Reduce recurring duplicate `character_spell` log noise where safe.
+- Monitor recurring duplicate `character_spell` log noise after the Dual Wield persistence fix.
 - Audit hybrid-managed spells that teach class-restricted skill lines.
 
 Why this matters: this project touches core assumptions in AzerothCore. Persistence bugs are the ones players notice most.

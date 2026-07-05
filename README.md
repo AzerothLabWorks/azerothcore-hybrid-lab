@@ -144,7 +144,7 @@ The current development direction is to make the addon the main user experience 
 
 ## Startup QoL
 
-Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those hybrid proficiencies are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
+Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those hybrid proficiencies and Dual Wield are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
 
 ## Required Client Addon
 
