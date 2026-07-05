@@ -10,9 +10,9 @@ index 7df100d2df..b0187f4d8d 100644
 +#    Rate.MoveSpeed.Escort
 +#        Description: Movement speed rate for escort quest NPCs.
 +#                     This only affects escort movement paths and does not change normal NPC movement speed.
-+#        Default:     1.5
++#        Default:     2.0
 +
-+Rate.MoveSpeed.Escort = 1.5
++Rate.MoveSpeed.Escort = 2.0
 +
 +#
  #    Rate.Damage.Fall
@@ -77,7 +77,7 @@ index 7d06149bc8..2a52748756 100644
      SetConfigValue<float>(RATE_MOVESPEED_NPC, "Rate.MoveSpeed.NPC", 1.0f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f; }, ">= 0");
  
 +    // Controls escort quest NPC movement speed without affecting normal NPC movement.
-+    SetConfigValue<float>(CONFIG_ESCORT_MOVEMENT_SPEED_RATE, "Rate.MoveSpeed.Escort", 1.5f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f; }, ">= 0");
++    SetConfigValue<float>(CONFIG_ESCORT_MOVEMENT_SPEED_RATE, "Rate.MoveSpeed.Escort", 2.0f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f; }, ">= 0");
 +
      SetConfigValue<float>(RATE_CORPSE_DECAY_LOOTED, "Rate.Corpse.Decay.Looted", 0.5f);
  
