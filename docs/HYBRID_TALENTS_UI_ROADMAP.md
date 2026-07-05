@@ -30,7 +30,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Progression balance | Playtesting | Current defaults are playable, but point cadence, costs, level gates, and long-term leveling feel still need more character progression data. |
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
-| Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, and Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
+| Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
@@ -88,6 +88,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Expanded spell dependency grants so Voidwalker, Succubus, and Felhunter summon spells grant Drain Soul support for soul shards.
 - Added Shaman totem item dependency support so hybrid totem spells can grant their required Earth, Fire, Water, or Air totem tool items.
 - Added Shaman totem model fallback support so hybrid totems cast by non-Shaman races render as valid Dwarf or Orc totems instead of missing-model placeholders.
+- Added Rogue dependency packages: Stealth grants Pick Pocket, Sap, and Pick Lock, while Poisons grants Instant Poison as a starter poison application.
 
 ## Active Planning Lanes
 

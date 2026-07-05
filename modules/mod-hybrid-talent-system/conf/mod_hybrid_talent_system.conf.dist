@@ -78,7 +78,10 @@ HybridTalentSystem.PetBuffSpellIds = "1243,21562,14752,27681,976,27683,1459,2302
 #   Training, Mend Pet, and Eye of the Beast.
 # - Voidwalker, Succubus, and Felhunter summons grant Drain Soul for soul
 #   shard support.
-HybridTalentSystem.SpellDependencyGrants = "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120"
+# - Stealth grants Pick Pocket, Sap, and Pick Lock for Rogue utility support.
+# - Poisons grants Instant Poison so the poison toolkit has an immediate
+#   usable application spell.
+HybridTalentSystem.SpellDependencyGrants = "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120;1784:921,6770,1804;2842:8681"
 
 # Semicolon-separated dependency item rules. Each rule is trigger:item or
 # trigger:item=count,item=count. When a hybrid spell is learned or restored,
