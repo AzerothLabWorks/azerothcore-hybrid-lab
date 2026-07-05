@@ -1362,9 +1362,20 @@ namespace
 
         QueryResult descriptionColumnResult = WorldDatabase.Query("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'hybrid_spell_template' AND column_name = 'description' LIMIT 1");
         bool hasDescriptionColumn = !!descriptionColumnResult;
-        QueryResult spellResult = WorldDatabase.Query(hasDescriptionColumn
-            ? "SELECT spell_id, class_mask, required_level, cost, category, COALESCE(description, ''), role_mask, flags FROM hybrid_spell_template"
-            : "SELECT spell_id, class_mask, required_level, cost, category, '', role_mask, flags FROM hybrid_spell_template");
+        QueryResult spellDbcDescriptionColumnResult = WorldDatabase.Query("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'spell_dbc' AND column_name = 'Description_Lang_enUS' LIMIT 1");
+        bool hasSpellDbcDescriptionColumn = !!spellDbcDescriptionColumnResult;
+
+        std::string spellTemplateQuery;
+        if (hasDescriptionColumn && hasSpellDbcDescriptionColumn)
+            spellTemplateQuery = "SELECT h.spell_id, h.class_mask, h.required_level, h.cost, h.category, COALESCE(NULLIF(h.description, ''), NULLIF(s.Description_Lang_enUS, ''), ''), h.role_mask, h.flags FROM hybrid_spell_template h LEFT JOIN spell_dbc s ON s.ID = h.spell_id";
+        else if (hasDescriptionColumn)
+            spellTemplateQuery = "SELECT spell_id, class_mask, required_level, cost, category, COALESCE(description, ''), role_mask, flags FROM hybrid_spell_template";
+        else if (hasSpellDbcDescriptionColumn)
+            spellTemplateQuery = "SELECT h.spell_id, h.class_mask, h.required_level, h.cost, h.category, COALESCE(NULLIF(s.Description_Lang_enUS, ''), ''), h.role_mask, h.flags FROM hybrid_spell_template h LEFT JOIN spell_dbc s ON s.ID = h.spell_id";
+        else
+            spellTemplateQuery = "SELECT spell_id, class_mask, required_level, cost, category, '', role_mask, flags FROM hybrid_spell_template";
+
+        QueryResult spellResult = WorldDatabase.Query(spellTemplateQuery.c_str());
         if (spellResult)
         {
             do
@@ -1745,6 +1756,9 @@ namespace
 
             uint32 spellId = talentInfo->RankID[rank - 1];
             if (!spellId || !sSpellMgr->GetSpellInfo(spellId))
+                continue;
+
+            if (player->HasSpell(spellId))
                 continue;
 
             RemoveHybridTalentRanks(player, talentInfo);
