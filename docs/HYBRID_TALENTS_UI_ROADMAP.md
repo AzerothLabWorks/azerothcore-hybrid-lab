@@ -1,18 +1,24 @@
 # Hybrid Talent System Roadmap
 
-This is the living roadmap for the Hybrid spell/talent project. It tracks what is already live, what is being validated through play, and what we may build next on `codex/hybrid-talents-ui` before another promotion to `main`.
+This is the living roadmap for the Hybrid spell/talent project. It tracks what is already live, what is being validated through play, what we may build next on `codex/hybrid-talents-ui`, and which higher-risk experiments belong in the isolated QA lane before any promotion back toward normal development.
 
 ## Branch And Environment Model
 
 - Stable source branch: `main`
 - Active development branch: `codex/hybrid-talents-ui`
+- High-risk QA branch: `codex/hybrid-race-class-qa`
 - Stable WSL server: `~/wow-server-playerbots-hybrid`
 - Development WSL server: `~/wow-server-playerbots-hybrid-dev`
+- QA WSL lab repo: `~/azerothcore-hybrid-lab-qa`
+- QA WSL server: `~/wow-server-playerbots-hybrid-qa`
 - Stable client example: `C:\Games\WoW-3.3.5a-HD`
 - Development client example: `C:\Games\WoW-3.3.5a-HD-Dev`
 - Disposable client experiment copy: `C:\Games\WoW-3.3.5a-HD-Test`
+- QA Docker endpoints: auth `127.0.0.1:3725`, world `127.0.0.1:8086`, DB `127.0.0.1:3307`, SOAP `127.0.0.1:7879`
 
-Use `main` for stable source and production deployment. Use `codex/hybrid-talents-ui` for new work. Client-side experiments should happen only in the disposable test client until proven safe.
+Use `main` for stable source and production deployment. Use `codex/hybrid-talents-ui` for normal new work. Use `codex/hybrid-race-class-qa` for experiments that may affect race/class assumptions, character creation, DBC data, GlueXML, shapeshift display logic, or client MPQ patches.
+
+Do not modify `main`, `codex/hybrid-talents-ui`, `~/wow-server-playerbots-hybrid`, or `~/wow-server-playerbots-hybrid-dev` while doing QA experiments unless a proven QA change is explicitly being promoted. Client-side experiments should happen only in `C:\Games\WoW-3.3.5a-HD-Test` until proven recoverable and worth promoting.
 
 ## Current State
 
@@ -35,7 +41,8 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
-| Client race/class unlocks | Not started | Requires isolated client testing and likely DBC/GlueXML work. Do not patch the dev client directly. |
+| QA race/class unlocks | Planned on QA branch | Any-race/any-class work belongs on `codex/hybrid-race-class-qa` with the isolated QA server/client stack. |
+| QA client asset experiments | Planned on QA branch | DBC, GlueXML, MPQ, model, texture, and shapeshift appearance experiments must use the disposable HD test client first. |
 
 ## Completed Milestones
 
@@ -89,6 +96,15 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added Shaman totem item dependency support so hybrid totem spells can grant their required Earth, Fire, Water, or Air totem tool items.
 - Added Shaman totem model fallback support so hybrid totems cast by non-Shaman races render as valid Dwarf or Orc totems instead of missing-model placeholders.
 - Added Rogue dependency packages: Stealth grants Pick Pocket, Sap, and Pick Lock, while Poisons grants Instant Poison as a starter poison application.
+
+### QA Environment
+
+- Created `codex/hybrid-race-class-qa` from `codex/hybrid-talents-ui`.
+- Created isolated QA lab repo at `~/azerothcore-hybrid-lab-qa`.
+- Created isolated QA server at `~/wow-server-playerbots-hybrid-qa`.
+- Configured QA Docker container names, image tag, volumes, and ports separately from the normal stable/dev lanes.
+- Installed `HybridTalentUI` into the disposable client copy at `C:\Games\WoW-3.3.5a-HD-Test`.
+- Pointed the disposable client realmlist files at the QA auth endpoint, `127.0.0.1:3725`.
 
 ## Active Planning Lanes
 
@@ -185,24 +201,124 @@ Candidate work:
 
 Why this matters: bots already make the world feel alive. Hybrid-aware bots could be powerful, but it is a larger design problem and should wait until player progression is stable.
 
+## QA Experiment Lanes
+
+These are high-risk workstreams for `codex/hybrid-race-class-qa`. They should be validated in the isolated QA server/client workflow before any change is considered for `codex/hybrid-talents-ui`.
+
+### 1. Any Race / Any Class
+
+Goal: allow character creation and stable gameplay for unsupported race/class combinations without damaging normal class/race assumptions.
+
+Investigation:
+
+- Server-side race/class validation during character creation.
+- `playercreateinfo`, starting positions, starting actions, starting spells, starting items, skills, factions, languages, and reputation.
+- Login/load cleanup paths that may remove class-restricted spells, skills, pets, forms, or equipment proficiencies.
+- Character creation restrictions in the 3.3.5a client.
+- Whether server-only acceptance is enough for any test pair, or whether DBC/GlueXML changes are required.
+
+Candidate work:
+
+- Add a QA-only config gate such as `Hybrid.AllowAnyRaceClass`.
+- Prototype one unsupported race/class pair before expanding the matrix.
+- Build a race/class validation matrix covering create, login, relog, map spawn, starter spells, trainers, talent UI, HybridTalentUI, equipment proficiency, pets, forms, totems, quests, grouping, LFG, battlegrounds, and persistence.
+- Keep any client edits confined to `C:\Games\WoW-3.3.5a-HD-Test`.
+
+Why this matters: any-race/any-class support is central to class fantasy freedom, but it touches assumptions across both server and client.
+
+### 2. Custom Druid Form Appearances
+
+Goal: add custom Bear and Cat form appearances to a WotLK 3.3.5a server/client workflow, beginning with known-compatible form patches and later swapping in custom Ascension-inspired assets where rights and provenance are clear.
+
+Investigation:
+
+- `SpellShapeshiftForm.dbc` rows for Bear, Dire Bear, and Cat.
+- `CreatureDisplayInfo.dbc` and `CreatureModelData.dbc` display/model linkage.
+- Existing WotLK druid form display IDs.
+- Where TrinityCore/AzerothCore applies shapeshift model IDs.
+- Whether form appearance in 3.3.5a is race, gender, hair, or skin dependent.
+- Client patch requirements for M2, skin, BLP, DBC edits, and MPQ packaging.
+
+Candidate work:
+
+- Prototype with a known WotLK-compatible Legion/MoP druid form patch first.
+- Verify the full pipeline in the disposable client: MPQ load order, DBC edits, model display, shapeshift behavior, combat animations, logout/login persistence, and failure recovery.
+- Document the minimum DBC rows and file paths required for a clean patch.
+- Replace known-compatible prototype assets with custom assets only after the pipeline is understood.
+- Prefer config-gated server behavior if server-side shapeshift model selection needs adjustment.
+
+Why this matters: shapeshift appearance work is mostly a client data and asset pipeline risk, but it intersects with server-side form handling and class fantasy polish.
+
+### 3. Targeted Ground AoE Usability
+
+Goal: allow selected ground-targeted hybrid spells to cast at the current target's position instead of requiring manual ground targeting.
+
+Scope:
+
+- Start with one proof-of-concept spell, probably Rain of Fire.
+- Apply only to explicit spell IDs listed in a QA config option.
+- Limit the first pass to player-cast hybrid spells, not creatures, scripts, bots, or all ground-targeted spells globally.
+
+Investigation:
+
+- Where AzerothCore handles ground-target spell cast requests and destination targets.
+- How client cast validation behaves when a ground-target spell is triggered from server-side target position data.
+- Whether the spell should cast at the selected target, target-of-target, or current hostile unit only.
+- How line of sight, range, map, phase, transport, and indoor/outdoor checks behave with synthesized destination coordinates.
+- Whether Playerbots, scripted boss spells, or spell scripts use the same path and could be affected.
+
+Candidate work:
+
+- Add an opt-in config such as `Hybrid.TargetedGroundAoe.Spells = 5740`.
+- Convert the selected unit target position into a destination only for configured spell IDs.
+- Preserve normal ground-targeting behavior for every spell not explicitly configured.
+- Add logging or debug feedback during QA so misfires are easy to diagnose.
+- Build manual tests for normal Rain of Fire casting, configured target-position casting, no-target failure, invalid-target failure, line-of-sight/range failure, bot casting, and scripted ground AoE spells.
+
+Risk: medium to high. Ground-target spells are a shared core mechanic, so this must stay narrow, opt-in, and covered by regression checks before any promotion.
+
+Why this matters: this could make hybrid gameplay smoother for selected spells without requiring a broad client UI rewrite, but careless implementation could break normal targeting semantics.
+
+### 4. Reagent-Free Casting
+
+Goal: evaluate removing or bypassing reagent requirements for selected player spells to modernize gameplay and make hybrid/cross-class progression smoother.
+
+Scope:
+
+- Start with a small proof-of-concept spell set, preferably one Warlock spell and one Mage, Paladin, or Priest utility spell.
+- Test server-side cast behavior before attempting any client tooltip cleanup.
+- Keep the first pass opt-in and limited to explicit spell IDs.
+- Consider whether the final scope should apply only to hybrid-learned spells or to all player class spells where reagent removal is safe.
+
+Server-side investigation:
+
+- Bypass reagent checks and reagent consumption for selected player-cast spells.
+- Reuse the existing reagent-check path where possible so configured spells pass both cast validation and reagent consumption.
+- Keep profession crafting, item-created spells, item-use spells, trade target items, and important economy/item mechanics protected.
+- Add a config flag and spell list so the feature can be enabled, disabled, and rolled back cleanly.
+
+Client-side investigation:
+
+- Determine whether reagent text can be hidden through addon tooltip cleanup.
+- Identify whether full client cleanup requires DBC edits, MPQ patching, or both.
+- Use only `C:\Games\WoW-3.3.5a-HD-Test` for any tooltip, DBC, or MPQ experiments.
+
+Candidate work:
+
+- Add a QA-only config such as `Hybrid.NoReagent.Enable = 1` and `Hybrid.NoReagent.Spells = ...`.
+- Pick a small initial list covering one Soul Shard spell and one class utility reagent spell.
+- Confirm configured spells cast without reagents and do not consume reagents if reagents are present.
+- Confirm unconfigured reagent spells still require and consume reagents normally.
+- Confirm crafting, profession, item-created, and item-use spell behavior is unchanged.
+- Document whether the feature should eventually be promoted to `codex/hybrid-talents-ui`, kept QA-only, or abandoned.
+
+Risk: medium. Player spell reagent removal is narrower than global spell targeting changes, but careless implementation could affect crafting, item sinks, economy assumptions, or client/server expectation mismatches.
+
+Why this matters: reagent friction is often at odds with solo hybrid gameplay, especially for cross-class utility spells learned outside their original class progression.
+
 ## Later Experiments
 
-These are interesting but higher risk. They should not be mixed into normal incremental work.
-
-### Any Race / Any Class
-
-Potential value: complete class fantasy freedom at character creation.
-
-Known layers:
-
-- Server layer: `playercreateinfo`, starting spells, skills, actions, class/race validation, and cleanup logic.
-- Client layer: character creation UI likely requires DBC and/or GlueXML changes. Normal addons do not run on the character creation screen.
-
-Safety rule:
-
-- Use `C:\Games\WoW-3.3.5a-HD-Test` only.
-- Start with one race/class pair, not every combination.
-- Do not patch the dev client until the test client is proven recoverable.
+These are interesting but higher risk. They should not be mixed into normal incremental work. Any experiment in this section should start in the QA lane unless it is explicitly reclassified as normal development work.
 
 ### Native Talent Tree Rule Removal
 
