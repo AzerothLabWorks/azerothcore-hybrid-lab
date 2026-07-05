@@ -14,6 +14,7 @@ Status for branch `codex/hybrid-talents-ui`:
 | LFG participation | Live | Random bot LFG participation is enabled, summon-on-group is enabled, and bots are biased toward tank/healer-capable specs for healthier role coverage. |
 | LFG proposal reliability | Live | Bots no longer explicitly decline LFG proposals only because they are in combat or dead. |
 | LFG teleport watchdog | Live, validating | Bots in an active LFG dungeon group retry the native `lfg teleport` action when they accepted but remain outside the dungeon. Added after a Ragefire Chasm partial-entry reproduction. |
+| Group trade item offers | Live, validating | Real players who open trade with a grouped bot can receive up to three low-priority tradable items from the bot, such as vendor, auction, disenchant, or unused items. |
 | Social chatter | Live | Random bot talk and broadcasts remain enabled so zones feel active. Repeated nearby-player hello emotes are disabled to reduce chat noise. |
 | Ranked 3v3 seed config | Live, needs level-80 validation | Rated 3v3 bot participation is conservatively seeded for the level 80 bracket. Queue-time diagnostics still need more real playtest data. |
 | Diagnostics | Live | `diagnose-playerbots-lfg` and `diagnose-playerbots-pvp` helpers are available through `scripts/manage-wow-modules.sh`. |
@@ -72,10 +73,20 @@ The current Playerbots patches improve LFG reliability in two places:
 
 - bots no longer explicitly decline LFG proposals just because they are in combat or dead
 - bots in an active LFG dungeon group retry the native LFG teleport action when they are still outside the dungeon
+- grouped bots can offer low-priority tradable items to a real player when the player opens trade with them
 
 Together these target the two observed failure modes: one questing bot collapsing the proposal for the whole group, and bots accepting the group but not zoning in.
 
-The current Hybrid Lab baseline intentionally bakes in the safer, config-only parts of `playerbots-tuner`, including dungeon/LFG density, role-biased specs, quiet social behavior, conservative 3v3 seeding, and starter-zone relief. More experimental tuner patch sets, such as lower-bracket rated arenas and group trade item offers, should stay optional until they are validated through more playthrough testing.
+The current Hybrid Lab baseline intentionally bakes in the safer config portions of `playerbots-tuner`, including dungeon/LFG density, role-biased specs, quiet social behavior, conservative 3v3 seeding, and starter-zone relief. The group trade item-offer patch is also included on the development branch for playthrough validation. Lower-bracket rated arena support should stay optional until it is validated through more testing.
+
+The trade-offer patch is intentionally conservative:
+
+- it only runs when a real player opens trade with a bot in the same group
+- it does not trade with other bots
+- it does not overwrite items already placed in the trade window
+- it skips soulbound, non-tradable, and currently traded items
+- it offers at most three low-priority items
+- it respects `AiPlayerbot.EnableRandomBotTrading = 2`, which disables random bot item trading
 
 The current setup also biases random bot specs toward dungeon viability:
 

@@ -1,0 +1,99 @@
+diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.cpp
+--- a/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.cpp
++++ b/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.cpp
+@@ -154,6 +154,8 @@ void TradeStatusAction::BeginTrade()
+             botAI->TellMaster(out);
+         }
+     }
++
++    OfferUsefulTradeItems();
+ }
+ 
+ bool TradeStatusAction::CheckTrade()
+@@ -378,3 +380,56 @@ int32 TradeStatusAction::CalculateCost(Player* player, bool sell)
+ 
+     return sum;
+ }
++
++void TradeStatusAction::OfferUsefulTradeItems()
++{
++    Player* trader = bot->GetTrader();
++    TradeData* tradeData = bot->GetTradeData();
++    if (!trader || !tradeData || GET_PLAYERBOT_AI(trader))
++        return;
++
++    if (!bot->GetGroup() || !bot->GetGroup()->IsMember(trader->GetGUID()))
++        return;
++
++    if ((sRandomPlayerbotMgr.IsRandomBot(bot) || sRandomPlayerbotMgr.IsAddclassBot(bot)) &&
++        sPlayerbotAIConfig.enableRandomBotTrading == 2)
++        return;
++
++    for (uint32 slot = 0; slot < TRADE_SLOT_TRADED_COUNT; ++slot)
++        if (tradeData->GetItem(static_cast<TradeSlots>(slot)))
++            return;
++
++    constexpr uint32 MaxOfferedTradeItems = 3;
++    std::vector<ItemUsage> const offerUsages =
++    {
++        ITEM_USAGE_VENDOR, ITEM_USAGE_AH, ITEM_USAGE_DISENCHANT, ITEM_USAGE_NONE
++    };
++    uint32 offered = 0;
++
++    for (ItemUsage usage : offerUsages)
++    {
++        std::vector<Item*> items =
++            AI_VALUE2(std::vector<Item*>, "inventory items", "usage " + std::to_string(usage));
++        std::reverse(items.begin(), items.end());
++
++        for (Item* item : items)
++        {
++            if (!item || !item->CanBeTraded() || item->IsInTrade())
++                continue;
++
++            ItemTemplate const* proto = item->GetTemplate();
++            if (!proto || (proto->Quality < ITEM_QUALITY_NORMAL && !proto->IsConjuredConsumable()))
++                continue;
++
++            if (!proto->SellPrice && !proto->IsConjuredConsumable())
++                continue;
++
++            if (tradeData->HasItem(item->GetGUID()))
++                continue;
++
++            int8 tradeSlot = -1;
++            for (uint8 slot = 0; slot < TRADE_SLOT_TRADED_COUNT; ++slot)
++            {
++                if (!tradeData->GetItem(static_cast<TradeSlots>(slot)))
++                {
++                    tradeSlot = slot;
++                    break;
++                }
++            }
++
++            if (tradeSlot == -1)
++                return;
++
++            WorldPacket packet(CMSG_SET_TRADE_ITEM, 3);
++            packet << static_cast<uint8>(tradeSlot);
++            packet << static_cast<uint8>(item->GetBagSlot());
++            packet << static_cast<uint8>(item->GetSlot());
++            bot->GetSession()->HandleSetTradeItemOpcode(packet);
++
++            if (++offered >= MaxOfferedTradeItems)
++                return;
++        }
++    }
++}
+diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.h b/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.h
+--- a/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.h
++++ b/modules/mod-playerbots/src/Ai/Base/Actions/TradeStatusAction.h
+@@ -21,6 +21,7 @@ private:
+ private:
+     void BeginTrade();
+     bool CheckTrade();
+     int32 CalculateCost(Player* player, bool sell);
++    void OfferUsefulTradeItems();
+ };
+ 
+ #endif
