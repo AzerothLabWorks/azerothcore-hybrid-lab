@@ -1,0 +1,96 @@
+diff --git a/src/server/apps/worldserver/worldserver.conf.dist b/src/server/apps/worldserver/worldserver.conf.dist
+index 7df100d2df..b0187f4d8d 100644
+--- a/src/server/apps/worldserver/worldserver.conf.dist
++++ b/src/server/apps/worldserver/worldserver.conf.dist
+@@ -2186,6 +2186,15 @@ Rate.MoveSpeed.Player = 1
+ 
+ Rate.MoveSpeed.NPC = 1
+ 
++#
++#    Rate.MoveSpeed.Escort
++#        Description: Movement speed rate for escort quest NPCs.
++#                     This only affects escort movement paths and does not change normal NPC movement speed.
++#        Default:     1.5
++
++Rate.MoveSpeed.Escort = 1.5
++
++#
+ #    Rate.Damage.Fall
+ #        Description: Damage after fall rate.
+ #        Default:     1
+diff --git a/src/server/game/Movement/MovementGenerators/EscortMovementGenerator.cpp b/src/server/game/Movement/MovementGenerators/EscortMovementGenerator.cpp
+index 6ea1d3a7ee..159ecf1c7e 100644
+--- a/src/server/game/Movement/MovementGenerators/EscortMovementGenerator.cpp
++++ b/src/server/game/Movement/MovementGenerators/EscortMovementGenerator.cpp
+@@ -20,6 +20,29 @@
+ #include "CreatureAI.h"
+ #include "MoveSplineInit.h"
+ #include "Player.h"
++#include "World.h"
++
++namespace
++{
++    template<class T>
++    void ApplyEscortSpeedRate(T* unit, Movement::MoveSplineInit& init, ForcedMovement forcedMovement)
++    {
++        if (!unit || unit->IsPlayer())
++            return;
++
++        float escortRate = sWorld->getFloatConfig(CONFIG_ESCORT_MOVEMENT_SPEED_RATE);
++        if (escortRate <= 0.0f || escortRate == 1.0f)
++            return;
++
++        UnitMoveType moveType = MOVE_RUN;
++        if (forcedMovement == FORCED_MOVEMENT_WALK)
++            moveType = MOVE_WALK;
++        else if (forcedMovement == FORCED_MOVEMENT_NONE && unit->IsWalking())
++            moveType = MOVE_WALK;
++
++        init.SetVelocity(unit->GetSpeed(moveType) * escortRate);
++    }
++}
+ 
+ template<class T>
+ void EscortMovementGenerator<T>::DoInitialize(T* unit)
+@@ -41,6 +64,7 @@ void EscortMovementGenerator<T>::DoInitialize(T* unit)
+     else if (_forcedMovement == FORCED_MOVEMENT_RUN)
+         init.SetWalk(false);
+ 
++    ApplyEscortSpeedRate(unit, init, _forcedMovement);
+     init.Launch();
+ 
+     _splineId = unit->movespline->GetId();
+@@ -89,6 +113,7 @@ bool EscortMovementGenerator<T>::DoUpdate(T* unit, uint32  /*diff*/)
+         else if (_forcedMovement == FORCED_MOVEMENT_RUN)
+             init.SetWalk(false);
+ 
++        ApplyEscortSpeedRate(unit, init, _forcedMovement);
+         init.Launch();
+         // Xinef: Override spline Id on recalculate launch
+         _splineId = unit->movespline->GetId();
+diff --git a/src/server/game/World/WorldConfig.cpp b/src/server/game/World/WorldConfig.cpp
+index 7d06149bc8..2a52748756 100644
+--- a/src/server/game/World/WorldConfig.cpp
++++ b/src/server/game/World/WorldConfig.cpp
+@@ -133,6 +133,9 @@ void WorldConfig::BuildConfigCache()
+     // Controls all npc movespeed rate.
+     SetConfigValue<float>(RATE_MOVESPEED_NPC, "Rate.MoveSpeed.NPC", 1.0f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f; }, ">= 0");
+ 
++    // Controls escort quest NPC movement speed without affecting normal NPC movement.
++    SetConfigValue<float>(CONFIG_ESCORT_MOVEMENT_SPEED_RATE, "Rate.MoveSpeed.Escort", 1.5f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f; }, ">= 0");
++
+     SetConfigValue<float>(RATE_CORPSE_DECAY_LOOTED, "Rate.Corpse.Decay.Looted", 0.5f);
+ 
+     SetConfigValue<float>(RATE_DURABILITY_LOSS_ON_DEATH, "DurabilityLoss.OnDeath", 10.0f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f && value <= 100.0f; }, ">= 0 && <= 100");
+diff --git a/src/server/game/World/WorldConfig.h b/src/server/game/World/WorldConfig.h
+index 2cd2779652..5d6f23a81a 100644
+--- a/src/server/game/World/WorldConfig.h
++++ b/src/server/game/World/WorldConfig.h
+@@ -82,6 +82,7 @@ enum BoolConfigs
+     CONFIG_START_CUSTOM_SPELLS,
+     CONFIG_COMBO_POINTS_CARRY_OVER,
+     CONFIG_HYBRID_EQUIPMENT_PROFICIENCY,
++    CONFIG_ESCORT_MOVEMENT_SPEED_RATE,
+     CONFIG_START_ALL_EXPLORED,
+     CONFIG_START_ALL_REP,
+     CONFIG_ALWAYS_MAXSKILL,

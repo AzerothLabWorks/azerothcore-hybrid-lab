@@ -43,6 +43,7 @@ In short, this project:
 - **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, and an optional equipment-proficiency override for hybrid gearing.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Hybrid equipment proficiency**: Core patch that lets weapon and armor equipment bypass normal class/proficiency restrictions while preserving race, faction, level, reputation, and profession gates.
+- **Escort quest pacing**: Core patch adds `Rate.MoveSpeed.Escort` so escort quest NPCs can move faster without globally speeding up all NPCs. The default is `1.5`.
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot/Playerbots, set up custom NPC templates, import addon-backed Hybrid SQL, and rebuild Docker services.
 - **Supported module set**: Hybrid Talent System, Profession Master, Startup QoL, Auction House Bot, Transmog, Auto Learn Spells, and Playerbots.
 - **Safer install directories**: Hybrid installs use `-hybrid` and `-hybrid-dev` directory names so development testing does not collide with stable server installs.
