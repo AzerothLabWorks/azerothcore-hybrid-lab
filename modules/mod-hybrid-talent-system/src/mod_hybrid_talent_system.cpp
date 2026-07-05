@@ -10,6 +10,7 @@
 #include "Item.h"
 #include "ItemScript.h"
 #include "Log.h"
+#include "ObjectMgr.h"
 #include "Pet.h"
 #include "Player.h"
 #include "PlayerScript.h"
@@ -22,6 +23,7 @@
 #include "WorldScript.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <exception>
@@ -75,6 +77,10 @@ namespace
     constexpr uint32 LegacyBeaconItemEntry1 = 900010;
     constexpr uint32 LegacyBeaconItemEntry2 = 65010;
     constexpr uint32 LegacyBeaconItemEntry3 = 1854;
+    constexpr uint32 EarthTotemItemEntry = 5175;
+    constexpr uint32 FireTotemItemEntry = 5176;
+    constexpr uint32 WaterTotemItemEntry = 5177;
+    constexpr uint32 AirTotemItemEntry = 5178;
     uint32 BeaconItemEntry = 1915;
     bool GrantBeaconOnLogin = false;
     uint32 BeaconSummonDurationSeconds = 300;
@@ -86,6 +92,7 @@ namespace
     float MirrorGroupBuffRange = 100.0f;
     std::unordered_set<uint32> PetBuffSpellIds;
     std::map<uint32, std::set<uint32>> SpellDependencyGrants;
+    std::map<uint32, std::map<uint32, uint32>> SpellDependencyItems;
 
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
@@ -163,6 +170,35 @@ namespace
         uint8 interval = TalentPointIntervalLevels ? TalentPointIntervalLevels : 1;
         uint16 points = static_cast<uint16>(((player->GetLevel() - TalentMinLevel) / interval + 1) * TalentPointsPerInterval);
         return std::min<uint16>(points, TalentMaxPoints);
+    }
+
+    uint8 GetNextPointLevel(uint8 currentLevel, uint8 minLevel, uint8 intervalLevels, uint16 pointsPerInterval, uint16 maxPoints)
+    {
+        if (!pointsPerInterval || !maxPoints)
+            return 0;
+
+        uint8 interval = intervalLevels ? intervalLevels : 1;
+
+        for (uint16 level = currentLevel + 1; level <= DEFAULT_MAX_LEVEL; ++level)
+        {
+            if (level < minLevel)
+                continue;
+
+            uint16 earned = static_cast<uint16>(((level - minLevel) / interval + 1) * pointsPerInterval);
+            if (earned > maxPoints)
+                earned = maxPoints;
+
+            uint16 currentEarned = currentLevel < minLevel
+                ? 0
+                : static_cast<uint16>(((currentLevel - minLevel) / interval + 1) * pointsPerInterval);
+            if (currentEarned > maxPoints)
+                currentEarned = maxPoints;
+
+            if (earned > currentEarned)
+                return static_cast<uint8>(level);
+        }
+
+        return 0;
     }
 
     uint16 GetSpentPoints(ObjectGuid::LowType guid)
@@ -305,6 +341,76 @@ namespace
         }
 
         return dependencyGrants;
+    }
+
+    std::map<uint32, std::map<uint32, uint32>> ParseSpellDependencyItemMap(std::string const& value)
+    {
+        std::map<uint32, std::map<uint32, uint32>> dependencyItems;
+        std::stringstream entryStream(value);
+        std::string entry;
+
+        while (std::getline(entryStream, entry, ';'))
+        {
+            entry.erase(std::remove_if(entry.begin(), entry.end(), [](unsigned char c) { return std::isspace(c); }), entry.end());
+            if (entry.empty())
+                continue;
+
+            std::size_t separator = entry.find(':');
+            if (separator == std::string::npos || separator == 0 || separator + 1 >= entry.length())
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item entry '{}'. Expected trigger:item or trigger:item=count,item=count.", entry);
+                continue;
+            }
+
+            uint32 triggerSpellId = 0;
+            try
+            {
+                triggerSpellId = static_cast<uint32>(std::stoul(entry.substr(0, separator)));
+            }
+            catch (std::exception const&)
+            {
+                LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item trigger in '{}'.", entry);
+                continue;
+            }
+
+            std::stringstream itemStream(entry.substr(separator + 1));
+            std::string itemToken;
+            while (std::getline(itemStream, itemToken, ','))
+            {
+                if (itemToken.empty())
+                    continue;
+
+                uint32 count = 1;
+                std::string itemIdText = itemToken;
+                std::size_t countSeparator = itemToken.find('=');
+                if (countSeparator != std::string::npos)
+                {
+                    itemIdText = itemToken.substr(0, countSeparator);
+                    try
+                    {
+                        count = std::max<uint32>(1, static_cast<uint32>(std::stoul(itemToken.substr(countSeparator + 1))));
+                    }
+                    catch (std::exception const&)
+                    {
+                        LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item count '{}' in '{}'.", itemToken.substr(countSeparator + 1), entry);
+                        continue;
+                    }
+                }
+
+                try
+                {
+                    uint32 itemId = static_cast<uint32>(std::stoul(itemIdText));
+                    if (itemId)
+                        dependencyItems[triggerSpellId][itemId] = count;
+                }
+                catch (std::exception const&)
+                {
+                    LOG_WARN("module.hybridtalents", "Ignoring invalid hybrid dependency item '{}' in '{}'.", itemToken, entry);
+                }
+            }
+        }
+
+        return dependencyItems;
     }
 
     bool IsMirroredBuffSpell(uint32 spellId)
@@ -859,6 +965,163 @@ namespace
         return 0;
     }
 
+    uint32 GetDependencyItemTriggerSpellId(uint32 spellId)
+    {
+        for (auto const& pair : SpellDependencyItems)
+            if (IsSameSpellChain(pair.first, spellId))
+                return pair.first;
+
+        return 0;
+    }
+
+    void AddConfiguredDependencyItems(uint32 spellId, std::map<uint32, uint32>& requiredItems)
+    {
+        uint32 triggerSpellId = GetDependencyItemTriggerSpellId(spellId);
+        if (!triggerSpellId)
+            return;
+
+        auto itr = SpellDependencyItems.find(triggerSpellId);
+        if (itr == SpellDependencyItems.end())
+            return;
+
+        for (auto const& pair : itr->second)
+        {
+            uint32 itemId = pair.first;
+            uint32 count = std::max<uint32>(1, pair.second);
+            if (itemId)
+                requiredItems[itemId] = std::max(requiredItems[itemId], count);
+        }
+    }
+
+    uint32 GetDefaultTotemItemForCategory(Player const* player, uint32 requiredTotemCategoryId)
+    {
+        if (!player || !requiredTotemCategoryId)
+            return 0;
+
+        static std::array<uint32, 4> const defaultTotemItems =
+        {
+            EarthTotemItemEntry,
+            FireTotemItemEntry,
+            WaterTotemItemEntry,
+            AirTotemItemEntry
+        };
+
+        for (uint32 itemId : defaultTotemItems)
+            if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId))
+                if (player->IsTotemCategoryCompatiableWith(itemTemplate, requiredTotemCategoryId))
+                    return itemId;
+
+        return 0;
+    }
+
+    std::map<uint32, uint32> GetHybridSpellRequiredItems(Player const* player, uint32 spellId, bool includeSatisfiedCategories = false)
+    {
+        std::map<uint32, uint32> requiredItems;
+
+        AddConfiguredDependencyItems(spellId, requiredItems);
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+        if (!spellInfo)
+            return requiredItems;
+
+        for (uint8 index = 0; index < 2; ++index)
+        {
+            if (spellInfo->Totem[index])
+                requiredItems[spellInfo->Totem[index]] = std::max<uint32>(requiredItems[spellInfo->Totem[index]], 1);
+
+            uint32 requiredCategory = spellInfo->TotemCategory[index];
+            if (!requiredCategory || (!includeSatisfiedCategories && player && player->HasItemTotemCategory(requiredCategory)))
+                continue;
+
+            uint32 defaultItemId = GetDefaultTotemItemForCategory(player, requiredCategory);
+            if (defaultItemId)
+                requiredItems[defaultItemId] = std::max<uint32>(requiredItems[defaultItemId], 1);
+        }
+
+        return requiredItems;
+    }
+
+    uint32 ApplyHybridSpellDependencyItems(Player* player, uint32 spellId, bool announce)
+    {
+        if (!player)
+            return 0;
+
+        std::map<uint32, uint32> requiredItems = GetHybridSpellRequiredItems(player, spellId);
+        std::vector<std::string> addedNames;
+        for (auto const& pair : requiredItems)
+        {
+            uint32 itemId = pair.first;
+            uint32 requiredCount = std::max<uint32>(1, pair.second);
+            uint32 currentCount = player->GetItemCount(itemId, true);
+            if (currentCount >= requiredCount)
+                continue;
+
+            uint32 addCount = requiredCount - currentCount;
+            if (!player->AddItem(itemId, addCount))
+            {
+                LOG_WARN("module.hybridtalents", "Could not add hybrid dependency item {} x{} to player {}.", itemId, addCount, player->GetGUID().ToString());
+                continue;
+            }
+
+            if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId))
+                addedNames.push_back(itemTemplate->Name1);
+            else
+                addedNames.push_back(std::to_string(itemId));
+        }
+
+        if (announce && !addedNames.empty())
+        {
+            std::string message = "Hybrid support item added: ";
+            for (std::size_t index = 0; index < addedNames.size(); ++index)
+            {
+                if (index)
+                    message += ", ";
+                message += addedNames[index];
+            }
+            message += ".";
+            ChatHandler(player->GetSession()).PSendSysMessage("{}", message);
+        }
+
+        return static_cast<uint32>(addedNames.size());
+    }
+
+    bool KnownHybridSpellRequiresItem(Player const* player, uint32 ignoredSpellId, uint32 requiredItemId)
+    {
+        if (!player || !requiredItemId)
+            return false;
+
+        std::set<uint32> knownSpellIds = GetKnownHybridSpellIds(player->GetGUID().GetCounter());
+        for (uint32 knownSpellId : knownSpellIds)
+        {
+            if (IsSameSpellChain(knownSpellId, ignoredSpellId))
+                continue;
+
+            std::map<uint32, uint32> requiredItems = GetHybridSpellRequiredItems(player, knownSpellId, true);
+            if (requiredItems.count(requiredItemId))
+                return true;
+        }
+
+        return false;
+    }
+
+    void RemoveHybridSpellDependencyItems(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return;
+
+        std::map<uint32, uint32> requiredItems = GetHybridSpellRequiredItems(player, spellId, true);
+        for (auto const& pair : requiredItems)
+        {
+            uint32 itemId = pair.first;
+            if (!itemId || KnownHybridSpellRequiresItem(player, spellId, itemId))
+                continue;
+
+            uint32 currentCount = player->GetItemCount(itemId, true);
+            if (currentCount)
+                player->DestroyItemCount(itemId, currentCount, true, false);
+        }
+    }
+
     uint32 ApplyHybridSpellDependencyGrants(Player* player, uint32 spellId, bool announce)
     {
         if (!player)
@@ -979,6 +1242,7 @@ namespace
 
             LearnBestHybridSpellRank(player, spellId);
             ApplyHybridSpellDependencyGrants(player, spellId, false);
+            ApplyHybridSpellDependencyItems(player, spellId, false);
         }
 
         ApplySynergies(player);
@@ -1044,7 +1308,9 @@ namespace
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
-            "1515:883,2641,982,6991,5149,1002,136"));
+            "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120"));
+        SpellDependencyItems = ParseSpellDependencyItemMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyItems",
+            ""));
     }
 
     void EnsureCharacterTables()
@@ -1096,9 +1362,20 @@ namespace
 
         QueryResult descriptionColumnResult = WorldDatabase.Query("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'hybrid_spell_template' AND column_name = 'description' LIMIT 1");
         bool hasDescriptionColumn = !!descriptionColumnResult;
-        QueryResult spellResult = WorldDatabase.Query(hasDescriptionColumn
-            ? "SELECT spell_id, class_mask, required_level, cost, category, COALESCE(description, ''), role_mask, flags FROM hybrid_spell_template"
-            : "SELECT spell_id, class_mask, required_level, cost, category, '', role_mask, flags FROM hybrid_spell_template");
+        QueryResult spellDbcDescriptionColumnResult = WorldDatabase.Query("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'spell_dbc' AND column_name = 'Description_Lang_enUS' LIMIT 1");
+        bool hasSpellDbcDescriptionColumn = !!spellDbcDescriptionColumnResult;
+
+        std::string spellTemplateQuery;
+        if (hasDescriptionColumn && hasSpellDbcDescriptionColumn)
+            spellTemplateQuery = "SELECT h.spell_id, h.class_mask, h.required_level, h.cost, h.category, COALESCE(NULLIF(h.description, ''), NULLIF(s.Description_Lang_enUS, ''), ''), h.role_mask, h.flags FROM hybrid_spell_template h LEFT JOIN spell_dbc s ON s.ID = h.spell_id";
+        else if (hasDescriptionColumn)
+            spellTemplateQuery = "SELECT spell_id, class_mask, required_level, cost, category, COALESCE(description, ''), role_mask, flags FROM hybrid_spell_template";
+        else if (hasSpellDbcDescriptionColumn)
+            spellTemplateQuery = "SELECT h.spell_id, h.class_mask, h.required_level, h.cost, h.category, COALESCE(NULLIF(s.Description_Lang_enUS, ''), ''), h.role_mask, h.flags FROM hybrid_spell_template h LEFT JOIN spell_dbc s ON s.ID = h.spell_id";
+        else
+            spellTemplateQuery = "SELECT spell_id, class_mask, required_level, cost, category, '', role_mask, flags FROM hybrid_spell_template";
+
+        QueryResult spellResult = WorldDatabase.Query(spellTemplateQuery.c_str());
         if (spellResult)
         {
             do
@@ -1481,6 +1758,9 @@ namespace
             if (!spellId || !sSpellMgr->GetSpellInfo(spellId))
                 continue;
 
+            if (player->HasSpell(spellId))
+                continue;
+
             RemoveHybridTalentRanks(player, talentInfo);
             player->learnSpell(spellId, false);
             restored = true;
@@ -1571,8 +1851,10 @@ namespace
         std::vector<uint32> talentIds = GetHybridUiTalentIds();
 
         handler->PSendSysMessage("HYUI\tBEGIN\t1\t{}\t{}\t{}\t{}", earned, spent, available, static_cast<uint32>(spellIds.size()));
-        handler->PSendSysMessage("HYUI\tSTATUS\t{}\t{}\t{}\t{}\t{}", player->GetLevel(), MinLevel, PointsPerInterval, PointIntervalLevels ? PointIntervalLevels : 1, MaxPoints);
-        handler->PSendSysMessage("HYUI\tTALENTSTATUS\t{}\t{}\t{}\t{}\t{}\t{}\t{}", talentEarned, talentSpent, talentAvailable, TalentMinLevel, TalentPointsPerInterval, TalentPointIntervalLevels ? TalentPointIntervalLevels : 1, TalentMaxPoints);
+        handler->PSendSysMessage("HYUI\tSTATUS\t{}\t{}\t{}\t{}\t{}\t{}", player->GetLevel(), MinLevel, PointsPerInterval, PointIntervalLevels ? PointIntervalLevels : 1, MaxPoints,
+            GetNextPointLevel(player->GetLevel(), MinLevel, PointIntervalLevels, PointsPerInterval, MaxPoints));
+        handler->PSendSysMessage("HYUI\tTALENTSTATUS\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", talentEarned, talentSpent, talentAvailable, TalentMinLevel, TalentPointsPerInterval, TalentPointIntervalLevels ? TalentPointIntervalLevels : 1, TalentMaxPoints,
+            GetNextPointLevel(player->GetLevel(), TalentMinLevel, TalentPointIntervalLevels, TalentPointsPerInterval, TalentMaxPoints));
 
         for (uint32 spellId : spellIds)
         {
@@ -1824,6 +2106,7 @@ namespace
 
         RemoveHybridActionButtons(player, spellId);
         RemoveHybridSpellDependencyGrants(player, spellId);
+        RemoveHybridSpellDependencyItems(player, spellId);
         RemoveHybridSpellRanks(player, spellId);
         DeletePersistedHybridSpellRanks(guid, spellId);
         DeleteHybridSpell(guid, spellId);
@@ -1889,6 +2172,7 @@ namespace
         SaveHybridSpell(guid, spellId);
         uint32 learnedSpellId = LearnBestHybridSpellRank(player, spellId);
         ApplyHybridSpellDependencyGrants(player, spellId, true);
+        ApplyHybridSpellDependencyItems(player, spellId, true);
         ApplySynergies(player);
         RestoreHybridActionButtons(player);
         ScheduleHybridActionRestore(player);

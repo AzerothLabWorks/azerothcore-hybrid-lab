@@ -31,7 +31,7 @@ Codex on this machine runs shell commands through a sandbox Windows account and 
 
 ## Stable Server Features
 
-- Playerbots profile with grouping behavior tuning and `1500` configured online random bots.
+- Playerbots profile with grouping behavior tuning, `1500` configured online random bots, LFG reliability patches, starter-zone relief, and grouped bot trade item offers.
 - Hybrid Talent System with cross-class spell learning, descriptions, auto-rank upgrades, action-bar preservation, selected pet-buff mirroring for demons/beasts, beacons, single-spell unlearning, and full reset.
 - Profession Master with beacon item.
 - AHBot setup automation.
@@ -91,4 +91,5 @@ docker compose ps
 docker compose logs --tail=160 ac-worldserver
 ```
 
-- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, and weapon/armor proficiencies on first login. Core patches `0002-hybrid-equipment-proficiency.patch` and `0003-hybrid-equipment-skill-persistence.patch` let startup weapon/armor proficiencies persist across class restrictions and let equipment bypass normal class/proficiency restrictions while preserving item level and other non-class gates.
+- Startup QoL module grants brand-new characters riding/mount spells, bags, starter gold, weapon/armor proficiencies, and faction-appropriate flight paths on first login. Existing characters can be backfilled on login for equipment proficiencies and flight paths. Core patches let startup weapon/armor proficiencies and Dual Wield persist across class restrictions and let equipment bypass normal class/proficiency restrictions while preserving item level and other non-class gates.
+- Hybrid Shaman totem support grants required totem tool items and uses Dwarf/Orc fallback totem models for races that have no native `player_totem_model` row.

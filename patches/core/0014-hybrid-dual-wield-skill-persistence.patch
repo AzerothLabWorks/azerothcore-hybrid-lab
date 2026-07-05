@@ -1,0 +1,19 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -121,6 +121,7 @@ static bool IsHybridEquipmentSkillLine(uint32 skillLine)
+         case SKILL_WANDS:
+         case SKILL_POLEARMS:
+         case SKILL_FIST_WEAPONS:
++        case SKILL_DUAL_WIELD:
+         case SKILL_CLOTH:
+         case SKILL_LEATHER:
+         case SKILL_MAIL:
+@@ -13771,6 +13772,7 @@ void Player::_LoadSkills(PreparedQueryResult result)
+                         case SKILL_WANDS:
+                         case SKILL_POLEARMS:
+                         case SKILL_FIST_WEAPONS:
++                        case SKILL_DUAL_WIELD:
+                         case SKILL_CLOTH:
+                         case SKILL_LEATHER:
+                         case SKILL_MAIL:

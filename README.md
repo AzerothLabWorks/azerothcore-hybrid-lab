@@ -7,7 +7,6 @@ This repo owns the custom work:
 - `modules/mod-hybrid-talent-system`
 - `modules/mod-profession-master`
 - `modules/mod-startup-qol`
-- `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
 - `patches/core` AzerothCore source patches
 - WSL2/Docker installer scripts
 - Module management scripts
@@ -33,15 +32,18 @@ In short, this project:
 
 ## Features
 
-- **HybridTalentUI addon**: Addon-first cross-class spell and talent interface inspired by Project Ascension. It opens from a movable microbar button, supports spell/talent tabs, class browsing, search, availability filters, icons, and in-game tooltip descriptions.
+- **HybridTalentUI addon**: Addon-first cross-class spell and talent interface inspired by Project Ascension. It opens from a movable microbar button, supports spell/talent tabs, class browsing, search, availability filters, icons, custom or native spell descriptions, in-game tooltips, and next spell/talent point visibility while leveling.
 - **Hybrid spell learning**: Cross-class spell learning unlocks at level 10, uses configurable hybrid spell points, supports left-click learning and right-click unlearning, refunds points correctly, preserves learned spells through relog, upgrades ranks automatically, and restores learned spell action buttons where possible.
-- **Hybrid talent browsing and learning**: Cross-class talent browsing is available in the same UI with separate hybrid talent points, tooltip descriptions, learn/unlearn support, relog persistence, and dependency checks such as requiring Charge before Improved Charge.
+- **Hybrid talent browsing and learning**: Cross-class talent browsing is available in the same UI with separate hybrid talent points, tooltip descriptions, learn/unlearn support, relog persistence, next-point progression clarity, free-pick talent selection across trees without native tree point requirements, and dependency checks such as requiring Charge before Improved Charge.
+- **Selected Warrior stance relaxation**: Specific Warrior hybrid abilities have server-side stance requirements relaxed for cross-class play, including Charge, Intercept, Overpower, Mocking Blow, Revenge, Disarm, Shield Wall, Retaliation, Recklessness, Berserker Rage, Pummel, and Whirlwind. The Hybrid UI also annotates these tooltips. This is intentionally scoped and does not remove every stance, form, shapeshift, weapon, or class-resource requirement in the game.
 - **Cross-class hunter pet support**: Hybrid Hunter support includes Tame Beast dependency grants, Mend/Call/Dismiss/Revive/Feed/Beast Training support, non-Hunter pet taming, pet persistence, pet action bar restoration, pet spellbook tab support, and pet autocast persistence.
+- **Class dependency packages**: Hybrid spells can grant supporting spells or items through config. Current packages include Hunter pet tools, Drain Soul support for shard-based Warlock demon summons, Shaman totem tools, fallback totem models for non-Shaman races, and Rogue starter utility for Stealth/Poisons.
 - **Retired Hybrid trainer/beacon path on this branch**: The legacy Hybrid Talent Master NPC and Hybrid Talent Beacon have been disabled/removed in the dev build. Hybrid progression now flows through the addon and `/hybridui` command path.
 - **Profession Master**: NPC for learning primary/secondary professions, buying profession skill-ups, learning recipes/abilities available at the player's current profession skill, and a summon beacon item. This NPC remains active.
-- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, and an optional equipment-proficiency override for hybrid gearing.
+- **Startup QoL**: First-login package for brand-new characters with riding/mount spells, bags, starter gold, weapon/armor proficiencies, faction flight paths, and optional login repair for hybrid gearing/travel quality-of-life.
 - **Combo point carry-over**: Core patch that lets player combo points survive target swaps and target death, matching later WoW/Ascension-style behavior.
 - **Hybrid equipment proficiency**: Core patch that lets weapon and armor equipment bypass normal class/proficiency restrictions while preserving race, faction, level, reputation, and profession gates.
+- **Escort quest pacing**: Core patch adds `Rate.MoveSpeed.Escort` so escort quest NPCs can move faster without globally speeding up all NPCs. The default is `2.0`.
 - **Module automation**: Helper script can install local modules, clone supported public modules, import SQL, configure AHBot/Playerbots, set up custom NPC templates, import addon-backed Hybrid SQL, and rebuild Docker services.
 - **Supported module set**: Hybrid Talent System, Profession Master, Startup QoL, Auction House Bot, Transmog, Auto Learn Spells, and Playerbots.
 - **Safer install directories**: Hybrid installs use `-hybrid` and `-hybrid-dev` directory names so development testing does not collide with stable server installs.
@@ -130,7 +132,7 @@ cd ~/azerothcore-hybrid-lab-dev
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
-The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead. The Playerbots setup step writes `playerbots.conf`, aligns Docker overrides, and tunes the random bot population to `1500` online bots, player-level-synced leveling density, LFG participation, rated 3v3 seeding, instance strategies, summon-on-group behavior, role-biased tank/healer specs, quiet greetings, and active bot chat/broadcasts. The LFG and PvP diagnostic commands print relevant config and recent worldserver log lines after failed dungeon or arena queue attempts. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
+The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead, adds an LFG dungeon teleport retry watchdog, and lets grouped bots offer low-priority tradable items when a real player opens trade with them. The Playerbots setup step writes `playerbots.conf`, aligns Docker overrides, and tunes the random bot population to `1500` online bots, player-level-synced leveling density, starter-zone relief, LFG participation, rated 3v3 seeding, instance strategies, summon-on-group behavior, role-biased tank/healer specs, quiet greetings, and active bot chat/broadcasts. The LFG and PvP diagnostic commands print relevant config and recent worldserver log lines after failed dungeon or arena queue attempts. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
 
 Playerbot improvement planning lives in [docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md](docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md).
 
@@ -138,19 +140,38 @@ Playerbot improvement planning lives in [docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md]
 
 This branch, `codex/hybrid-talents-ui`, is the active development build for the addon-first Hybrid spell/talent project. The stable production branch remains `main`; use a separate development server directory such as `~/wow-server-playerbots-hybrid-dev` and a separate client copy such as `C:\Games\WoW-3.3.5a-HD-Dev` when testing this branch.
 
-The current development direction is to make the addon the main user experience for hybrid progression while keeping the server module responsible for validation, persistence, point accounting, dependency grants, and cross-class engine support.
+The current development direction is to make the addon the main user experience for hybrid progression while keeping the server module responsible for validation, persistence, point accounting, next-point progression data, free-pick hybrid talent rules, dependency grants, and cross-class engine support.
 
 ## Startup QoL
 
-Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, and all weapon/armor proficiencies. Existing characters are not modified retroactively. With core patches applied, those hybrid proficiencies are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
+Brand-new characters receive the configured starter package on first login: riding spells, starter mount spells, four `Gigantique Bags`, `20000` gold, all weapon/armor proficiencies, and all faction-appropriate flight paths. Existing characters can be backfilled on login for equipment proficiencies and flight paths without receiving duplicate bags, gold, riding spells, or mount spells. With core patches applied, those hybrid proficiencies and Dual Wield are allowed to persist even when they are not normally valid for the character class, enabling choices such as a mage wearing mail while still respecting item level requirements.
 
-## Custom NPCs and Addon Access
+## Required Client Addon
 
-Hybrid spell/talent access is now addon-first on this branch:
+Hybrid spell/talent access is addon-first and requires the `HybridTalentUI` client addon. Install this addon into the WoW client you use for this server branch.
 
-- Hybrid UI addon source in this repo: `modules/mod-hybrid-talent-system/addon/HybridTalentUI`
-- User-facing addon repo: `https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI`
-- Addon install helper: `scripts/install-hybrid-addon.sh --client-dir <WoW client path>`
+Recommended user-facing addon source:
+
+[https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI](https://github.com/AzerothLabWorks/addons/tree/codex/hybrid-talents-ui/HybridTalentUI)
+
+Copy the `HybridTalentUI` folder into:
+
+```text
+<WoW client>/Interface/AddOns/HybridTalentUI
+```
+
+Example dev client path:
+
+```text
+C:\Games\WoW-3.3.5a-HD-Dev\Interface\AddOns\HybridTalentUI
+```
+
+Restart WoW or reload the UI, enable `HybridTalentUI` on the character select AddOns screen, then open it in game with the Hybrid button or `/hybridui`.
+
+## Custom NPCs
+
+Hybrid spell/talent progression is no longer NPC-driven on this branch:
+
 - In-game command path: `/hybridui`
 - Legacy Hybrid trainer: `190010`, `Hybrid Talent Master`, retired on this branch
 - Legacy Hybrid beacon item: `1915`, `Hybrid Talent Beacon`, retired on this branch
@@ -166,9 +187,16 @@ The Hybrid setup step imports addon-backed Hybrid SQL and removes old Hybrid bea
 .npc add 190020
 ```
 
+## Companion Repositories
+
+These optional AzerothLabWorks repositories provide additional tuning tools that pair well with this server lab:
+
+- [AzerothLabWorks/playerbots-tuner](https://github.com/AzerothLabWorks/playerbots-tuner): helper scripts and tuning workflow for Playerbots behavior, population, grouping, and world activity.
+- [AzerothLabWorks/wotlk-tuning](https://github.com/AzerothLabWorks/wotlk-tuning): broader WotLK tuning scripts and data adjustments for making the private server experience feel better for solo or small-group play.
+
 ## Current Status
 
-The dev branch is playable and being tested through normal progression. Confirmed areas include Hybrid spell learning/unlearning, Hybrid talent learning/unlearning, point spending/refunds, relog persistence, spell/talent tooltips, class browsing, dependency checks, cross-class Hunter pet taming, pet action bars, pet spellbook tab support, and pet autocast persistence.
+The dev branch is playable and being tested through normal progression. Confirmed areas include Hybrid spell learning/unlearning, Hybrid talent learning/unlearning, free-pick talent selection across trees, point spending/refunds, next spell/talent point display while leveling, relog persistence, spell/talent tooltips, class browsing, dependency checks, cross-class Hunter pet taming, pet action bars, pet spellbook tab support, and pet autocast persistence.
 
 Known near-term development areas include broader class-by-class balance testing, additional dependency rules, talent progression tuning, pet talent edge cases, and continued UI polish.
 

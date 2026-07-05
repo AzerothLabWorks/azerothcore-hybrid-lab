@@ -25,6 +25,7 @@ local state = {
     talentPointsPerInterval = 0,
     talentInterval = 0,
     talentMaxPoints = 0,
+    nextTalentPointLevel = 0,
     rows = {},
     talents = {},
     byClass = {},
@@ -42,6 +43,7 @@ local state = {
     pointsPerInterval = 0,
     interval = 0,
     maxPoints = 0,
+    nextPointLevel = 0,
 }
 
 local mainFrame
@@ -101,6 +103,70 @@ local HIDDEN_KNOWN_SUPPORT_SPELLS = {
     [15590] = true, -- Fist Weapons
 }
 
+local STANCE_RELAXED_SPELLS = {
+    [100] = "Charge",
+    [6178] = "Charge",
+    [11578] = "Charge",
+    [20252] = "Intercept",
+    [20616] = "Intercept",
+    [20617] = "Intercept",
+    [25272] = "Intercept",
+    [25275] = "Intercept",
+    [7384] = "Overpower",
+    [7887] = "Overpower",
+    [11584] = "Overpower",
+    [11585] = "Overpower",
+    [694] = "Mocking Blow",
+    [7400] = "Mocking Blow",
+    [7402] = "Mocking Blow",
+    [20559] = "Mocking Blow",
+    [20560] = "Mocking Blow",
+    [25266] = "Mocking Blow",
+    [6572] = "Revenge",
+    [6574] = "Revenge",
+    [7379] = "Revenge",
+    [11600] = "Revenge",
+    [11601] = "Revenge",
+    [25288] = "Revenge",
+    [25269] = "Revenge",
+    [30357] = "Revenge",
+    [57823] = "Revenge",
+    [676] = "Disarm",
+    [871] = "Shield Wall",
+    [20230] = "Retaliation",
+    [1719] = "Recklessness",
+    [18499] = "Berserker Rage",
+    [6552] = "Pummel",
+    [6554] = "Pummel",
+    [1680] = "Whirlwind",
+}
+
+local function RemoveTooltipStanceRequirementLines(tooltip)
+    if not tooltip or not tooltip.NumLines then
+        return
+    end
+
+    for index = 1, tooltip:NumLines() do
+        local line = _G[tooltip:GetName() .. "TextLeft" .. index]
+        local text = line and line.GetText and line:GetText()
+        if text and string.find(text, "Requires", 1, true) and string.find(text, "Stance", 1, true) then
+            line:SetText("")
+        end
+    end
+end
+
+local function ApplyHybridTooltipNotes(tooltip, spellId)
+    if not tooltip or not spellId then
+        return
+    end
+
+    local spellName = STANCE_RELAXED_SPELLS[spellId]
+    if spellName then
+        RemoveTooltipStanceRequirementLines(tooltip)
+        tooltip:AddLine("Hybrid rule: stance is not required for " .. spellName .. ".", 0.6, 0.8, 1)
+    end
+end
+
 local function GetSpellIcon(spellId)
     local _, _, icon = GetSpellInfo(spellId)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -114,6 +180,7 @@ local function ShowSpellTooltip(owner, row)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if GameTooltip.SetHyperlink then
         GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        ApplyHybridTooltipNotes(GameTooltip, row.spellId)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(row.reason or "", 0.95, 0.82, 0.35)
         GameTooltip:AddLine("Left-click: learn if available", 0.6, 0.8, 1)
@@ -149,6 +216,7 @@ local function ShowTalentTooltip(owner, row)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if GameTooltip.SetHyperlink then
         GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        ApplyHybridTooltipNotes(GameTooltip, row.spellId)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(GetTalentTabName(row) .. "  Rank " .. row.knownRank .. "/" .. row.maxRank, 0.95, 0.82, 0.35)
         GameTooltip:AddLine("Left-click: learn next rank if available", 0.6, 0.8, 1)
@@ -182,6 +250,56 @@ local function FormatBoolean(value)
     end
 
     return "no"
+end
+
+local function FormatNextPointText(label, nextLevel)
+    nextLevel = tonumber(nextLevel or 0) or 0
+    if nextLevel > 0 then
+        return label .. " next point at " .. nextLevel
+    end
+
+    return label .. " points maxed"
+end
+
+local function GetTalentProgressText(row)
+    if not row then
+        return ""
+    end
+
+    if row.knownRank >= row.maxRank then
+        return "Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Maxed"
+    end
+
+    return "Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Next " .. (row.knownRank + 1) .. "/" .. row.maxRank
+end
+
+local function GetTalentStateText(row)
+    if not row then
+        return ""
+    end
+
+    if row.knownRank >= row.maxRank then
+        return "Max rank learned."
+    end
+
+    if row.canLearn then
+        return "Available: learn rank " .. (row.knownRank + 1) .. "/" .. row.maxRank .. " for 1 hybrid talent point."
+    end
+
+    local reason = row.reason or ""
+    if reason == "" or reason == "Browse only" then
+        reason = "Locked"
+    end
+
+    return "Locked: " .. reason .. "."
+end
+
+local function GetTalentRulesText(row)
+    if not row then
+        return ""
+    end
+
+    return "Free-pick hybrid talent: no prior points in this tree are required."
 end
 
 local function DebugPetActions()
@@ -426,8 +544,8 @@ local function UpdateDetails()
     mainFrame.detailName:SetText(row.name)
     if state.mode == "talents" then
         mainFrame.detailMeta:SetText(GetTalentTabName(row) .. "  Row " .. (row.row + 1) .. "  Column " .. (row.col + 1))
-        mainFrame.detailDesc:SetText("Talent ID " .. row.talentId .. "  Spell ID " .. row.spellId .. "  Rank " .. row.knownRank .. "/" .. row.maxRank .. "  Cost 1")
-        mainFrame.detailReason:SetText(row.reason or "Browse only")
+        mainFrame.detailDesc:SetText(GetTalentProgressText(row) .. "\n" .. GetTalentRulesText(row))
+        mainFrame.detailReason:SetText(GetTalentStateText(row))
     else
         mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
         mainFrame.detailDesc:SetText(row.description ~= "" and row.description or "No description available.")
@@ -450,10 +568,10 @@ local function UpdateRows()
 
     if state.mode == "talents" then
         mainFrame.points:SetText("Hybrid talent points: " .. state.talentAvailable .. " available / " .. state.talentEarned .. " earned")
-        mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.talentMinLevel .. "  +" .. state.talentPointsPerInterval .. " point / " .. state.talentInterval .. " levels  Max " .. state.talentMaxPoints)
+        mainFrame.status:SetText("Level " .. state.level .. "  " .. FormatNextPointText("Talent", state.nextTalentPointLevel) .. "  +" .. state.talentPointsPerInterval .. " / " .. state.talentInterval .. " levels  Max " .. state.talentMaxPoints)
     else
         mainFrame.points:SetText("Hybrid points: " .. state.available .. " available / " .. state.earned .. " earned")
-        mainFrame.status:SetText("Level " .. state.level .. "  Unlock " .. state.minLevel .. "  +" .. state.pointsPerInterval .. " point / " .. state.interval .. " levels  Max " .. state.maxPoints)
+        mainFrame.status:SetText("Level " .. state.level .. "  " .. FormatNextPointText("Spell", state.nextPointLevel) .. "  +" .. state.pointsPerInterval .. " / " .. state.interval .. " levels  Max " .. state.maxPoints)
     end
     mainFrame.page:SetText("Page " .. state.page .. " / " .. pageCount)
 
@@ -467,16 +585,16 @@ local function UpdateRows()
             button.name:SetText(data.name)
             if state.mode == "talents" then
                 button.meta:SetText(GetTalentTabName(data) .. "  Row " .. (data.row + 1) .. " Col " .. (data.col + 1))
-                button.desc:SetText("Rank " .. data.knownRank .. "/" .. data.maxRank .. "  Cost 1")
-                button.reason:SetText(data.reason or "")
+                button.desc:SetText(GetTalentProgressText(data))
+                button.reason:SetText(data.canLearn and "Cost 1 point" or (data.reason or ""))
                 if data.knownRank >= data.maxRank then
                     button.status:SetText("Known")
                     button.status:SetTextColor(0.25, 0.9, 0.35)
                 elseif data.canLearn then
-                    button.status:SetText("Available")
+                    button.status:SetText("Learn rank " .. (data.knownRank + 1))
                     button.status:SetTextColor(0.95, 0.82, 0.35)
                 elseif data.knownRank > 0 then
-                    button.status:SetText("Partial")
+                    button.status:SetText("Rank " .. data.knownRank)
                     button.status:SetTextColor(0.6, 0.8, 1)
                 else
                     button.status:SetText("Locked")
@@ -599,6 +717,7 @@ local function HandleServerMessage(body)
         state.pointsPerInterval = tonumber(parts[5] or "0") or 0
         state.interval = tonumber(parts[6] or "0") or 0
         state.maxPoints = tonumber(parts[7] or "0") or 0
+        state.nextPointLevel = tonumber(parts[8] or "0") or 0
     elseif parts[2] == "TALENTSTATUS" then
         state.talentEarned = tonumber(parts[3] or "0") or 0
         state.talentSpent = tonumber(parts[4] or "0") or 0
@@ -607,6 +726,7 @@ local function HandleServerMessage(body)
         state.talentPointsPerInterval = tonumber(parts[7] or "0") or 0
         state.talentInterval = tonumber(parts[8] or "0") or 0
         state.talentMaxPoints = tonumber(parts[9] or "0") or 0
+        state.nextTalentPointLevel = tonumber(parts[10] or "0") or 0
     elseif parts[2] == "END" then
         state.loaded = true
         UpdateRows()
@@ -650,7 +770,7 @@ local function OnSpellRowClick(self, mouseButton)
         elseif row.knownRank >= row.maxRank then
             Print(row.name .. " is already at maximum rank.")
         else
-            Print(row.name .. " is locked or unaffordable.")
+            Print(row.name .. " is locked: " .. (row.reason or "requirements not met") .. ".")
         end
         return
     end
@@ -672,7 +792,7 @@ local function OnSpellRowClick(self, mouseButton)
     elseif row.canLearn then
         SendCommand("hybridui learn " .. row.spellId)
     else
-        Print(row.name .. " is locked or unaffordable.")
+        Print(row.name .. " is locked: " .. (row.reason or "requirements not met") .. ".")
     end
 end
 
@@ -904,11 +1024,7 @@ local function ToggleMainFrame()
         mainFrame:Hide()
     else
         mainFrame:Show()
-        if not state.loaded then
-            Refresh()
-        else
-            UpdateRows()
-        end
+        Refresh()
     end
 end
 
@@ -1029,6 +1145,7 @@ end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
@@ -1037,6 +1154,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         SlashCmdList.HYBRIDTALENTUI = HandleSlash
         CreateOpenButton()
         Print("loaded. Click the Hybrid button or use /hybridui.")
+    elseif event == "PLAYER_LEVEL_UP" then
+        state.loaded = false
+        if mainFrame and mainFrame:IsVisible() then
+            Refresh()
+        end
     elseif event == "CHAT_MSG_ADDON" then
         HandleAddonMessage(...)
     end
