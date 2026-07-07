@@ -41,8 +41,8 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
-| QA race/class unlocks | Planned on QA branch | Any-race/any-class work belongs on `codex/hybrid-race-class-qa` with the isolated QA server/client stack. |
-| QA client asset experiments | Planned on QA branch | DBC, GlueXML, MPQ, model, texture, and shapeshift appearance experiments must use the disposable HD test client first. |
+| QA race/class unlocks | Prototype live in QA | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Gnome Shaman and Undead Hunter character creation smoke tests passed with starter spells, action bars, and starter gear. |
+| QA client asset experiments | Active in disposable QA client | `C:\Games\WoW-3.3.5a-HD-Test\Data\patch-y.mpq` currently carries reversible `CharBaseInfo.dbc` and `CharStartOutfit.dbc` edits for the any-race/any-class prototype. |
 
 ## Completed Milestones
 
@@ -105,6 +105,17 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Configured QA Docker container names, image tag, volumes, and ports separately from the normal stable/dev lanes.
 - Installed `HybridTalentUI` into the disposable client copy at `C:\Games\WoW-3.3.5a-HD-Test`.
 - Pointed the disposable client realmlist files at the QA auth endpoint, `127.0.0.1:3725`.
+
+### QA Any Race / Any Class Prototype
+
+- Added QA-only `Hybrid.AllowAnyRaceClass` server gating.
+- Synthesized missing player creation definitions for unsupported race/class pairs when the QA flag is enabled.
+- Synthesized starter action bar entries for unsupported race/class pairs.
+- Added a guarded racial action-bar fallback that places a known active racial in the first free action slot during character creation.
+- Added same-class starter outfit fallback logic for unsupported race/class/gender combinations.
+- Created disposable client patch `patch-y.mpq` for `C:\Games\WoW-3.3.5a-HD-Test` with expanded `CharBaseInfo.dbc` and `CharStartOutfit.dbc` data.
+- Verified Gnome Shaman creation, starter spell grants, starter action bars, starter gear, and basic Lightning Bolt/Healing Wave casting.
+- Verified Undead Hunter creation, starter spell grants, starter action bars, and starter gear.
 
 ## Active Planning Lanes
 
@@ -209,6 +220,23 @@ These are high-risk workstreams for `codex/hybrid-race-class-qa`. They should be
 
 Goal: allow character creation and stable gameplay for unsupported race/class combinations without damaging normal class/race assumptions.
 
+Current state: prototype is live in the isolated QA server/client lane. The server work is config-gated with `Hybrid.AllowAnyRaceClass`, and the disposable test client uses a reversible `patch-y.mpq` containing the current DBC proof of concept.
+
+Implemented in QA:
+
+- Server accepts unsupported race/class combinations only when the QA config flag is enabled.
+- Missing player create definitions are synthesized from same-race and same-class data.
+- Missing starter action sets are synthesized so class starter spells appear on the action bar.
+- Known active racials are added to a free action slot during character creation.
+- Starter gear falls back to a same-class outfit when no exact race/class/gender row exists.
+- The disposable QA client exposes unsupported combinations through patched `CharBaseInfo.dbc`.
+- The disposable QA client includes starter outfit DBC rows for unsupported race/class/gender combinations through patched `CharStartOutfit.dbc`.
+
+Validated so far:
+
+- Gnome Shaman can be created, enters the world, receives starter spells, has starter spells on the action bar, receives starter gear, and can cast Lightning Bolt and Healing Wave.
+- Undead Hunter can be created, enters the world, receives starter spells, has starter spells on the action bar, and receives starter gear.
+
 Investigation:
 
 - Server-side race/class validation during character creation.
@@ -219,9 +247,11 @@ Investigation:
 
 Candidate work:
 
-- Add a QA-only config gate such as `Hybrid.AllowAnyRaceClass`.
-- Prototype one unsupported race/class pair before expanding the matrix.
+- Expand from the first successful smoke tests into a broader validation matrix.
 - Build a race/class validation matrix covering create, login, relog, map spawn, starter spells, trainers, talent UI, HybridTalentUI, equipment proficiency, pets, forms, totems, quests, grouping, LFG, battlegrounds, and persistence.
+- Test representative high-risk mixes: pet class, shapeshift class, totem class, caster/plate mismatch, faction-specific race/class mismatch, and Death Knight edge cases.
+- Run short playthrough stability passes: cast every starter spell/racial, equip/unequip starter gear, kill and loot nearby mobs, vendor/train where available, level to 2 or 3, relog, hearth or die/resurrect once, and confirm action bars/gear/position persist.
+- Validate class trainers, starter quests, language/faction/reputation behavior, equipment skill cleanup, pet/form/totem behavior, battleground/LFG assumptions, and HybridTalentUI learn/unlearn flows.
 - Keep any client edits confined to `C:\Games\WoW-3.3.5a-HD-Test`.
 
 Why this matters: any-race/any-class support is central to class fantasy freedom, but it touches assumptions across both server and client.
@@ -353,18 +383,21 @@ Current preference:
 Recommended order for the next few work sessions:
 
 1. **Roadmap and documentation refresh**
-   Keep current/future state accurate so new work starts from a shared understanding.
+   Keep current/future state accurate as QA findings move from prototype to validation.
 
-2. **Hybrid progression balance pass**
+2. **QA any-race/any-class validation pass**
+   Exercise the current QA prototype across a small matrix of unsupported combinations, including pet, form, totem, and faction-mismatch cases.
+
+3. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-3. **Talent UI clarity pass**
+4. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
 
-4. **Class dependency package pass**
+5. **Class dependency package pass**
    Pick one class fantasy after Hunter pets and make it complete end to end.
 
-5. **Persistence/log cleanup pass**
+6. **Persistence/log cleanup pass**
    Reduce recurring log noise and harden action-bar/spell restoration edge cases.
 
 ## Manual Test Checklist
