@@ -317,6 +317,8 @@ Why this matters: this could make hybrid gameplay smoother for selected spells w
 
 Goal: evaluate removing or bypassing reagent requirements for selected player spells to modernize gameplay and make hybrid/cross-class progression smoother.
 
+Current state: server-side proof of concept is deployed on the isolated QA server. The active QA config enables `Hybrid.NoReagent.Enable = 1` with `Hybrid.NoReagent.Spells = "688,10059"` for initial testing: Summon Imp and Portal: Stormwind.
+
 Scope:
 
 - Start with a small proof-of-concept spell set, preferably one Warlock spell and one Mage, Paladin, or Priest utility spell.
@@ -339,8 +341,7 @@ Client-side investigation:
 
 Candidate work:
 
-- Add a QA-only config such as `Hybrid.NoReagent.Enable = 1` and `Hybrid.NoReagent.Spells = ...`.
-- Pick a small initial list covering one Soul Shard spell and one class utility reagent spell.
+- Validate the initial QA list: `688` Summon Imp and `10059` Portal: Stormwind.
 - Confirm configured spells cast without reagents and do not consume reagents if reagents are present.
 - Confirm unconfigured reagent spells still require and consume reagents normally.
 - Confirm crafting, profession, item-created, and item-use spell behavior is unchanged.
