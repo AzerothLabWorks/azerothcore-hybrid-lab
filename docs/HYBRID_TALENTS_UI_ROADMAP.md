@@ -41,7 +41,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
-| QA race/class unlocks | Prototype live in QA | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Gnome Shaman and Undead Hunter character creation smoke tests passed with starter spells, action bars, and starter gear. |
+| QA race/class unlocks | First smoke pass successful | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Undead Hunter, Human Druid, and Gnome Shaman have passed initial gameplay smoke routes covering pets, shapeshifts, totems, starter spells, action bars, gear, and logout/login retention. |
 | QA client asset experiments | Active in disposable QA client | `C:\Games\WoW-3.3.5a-HD-Test\Data\patch-y.mpq` currently carries reversible `CharBaseInfo.dbc` and `CharStartOutfit.dbc` edits for the any-race/any-class prototype. |
 
 ## Completed Milestones
@@ -116,6 +116,9 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Created disposable client patch `patch-y.mpq` for `C:\Games\WoW-3.3.5a-HD-Test` with expanded `CharBaseInfo.dbc` and `CharStartOutfit.dbc` data.
 - Verified Gnome Shaman creation, starter spell grants, starter action bars, starter gear, and basic Lightning Bolt/Healing Wave casting.
 - Verified Undead Hunter creation, starter spell grants, starter action bars, and starter gear.
+- Verified Undead Hunter gameplay through natural leveling to 5, GM-assisted level 20 testing, Hunter talent selection, Tame Beast, pet combat, pet logout/login retention, and hybrid spell learning.
+- Verified Human Druid creation, starter gear, starter spells, level 2 auto spell learning, GM-assisted level 22 spell learning, Bear Form, Cat Form, default Night Elf druid form models, Hybrid Tame Beast, pet combat, and post-save logout/login retention.
+- Verified Gnome Shaman totem support and active Shaman spell retention across logout/login, including Lightning Shield and Flametongue Weapon.
 
 ## Active Planning Lanes
 
@@ -220,7 +223,7 @@ These are high-risk workstreams for `codex/hybrid-race-class-qa`. They should be
 
 Goal: allow character creation and stable gameplay for unsupported race/class combinations without damaging normal class/race assumptions.
 
-Current state: prototype is live in the isolated QA server/client lane. The server work is config-gated with `Hybrid.AllowAnyRaceClass`, and the disposable test client uses a reversible `patch-y.mpq` containing the current DBC proof of concept.
+Current state: first smoke pass is successful in the isolated QA server/client lane. The server work is config-gated with `Hybrid.AllowAnyRaceClass`, and the disposable test client uses a reversible `patch-y.mpq` containing the current DBC proof of concept.
 
 Implemented in QA:
 
@@ -234,8 +237,10 @@ Implemented in QA:
 
 Validated so far:
 
-- Gnome Shaman can be created, enters the world, receives starter spells, has starter spells on the action bar, receives starter gear, and can cast Lightning Bolt and Healing Wave.
-- Undead Hunter can be created, enters the world, receives starter spells, has starter spells on the action bar, and receives starter gear.
+- Undead Hunter can be created, enters the world, receives starter spells/action bars/gear, levels naturally to 5, learns spells automatically, reaches level 20 through GM testing, selects Hunter talents, learns hybrid spells, tames a pet, and retains the pet through logout/login.
+- Human Druid can be created, receives starter spells/action bars/gear, learns spells while leveling, reaches level 22 through GM testing, uses Bear Form and Cat Form successfully, defaults to Night Elf druid form models, learns Tame Beast through the hybrid system, and uses a tamed pet successfully.
+- Gnome Shaman can be created, receives starter spells/action bars/gear, receives expected totem tools, uses totem mechanics successfully, and retains active Shaman spells such as Lightning Shield and Flametongue Weapon across logout/login.
+- GM-assisted level jumps may require `.save` before logout for immediate persistence. Natural leveling should be confirmed further before adding any programmatic save behavior.
 
 Investigation:
 
@@ -247,11 +252,10 @@ Investigation:
 
 Candidate work:
 
-- Expand from the first successful smoke tests into a broader validation matrix.
-- Build a race/class validation matrix covering create, login, relog, map spawn, starter spells, trainers, talent UI, HybridTalentUI, equipment proficiency, pets, forms, totems, quests, grouping, LFG, battlegrounds, and persistence.
-- Test representative high-risk mixes: pet class, shapeshift class, totem class, caster/plate mismatch, faction-specific race/class mismatch, and Death Knight edge cases.
-- Run short playthrough stability passes: cast every starter spell/racial, equip/unequip starter gear, kill and loot nearby mobs, vendor/train where available, level to 2 or 3, relog, hearth or die/resurrect once, and confirm action bars/gear/position persist.
-- Validate class trainers, starter quests, language/faction/reputation behavior, equipment skill cleanup, pet/form/totem behavior, battleground/LFG assumptions, and HybridTalentUI learn/unlearn flows.
+- Treat the current pet, form, and totem smoke coverage as enough to proceed to the next QA milestone.
+- Continue natural playthrough validation opportunistically, especially around normal save timing, trainers, starter quests, language/faction/reputation behavior, equipment skill cleanup, battleground/LFG assumptions, and HybridTalentUI learn/unlearn flows.
+- Keep deeper matrix testing as optional hardening rather than a blocker for reagent-free casting.
+- Add focused follow-up tests only when a new change touches race/class creation, starter data, pets, forms, totems, action bars, or client DBC data.
 - Keep any client edits confined to `C:\Games\WoW-3.3.5a-HD-Test`.
 
 Why this matters: any-race/any-class support is central to class fantasy freedom, but it touches assumptions across both server and client.
@@ -386,18 +390,21 @@ Recommended order for the next few work sessions:
    Keep current/future state accurate as QA findings move from prototype to validation.
 
 2. **QA any-race/any-class validation pass**
-   Exercise the current QA prototype across a small matrix of unsupported combinations, including pet, form, totem, and faction-mismatch cases.
+   First smoke pass is successful across pet, form, and totem paths. Keep natural playthrough validation running opportunistically, but do not block the next QA milestone on more race/class combinations.
 
-3. **Hybrid progression balance pass**
+3. **Reagent-free casting proof of concept**
+   Start a narrow, config-gated server-side test for selected player spells, then evaluate tooltip/client cleanup only after cast behavior is proven safe.
+
+4. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-4. **Talent UI clarity pass**
+5. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
 
-5. **Class dependency package pass**
+6. **Class dependency package pass**
    Pick one class fantasy after Hunter pets and make it complete end to end.
 
-6. **Persistence/log cleanup pass**
+7. **Persistence/log cleanup pass**
    Reduce recurring log noise and harden action-bar/spell restoration edge cases.
 
 ## Manual Test Checklist
