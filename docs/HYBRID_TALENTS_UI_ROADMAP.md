@@ -362,6 +362,71 @@ Risk: medium. Player spell reagent removal is narrower than global spell targeti
 
 Why this matters: reagent friction is often at odds with solo hybrid gameplay, especially for cross-class utility spells learned outside their original class progression.
 
+
+### 5. Weapon Imbue And Poison Reapply Reminder
+
+Goal: make temporary weapon enchants easier to maintain by visually reminding the player when Shaman imbues or Rogue poisons are missing or close to expiring.
+
+Preferred first approach: addon/client-side detection in Hybrid Talent UI, without changing server spell mechanics.
+
+Scope:
+
+- Start with Shaman weapon imbues such as Flametongue Weapon, Rockbiter Weapon, Windfury Weapon, Frostbrand Weapon, and Earthliving Weapon.
+- Add Rogue poisons after the Shaman path is proven, including main-hand and off-hand state where possible.
+- Focus on temporary weapon enchants first, because normal buffs are already easier to solve with WeakAuras.
+- Keep the reminder optional and easy to disable through addon settings or a QA feature flag.
+
+Investigation:
+
+- Use WotLK client APIs such as `GetWeaponEnchantInfo()` to detect main-hand and off-hand temporary enchant state and expiration timing.
+- Map known imbue and poison spells to the appropriate weapon slot expectations.
+- Determine whether the addon can locate matching spells on standard action bars and trigger a visible glow, pulse, or overlay.
+- Evaluate whether a compact fallback reminder icon near the Hybrid UI is more reliable than action-button glow for custom bars or missing action slots.
+
+Candidate work:
+
+- Build a first pass for Shaman imbues during Gnome Shaman playtesting.
+- Add a configurable warning threshold, such as missing or expiring within 60 seconds.
+- Prefer action-bar glow when the spell is present on a bar, with a small Hybrid UI indicator as fallback.
+- Avoid server changes unless the client API cannot reliably detect the needed state.
+- Later expand to Rogue poisons and any other temporary weapon enchant families that matter for hybrid play.
+
+Risk: low to medium. This should be mostly addon-side, but action-bar glow behavior can be fragile across default bars, custom bars, stances, paging, dual wield, and temporary enchant edge cases.
+
+Why this matters: weapon imbues and poisons are important class-fantasy maintenance spells, but they are harder to track with WeakAuras in WotLK than normal buffs.
+
+### 6. Azeroth Flying Unlock
+
+Goal: evaluate allowing flying mounts in Eastern Kingdoms and Kalimdor, similar to later expansions, to make old-world traversal smoother for solo hybrid play.
+
+Preferred first approach: server-side, config-gated QA experiment with no client patching unless testing proves the client needs help.
+
+Scope:
+
+- Add a feature flag such as `Hybrid.AllowAzerothFlying = 0/1`, defaulted off outside QA.
+- Enable only in the isolated QA server while testing.
+- Limit the first pass to player-controlled characters.
+- Preserve existing Outland and Northrend flying behavior.
+- Keep battlegrounds, arenas, instances, transports, taxi paths, scripted movement, and special no-fly areas protected.
+
+Investigation:
+
+- Find where AzerothCore blocks flying by map, area, aura, mount, or movement flags.
+- Determine whether a server-only map/area restriction relaxation is enough for the WotLK client.
+- Check anti-cheat, movement validation, logout/login, fall state, death/ghost behavior, and mounted aura persistence.
+- Identify old-world terrain, city boundary, fatigue, water, transport, and exploration edge cases that may make this unsafe for broader promotion.
+
+Candidate work:
+
+- Prototype one normal flying mount in Elwynn Forest, Dun Morogh, Stormwind/Ironforge exterior boundaries, and a few open Kalimdor zones.
+- Test zone transitions, hearth/teleport, death/ghost state, dismounting, landing, swimming, and logout/login while mounted or airborne.
+- Confirm old-world taxi paths, boats, zeppelins, battlegrounds, and instances still behave normally.
+- Keep all changes reversible through config and document whether this should stay QA-only, become an optional dev feature, or be abandoned.
+
+Risk: medium to high. The client may render old-world flying movement, but pre-Cataclysm Azeroth was not built for player flight and may expose terrain holes, invisible walls, exploration gaps, or movement-validation assumptions.
+
+Why this matters: old-world traversal can be a major solo-play friction point, and a reversible QA feature could make hybrid leveling feel more modern without changing core class mechanics.
+
 ## Later Experiments
 
 These are interesting but higher risk. They should not be mixed into normal incremental work. Any experiment in this section should start in the QA lane unless it is explicitly reclassified as normal development work.
@@ -407,16 +472,22 @@ Recommended order for the next few work sessions:
 3. **Expanded reagent-free casting validation**
    Validate the expanded Hybrid learn-template scope across multiple class families, and confirm profession, crafting, item-created, and item-use reagent behavior remains protected.
 
-4. **Hybrid progression balance pass**
+4. **Weapon imbue and poison reminder prototype**
+   Start addon-side with Shaman imbues during Gnome Shaman playtesting, then expand to Rogue poisons if the reminder model feels good.
+
+5. **Azeroth flying unlock prototype**
+   Add a config-gated QA-only test for old-world flying, then validate movement, map, transport, death, logout/login, and protected-zone behavior.
+
+6. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-5. **Talent UI clarity pass**
+7. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
 
-6. **Class dependency package pass**
+8. **Class dependency package pass**
    Pick one class fantasy after Hunter pets and make it complete end to end.
 
-7. **Persistence/log cleanup pass**
+9. **Persistence/log cleanup pass**
    Reduce recurring log noise and harden action-bar/spell restoration edge cases.
 
 ## Manual Test Checklist
