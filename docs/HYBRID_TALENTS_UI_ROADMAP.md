@@ -42,7 +42,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
 | QA race/class unlocks | First smoke pass successful | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Undead Hunter, Human Druid, and Gnome Shaman have passed initial gameplay smoke routes covering pets, shapeshifts, totems, starter spells, action bars, gear, and logout/login retention. |
-| QA client asset experiments | Active in disposable QA client | `C:\Games\WoW-3.3.5a-HD-Test\Data\patch-y.mpq` currently carries reversible `CharBaseInfo.dbc` and `CharStartOutfit.dbc` edits for the any-race/any-class prototype. |
+| QA client asset experiments | Active in disposable QA client | `C:\Games\WoW-3.3.5a-HD-Test\Data\patch-y.mpq` carries the original any-race/any-class DBC prototype. `patch-z.mpq` carries the current expanded QA client patch with any-race/any-class DBCs plus reagent tooltip cleanup for hybrid learn-template spells. |
 
 ## Completed Milestones
 
@@ -315,36 +315,46 @@ Why this matters: this could make hybrid gameplay smoother for selected spells w
 
 ### 4. Reagent-Free Casting
 
-Goal: evaluate removing or bypassing reagent requirements for selected player spells to modernize gameplay and make hybrid/cross-class progression smoother.
+Goal: evaluate removing or bypassing reagent requirements for hybrid player spells to modernize gameplay and make hybrid/cross-class progression smoother.
 
-Current state: server/client proof of concept is deployed on the isolated QA server and disposable QA client. The active QA config enables `Hybrid.NoReagent.Enable = 1` with `Hybrid.NoReagent.Spells = "697,3561,10059"` for initial testing: Summon Voidwalker, Teleport: Stormwind, and Portal: Stormwind.
+Current state: the initial server/client proof of concept was successful, including Summon Voidwalker and Teleport: Stormwind casting without reagents and without reagent text in the client tooltip. The QA lane has now expanded this from a three-spell proof of concept to the full Hybrid learn-template spell surface.
+
+Active QA config:
+
+- `Hybrid.NoReagent.Enable = 1`
+- `Hybrid.NoReagent.HybridTemplateSpells = 1`
+- `Hybrid.NoReagent.Spells = "697,3561,10059"` remains as an additive explicit safety/test list.
+
+Active QA scope: every spell currently listed in `hybrid_spell_template` is treated as reagent-free by the QA worldserver, including rank-chain handling where available. The current live QA database contains 530 Hybrid learn-template spell IDs.
 
 Scope:
 
-- Start with a small proof-of-concept spell set, preferably one Warlock spell and one Mage, Paladin, or Priest utility spell.
-- Test server-side cast behavior before attempting any client tooltip cleanup.
-- Keep the first pass opt-in and limited to explicit spell IDs.
-- Consider whether the final scope should apply only to hybrid-learned spells or to all player class spells where reagent removal is safe.
+- Validate reagent-free behavior across the Hybrid learn-template spell surface.
+- Keep the feature opt-in, config-gated, and reversible.
+- Keep the default safety boundary around hybrid-learned/player class spells rather than globally bypassing reagents for every spell in the game.
+- Treat non-template exceptions as explicit spell-list additions only after review.
 
 Server-side investigation:
 
-- Bypass reagent checks and reagent consumption for selected player-cast spells.
+- Bypass reagent checks and reagent consumption for configured player-cast spells.
 - Reuse the existing reagent-check path where possible so configured spells pass both cast validation and reagent consumption.
+- Load the Hybrid learn-template spell surface from `hybrid_spell_template` when `Hybrid.NoReagent.HybridTemplateSpells` is enabled.
 - Keep profession crafting, item-created spells, item-use spells, trade target items, and important economy/item mechanics protected.
 - Add a config flag and spell list so the feature can be enabled, disabled, and rolled back cleanly.
 
 Client-side investigation:
 
-- Current QA patch-y.mpq includes a patched `Spell.dbc` that clears reagent fields for `697`, `3561`, and `10059`.
-- Determine whether reagent text can be hidden through addon tooltip cleanup for future spells that are not patched in DBC.
+- Current QA `patch-z.mpq` includes a patched `Spell.dbc` that clears reagent fields for Hybrid learn-template spells exported from the QA database.
+- Current DBC verification: 530 spell IDs were requested, 528 were present in the 3.3.5a client `Spell.dbc`, and all 528 present rows had reagent fields cleared. IDs `8681` and `26786` were not present in the client DBC.
+- Keep addon tooltip cleanup as a fallback only for spells that cannot be handled cleanly through DBC patching.
 - Continue using only `C:\Games\WoW-3.3.5a-HD-Test` for any tooltip, DBC, or MPQ experiments.
 
 Candidate work:
 
-- Validate the initial QA list: `697` Summon Voidwalker, `3561` Teleport: Stormwind, and `10059` Portal: Stormwind.
-- Validate new Mage travel entries in the Hybrid learn list. Teleport spells begin at level 20, while Portal: Stormwind begins at level 40.
-- Confirm configured spells cast without reagents and do not consume reagents if reagents are present.
-- Confirm unconfigured reagent spells still require and consume reagents normally.
+- Revalidate the initial QA list: `697` Summon Voidwalker, `3561` Teleport: Stormwind, and `10059` Portal: Stormwind.
+- Validate several additional reagent spells from different class families, especially Mage travel, Warlock utility/summons, Paladin blessings, Priest utility, Rogue poisons or utility, and any Shaman/Druid edge cases discovered during play.
+- Confirm Hybrid learn-template spells cast without reagents and do not consume reagents if reagents are present.
+- Confirm non-template reagent spells still require and consume reagents normally unless explicitly configured.
 - Confirm crafting, profession, item-created, and item-use spell behavior is unchanged.
 - Document whether the feature should eventually be promoted to `codex/hybrid-talents-ui`, kept QA-only, or abandoned.
 
@@ -394,8 +404,8 @@ Recommended order for the next few work sessions:
 2. **QA any-race/any-class validation pass**
    First smoke pass is successful across pet, form, and totem paths. Keep natural playthrough validation running opportunistically, but do not block the next QA milestone on more race/class combinations.
 
-3. **Reagent-free casting proof of concept**
-   Start a narrow, config-gated server-side test for selected player spells, then evaluate tooltip/client cleanup only after cast behavior is proven safe.
+3. **Expanded reagent-free casting validation**
+   Validate the expanded Hybrid learn-template scope across multiple class families, and confirm profession, crafting, item-created, and item-use reagent behavior remains protected.
 
 4. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
