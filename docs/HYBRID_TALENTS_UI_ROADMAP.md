@@ -317,7 +317,7 @@ Why this matters: this could make hybrid gameplay smoother for selected spells w
 
 Goal: evaluate removing or bypassing reagent requirements for selected player spells to modernize gameplay and make hybrid/cross-class progression smoother.
 
-Current state: server-side proof of concept is deployed on the isolated QA server. The active QA config enables `Hybrid.NoReagent.Enable = 1` with `Hybrid.NoReagent.Spells = "697,10059"` for initial testing: Summon Voidwalker and Portal: Stormwind.
+Current state: server/client proof of concept is deployed on the isolated QA server and disposable QA client. The active QA config enables `Hybrid.NoReagent.Enable = 1` with `Hybrid.NoReagent.Spells = "697,3561,10059"` for initial testing: Summon Voidwalker, Teleport: Stormwind, and Portal: Stormwind.
 
 Scope:
 
@@ -335,13 +335,14 @@ Server-side investigation:
 
 Client-side investigation:
 
-- Determine whether reagent text can be hidden through addon tooltip cleanup.
-- Identify whether full client cleanup requires DBC edits, MPQ patching, or both.
-- Use only `C:\Games\WoW-3.3.5a-HD-Test` for any tooltip, DBC, or MPQ experiments.
+- Current QA patch-y.mpq includes a patched `Spell.dbc` that clears reagent fields for `697`, `3561`, and `10059`.
+- Determine whether reagent text can be hidden through addon tooltip cleanup for future spells that are not patched in DBC.
+- Continue using only `C:\Games\WoW-3.3.5a-HD-Test` for any tooltip, DBC, or MPQ experiments.
 
 Candidate work:
 
-- Validate the initial QA list: `697` Summon Voidwalker and `10059` Portal: Stormwind.
+- Validate the initial QA list: `697` Summon Voidwalker, `3561` Teleport: Stormwind, and `10059` Portal: Stormwind.
+- Validate new Mage travel entries in the Hybrid learn list. Teleport spells begin at level 20, while Portal: Stormwind begins at level 40.
 - Confirm configured spells cast without reagents and do not consume reagents if reagents are present.
 - Confirm unconfigured reagent spells still require and consume reagents normally.
 - Confirm crafting, profession, item-created, and item-use spell behavior is unchanged.
