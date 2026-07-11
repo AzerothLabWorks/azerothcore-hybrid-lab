@@ -18,6 +18,7 @@ Addon-first hybrid spell and talent system for AzerothCore 3.3.5a.
 - Configurable dependency packages can grant support spells or items for class-defining hybrid spells.
 - Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
 - The legacy Hybrid Talent Master and beacon flow has been retired in favor of the addon UI and `/hybridui` command path.
+- The client addon includes a tested shaman weapon imbue reminder for main-hand and off-hand temporary weapon enchants.
 
 ## Install
 
@@ -48,6 +49,28 @@ The addon talks to the server through AzerothCore addon-channel commands:
 - `hybridui unlearntalent <talentId>`
 
 The server remains authoritative. Learn and unlearn requests are validated by module logic before anything is applied.
+
+## Weapon Imbue Reminder
+
+The `HybridTalentUI` addon can remember the last shaman weapon imbue the player cast and show separate movable `MH` and `OH` reminder buttons when the main-hand or off-hand temporary enchant is missing or close to expiring. The buttons use `GetWeaponEnchantInfo()` client-side state and do not change server spell validation.
+
+Current tested scope:
+
+- Rockbiter Weapon
+- Flametongue Weapon
+- Frostbrand Weapon
+- Windfury Weapon
+- Earthliving Weapon
+
+The reminder is enabled by default after the addon loads. It starts tracking after the player casts a supported imbue once. Useful commands:
+
+- `/hyui imbue` shows reminder status.
+- `/hyui imbue on` enables reminders.
+- `/hyui imbue off` disables reminders.
+- `/hyui imbue reset` clears remembered imbues and saved reminder positions.
+- `/hyui imbue threshold <seconds>` changes the low-duration reminder threshold.
+
+Follow-up QA targets include Rogue poisons and other temporary weapon effects once those characters are being tested.
 
 ## Buff Mirroring
 

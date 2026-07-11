@@ -103,6 +103,67 @@ local HIDDEN_KNOWN_SUPPORT_SPELLS = {
     [15590] = true, -- Fist Weapons
 }
 
+local IMBUE_REMINDER_SPELLS = {
+    [8017] = true,  -- Rockbiter Weapon
+    [8018] = true,
+    [8019] = true,
+    [10399] = true,
+    [16314] = true,
+    [16315] = true,
+    [16316] = true,
+    [25479] = true,
+    [25485] = true,
+    [58794] = true,
+    [58795] = true,
+    [58796] = true,
+    [8024] = true,  -- Flametongue Weapon
+    [8027] = true,
+    [8030] = true,
+    [16339] = true,
+    [16341] = true,
+    [16342] = true,
+    [25489] = true,
+    [58785] = true,
+    [58789] = true,
+    [58790] = true,
+    [8033] = true,  -- Frostbrand Weapon
+    [8038] = true,
+    [10456] = true,
+    [16355] = true,
+    [16356] = true,
+    [25500] = true,
+    [58797] = true,
+    [58798] = true,
+    [58799] = true,
+    [8232] = true,  -- Windfury Weapon
+    [8235] = true,
+    [10486] = true,
+    [16362] = true,
+    [25505] = true,
+    [58801] = true,
+    [58803] = true,
+    [58804] = true,
+    [51730] = true, -- Earthliving Weapon
+    [51988] = true,
+    [51991] = true,
+    [51992] = true,
+    [51993] = true,
+    [51994] = true,
+}
+
+local IMBUE_REMINDER_NAMES = {
+    ["Rockbiter Weapon"] = 8017,
+    ["Flametongue Weapon"] = 8024,
+    ["Frostbrand Weapon"] = 8033,
+    ["Windfury Weapon"] = 8232,
+    ["Earthliving Weapon"] = 51730,
+}
+
+local imbueReminderFrames = {}
+local imbueReminderPulse = 0
+local imbueReminderElapsed = 0
+local IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS = 300
+
 local STANCE_RELAXED_SPELLS = {
     [100] = "Charge",
     [6178] = "Charge",
@@ -1031,6 +1092,256 @@ end
 local function EnsureSavedVariables()
     HybridTalentUIDB = HybridTalentUIDB or {}
     HybridTalentUIDB.openButton = HybridTalentUIDB.openButton or {}
+    HybridTalentUIDB.imbueReminder = HybridTalentUIDB.imbueReminder or {}
+    if HybridTalentUIDB.imbueReminder.enabled == nil then
+        HybridTalentUIDB.imbueReminder.enabled = true
+    end
+    HybridTalentUIDB.imbueReminder.thresholdSeconds = HybridTalentUIDB.imbueReminder.thresholdSeconds or IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS
+end
+
+local function GetImbueReminderDB()
+    EnsureSavedVariables()
+    return HybridTalentUIDB.imbueReminder
+end
+
+local function IsTrackedImbueSpell(spellId, spellName)
+    if spellId and IMBUE_REMINDER_SPELLS[tonumber(spellId)] then
+        return true
+    end
+
+    return spellName and IMBUE_REMINDER_NAMES[spellName] ~= nil
+end
+
+local function FindKnownImbueSpellId(spellName)
+    if not spellName or not GetNumSpellTabs or not GetSpellTabInfo or not GetSpellBookItemName or not GetSpellBookItemInfo then
+        return spellName and IMBUE_REMINDER_NAMES[spellName] or nil
+    end
+
+    local fallback = IMBUE_REMINDER_NAMES[spellName]
+    for tabIndex = 1, GetNumSpellTabs() do
+        local _, _, offset, numSpells = GetSpellTabInfo(tabIndex)
+        offset = tonumber(offset or 0) or 0
+        numSpells = tonumber(numSpells or 0) or 0
+
+        for spellBookIndex = offset + 1, offset + numSpells do
+            local knownName = GetSpellBookItemName(spellBookIndex, BOOKTYPE_SPELL)
+            if knownName == spellName then
+                local _, spellId = GetSpellBookItemInfo(spellBookIndex, BOOKTYPE_SPELL)
+                if spellId and IMBUE_REMINDER_SPELLS[spellId] then
+                    return spellId
+                end
+            end
+        end
+    end
+
+    return fallback
+end
+
+local function FormatDuration(seconds)
+    seconds = math.max(0, tonumber(seconds or 0) or 0)
+    if seconds >= 3600 then
+        return math.ceil(seconds / 3600) .. "h"
+    end
+
+    if seconds >= 60 then
+        return math.ceil(seconds / 60) .. "m"
+    end
+
+    return math.ceil(seconds) .. "s"
+end
+
+local function GetImbueReminderPositionDB(handKey)
+    local db = GetImbueReminderDB()
+    if handKey == "off" then
+        db.offhand = db.offhand or {}
+        return db.offhand
+    end
+
+    return db
+end
+
+local function GetImbueReminderSpellId(handKey)
+    local db = GetImbueReminderDB()
+    if handKey == "off" then
+        return db.offSpellId
+    end
+
+    return db.mainSpellId
+end
+
+local function SetImbueReminderSpellId(handKey, spellId)
+    local db = GetImbueReminderDB()
+    if handKey == "off" then
+        db.offSpellId = spellId
+    else
+        db.mainSpellId = spellId
+    end
+end
+
+local function GetImbueReminderHandState(handKey)
+    if not GetWeaponEnchantInfo then
+        return nil, nil
+    end
+
+    local hasMainHandEnchant, mainHandExpiration, _, hasOffHandEnchant, offHandExpiration = GetWeaponEnchantInfo()
+    if handKey == "off" then
+        return hasOffHandEnchant, offHandExpiration
+    end
+
+    return hasMainHandEnchant, mainHandExpiration
+end
+
+local function SaveImbueReminderPosition(frame)
+    if not frame or not frame.handKey then
+        return
+    end
+
+    local pos = GetImbueReminderPositionDB(frame.handKey)
+    local point, _, relativePoint, x, y = frame:GetPoint(1)
+    pos.point = point
+    pos.relativePoint = relativePoint
+    pos.x = x
+    pos.y = y
+end
+
+local function PositionImbueReminder(frame, useDefault)
+    if not frame or not frame.handKey then
+        return
+    end
+
+    local pos = GetImbueReminderPositionDB(frame.handKey)
+    frame:ClearAllPoints()
+    if not useDefault and pos.point and pos.relativePoint and pos.x and pos.y then
+        frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
+    elseif frame.handKey == "off" then
+        frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -452, 150)
+    else
+        frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -500, 150)
+    end
+end
+
+local function UpdateImbueReminderFrame(handKey)
+    local frame = imbueReminderFrames[handKey]
+    if not frame then
+        return
+    end
+
+    local db = GetImbueReminderDB()
+    local spellId = tonumber(GetImbueReminderSpellId(handKey))
+    if not db.enabled or not spellId or not GetWeaponEnchantInfo then
+        frame:Hide()
+        return
+    end
+
+    if handKey == "off" and not GetInventoryItemLink("player", 17) then
+        frame:Hide()
+        return
+    end
+
+    local hasEnchant, expiration = GetImbueReminderHandState(handKey)
+    local thresholdMs = (tonumber(db.thresholdSeconds or IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS) or IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS) * 1000
+    if hasEnchant and (tonumber(expiration or 0) or 0) > thresholdMs then
+        frame:Hide()
+        return
+    end
+
+    local spellName = spellId and GetSpellInfo(spellId) or "Weapon Imbue"
+    frame.spellId = spellId
+    if frame.SetAttribute and (not InCombatLockdown or not InCombatLockdown()) then
+        frame:SetAttribute("type", "spell")
+        frame:SetAttribute("spell", spellName)
+    end
+    frame.icon:SetTexture(GetSpellIcon(spellId))
+    frame.label:SetText(hasEnchant and FormatDuration((tonumber(expiration or 0) or 0) / 1000) or "!")
+    frame.tooltipTitle = (handKey == "off" and "Off-hand " or "Main-hand ") .. (spellName or "Weapon Imbue")
+    frame.tooltipBody = hasEnchant and "Weapon imbue is close to expiring." or "Weapon imbue is missing."
+    frame:Show()
+end
+
+local function UpdateImbueReminder()
+    UpdateImbueReminderFrame("main")
+    UpdateImbueReminderFrame("off")
+end
+
+local function StoreLastImbueSpell(spellName, spellId)
+    if not IsTrackedImbueSpell(spellId, spellName) then
+        return
+    end
+
+    local rememberedSpellId = (spellId and IMBUE_REMINDER_SPELLS[tonumber(spellId)] and tonumber(spellId)) or FindKnownImbueSpellId(spellName)
+    if rememberedSpellId then
+        SetImbueReminderSpellId("main", rememberedSpellId)
+        if GetInventoryItemLink("player", 17) then
+            SetImbueReminderSpellId("off", rememberedSpellId)
+        end
+        UpdateImbueReminder()
+    end
+end
+
+local function CreateImbueReminderFrame(handKey)
+    if imbueReminderFrames[handKey] then
+        return
+    end
+
+    local frameName = handKey == "off" and "HybridTalentUIOffhandImbueReminder" or "HybridTalentUIMainhandImbueReminder"
+    local frame = CreateFrame("Button", frameName, UIParent, "SecureActionButtonTemplate")
+    frame.handKey = handKey
+    SetFrameSize(frame, 42, 42)
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:SetClampedToScreen(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:Hide()
+
+    frame.icon = frame:CreateTexture(nil, "ARTWORK")
+    frame.icon:SetAllPoints(frame)
+    frame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    frame.border = frame:CreateTexture(nil, "OVERLAY")
+    frame.border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    frame.border:SetBlendMode("ADD")
+    SetFrameSize(frame.border, 70, 70)
+    frame.border:SetPoint("CENTER", frame, "CENTER", 0, 0)
+
+    frame.handLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    frame.handLabel:SetPoint("TOP", frame, "TOP", 0, -2)
+    frame.handLabel:SetText(handKey == "off" and "OH" or "MH")
+    frame.handLabel:SetTextColor(1, 0.9, 0.25)
+
+    frame.label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    frame.label:SetPoint("BOTTOM", frame, "BOTTOM", 0, 2)
+    frame.label:SetTextColor(1, 0.9, 0.25)
+
+    imbueReminderFrames[handKey] = frame
+    PositionImbueReminder(frame, false)
+
+    frame:SetScript("PostClick", function()
+        UpdateImbueReminder()
+    end)
+    frame:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        SaveImbueReminderPosition(self)
+    end)
+    frame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self.tooltipTitle or "Weapon Imbue")
+        GameTooltip:AddLine(self.tooltipBody or "Your remembered weapon imbue needs attention.", 0.95, 0.82, 0.35)
+        GameTooltip:AddLine("Click to cast. Drag to move.", 0.6, 0.8, 1)
+        GameTooltip:Show()
+    end)
+    frame:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    frame:SetScript("OnUpdate", function(self, elapsed)
+        imbueReminderPulse = imbueReminderPulse + (elapsed or 0)
+        if imbueReminderPulse > 0.8 then
+            imbueReminderPulse = 0
+        end
+        self.border:SetAlpha(0.45 + (math.sin(imbueReminderPulse * 7.85) * 0.25))
+    end)
 end
 
 local function PositionOpenButton(useDefault)
@@ -1128,6 +1439,53 @@ local function HandleSlash(input)
         return
     end
 
+    if input == "imbue" then
+        local db = GetImbueReminderDB()
+        local mainSpellName = db.mainSpellId and GetSpellInfo(db.mainSpellId) or "none remembered"
+        local offSpellName = db.offSpellId and GetSpellInfo(db.offSpellId) or "none remembered"
+        Print("imbue reminder is " .. (db.enabled and "on" or "off") .. "; main-hand spell: " .. tostring(mainSpellName) .. "; off-hand spell: " .. tostring(offSpellName) .. "; threshold: " .. tostring(db.thresholdSeconds) .. " seconds.")
+        return
+    end
+
+    if input == "imbue on" then
+        GetImbueReminderDB().enabled = true
+        UpdateImbueReminder()
+        Print("imbue reminder enabled.")
+        return
+    end
+
+    if input == "imbue off" then
+        GetImbueReminderDB().enabled = false
+        UpdateImbueReminder()
+        Print("imbue reminder disabled.")
+        return
+    end
+
+    if input == "imbue reset" then
+        local db = GetImbueReminderDB()
+        db.mainSpellId = nil
+        db.offSpellId = nil
+        db.point = nil
+        db.relativePoint = nil
+        db.x = nil
+        db.y = nil
+        db.offhand = {}
+        PositionImbueReminder(imbueReminderFrames.main, true)
+        PositionImbueReminder(imbueReminderFrames.off, true)
+        UpdateImbueReminder()
+        Print("imbue reminder reset.")
+        return
+    end
+
+    local imbueThreshold = string.match(input, "^imbue%s+threshold%s+(%d+)$")
+    if imbueThreshold then
+        local seconds = math.max(30, tonumber(imbueThreshold) or IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS)
+        GetImbueReminderDB().thresholdSeconds = seconds
+        UpdateImbueReminder()
+        Print("imbue reminder threshold set to " .. seconds .. " seconds.")
+        return
+    end
+
     local petSlot = string.match(input, "^petcast%s+(%d+)$")
     if petSlot then
         petSlot = tonumber(petSlot)
@@ -1147,12 +1505,26 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
+eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+eventFrame:RegisterEvent("UNIT_INVENTORY_CHANGED")
+eventFrame:SetScript("OnUpdate", function(_, elapsed)
+    imbueReminderElapsed = imbueReminderElapsed + (elapsed or 0)
+    if imbueReminderElapsed >= 10 then
+        imbueReminderElapsed = 0
+        UpdateImbueReminder()
+    end
+end)
+
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         SLASH_HYBRIDTALENTUI1 = "/hybridui"
         SLASH_HYBRIDTALENTUI2 = "/hyui"
         SlashCmdList.HYBRIDTALENTUI = HandleSlash
         CreateOpenButton()
+        CreateImbueReminderFrame("main")
+        CreateImbueReminderFrame("off")
+        UpdateImbueReminder()
         Print("loaded. Click the Hybrid button or use /hybridui.")
     elseif event == "PLAYER_LEVEL_UP" then
         state.loaded = false
@@ -1161,5 +1533,17 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         end
     elseif event == "CHAT_MSG_ADDON" then
         HandleAddonMessage(...)
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unit, spellName, _, _, spellId = ...
+        if unit == "player" then
+            StoreLastImbueSpell(spellName, spellId)
+        end
+    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
+        UpdateImbueReminder()
+    elseif event == "UNIT_INVENTORY_CHANGED" then
+        local unit = ...
+        if unit == "player" then
+            UpdateImbueReminder()
+        end
     end
 end)
