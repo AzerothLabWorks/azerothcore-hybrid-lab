@@ -1178,12 +1178,30 @@ local function SetImbueReminderSpellId(handKey, spellId)
     end
 end
 
+local function NormalizeEnchantPresence(value)
+    return value == true or value == 1
+end
+
 local function GetImbueReminderHandState(handKey)
     if not GetWeaponEnchantInfo then
         return nil, nil
     end
 
-    local hasMainHandEnchant, mainHandExpiration, _, hasOffHandEnchant, offHandExpiration = GetWeaponEnchantInfo()
+    local mainRaw, mainHandExpiration, _, fourth, fifth, sixth, seventh, eighth = GetWeaponEnchantInfo()
+    local hasMainHandEnchant = NormalizeEnchantPresence(mainRaw)
+    local hasOffHandEnchant = NormalizeEnchantPresence(fourth)
+    local offHandExpiration = fifth
+
+    -- Some clients may include enchant IDs before the offhand fields. The QA 3.3.5 client
+    -- returns numeric 1/0 presence flags, so only switch layouts for non-flag values.
+    if fourth ~= nil and fourth ~= true and fourth ~= false and fourth ~= 0 and fourth ~= 1 then
+        hasOffHandEnchant = NormalizeEnchantPresence(fifth)
+        offHandExpiration = sixth
+    elseif seventh ~= nil or eighth ~= nil then
+        hasOffHandEnchant = NormalizeEnchantPresence(fifth)
+        offHandExpiration = sixth
+    end
+
     if handKey == "off" then
         return hasOffHandEnchant, offHandExpiration
     end
@@ -1248,8 +1266,9 @@ local function UpdateImbueReminderFrame(handKey)
     local spellName = spellId and GetSpellInfo(spellId) or "Weapon Imbue"
     frame.spellId = spellId
     if frame.SetAttribute and (not InCombatLockdown or not InCombatLockdown()) then
-        frame:SetAttribute("type", "spell")
-        frame:SetAttribute("spell", spellName)
+        local inventorySlot = handKey == "off" and 17 or 16
+        frame:SetAttribute("type", "macro")
+        frame:SetAttribute("macrotext", "/cast " .. spellName .. "\n/use " .. inventorySlot)
     end
     frame.icon:SetTexture(GetSpellIcon(spellId))
     frame.label:SetText(hasEnchant and FormatDuration((tonumber(expiration or 0) or 0) / 1000) or "!")
@@ -1261,6 +1280,22 @@ end
 local function UpdateImbueReminder()
     UpdateImbueReminderFrame("main")
     UpdateImbueReminderFrame("off")
+end
+
+local function DebugImbueReminder()
+    if not GetWeaponEnchantInfo then
+        Print("GetWeaponEnchantInfo API is unavailable.")
+        return
+    end
+
+    local a, b, c, d, e, f, g, h = GetWeaponEnchantInfo()
+    local mainHas, mainExpiration = GetImbueReminderHandState("main")
+    local offHas, offExpiration = GetImbueReminderHandState("off")
+    local db = GetImbueReminderDB()
+
+    Print("raw weapon enchants: 1=" .. tostring(a) .. ", 2=" .. tostring(b) .. ", 3=" .. tostring(c) .. ", 4=" .. tostring(d) .. ", 5=" .. tostring(e) .. ", 6=" .. tostring(f) .. ", 7=" .. tostring(g) .. ", 8=" .. tostring(h))
+    Print("parsed imbues: MH=" .. tostring(mainHas) .. " exp=" .. tostring(mainExpiration) .. "; OH=" .. tostring(offHas) .. " exp=" .. tostring(offExpiration))
+    Print("remembered spells: MH=" .. tostring(db.mainSpellId) .. "; OH=" .. tostring(db.offSpellId) .. "; offhand item=" .. tostring(GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil))
 end
 
 local function StoreLastImbueSpell(spellName, spellId)
@@ -1444,6 +1479,11 @@ local function HandleSlash(input)
         local mainSpellName = db.mainSpellId and GetSpellInfo(db.mainSpellId) or "none remembered"
         local offSpellName = db.offSpellId and GetSpellInfo(db.offSpellId) or "none remembered"
         Print("imbue reminder is " .. (db.enabled and "on" or "off") .. "; main-hand spell: " .. tostring(mainSpellName) .. "; off-hand spell: " .. tostring(offSpellName) .. "; threshold: " .. tostring(db.thresholdSeconds) .. " seconds.")
+        return
+    end
+
+    if input == "imbue debug" then
+        DebugImbueReminder()
         return
     end
 
