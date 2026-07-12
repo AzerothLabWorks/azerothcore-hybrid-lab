@@ -163,8 +163,14 @@ local imbueReminderFrames = {}
 local imbueReminderPulse = 0
 local imbueReminderElapsed = 0
 local imbueReminderSettleRemaining = 0
+local imbueReminderLastState = nil
+local imbueReminderPendingSpell = nil
+local imbueReminderClickedHand = nil
+local imbueReminderLastMainItemLink = nil
+local imbueReminderLastOffItemLink = nil
 local IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS = 300
 local IMBUE_REMINDER_SETTLE_SECONDS = 6
+local IMBUE_REMINDER_APPLY_SETTLE_SECONDS = 0.4
 
 local STANCE_RELAXED_SPELLS = {
     [100] = "Charge",
@@ -1283,6 +1289,44 @@ local function GetImbueReminderHandState(handKey)
     return hasMainHandEnchant, mainHandExpiration
 end
 
+local UpdateImbueReminder
+
+local function CaptureImbueReminderState()
+    local mainHas, mainExpiration = GetImbueReminderHandState("main")
+    local offHas, offExpiration = GetImbueReminderHandState("off")
+    return {
+        mainHas = mainHas,
+        mainExpiration = tonumber(mainExpiration or 0) or 0,
+        offHas = offHas,
+        offExpiration = tonumber(offExpiration or 0) or 0,
+    }
+end
+
+local function DidImbueHandChange(previousHas, previousExpiration, currentHas, currentExpiration)
+    previousExpiration = tonumber(previousExpiration or 0) or 0
+    currentExpiration = tonumber(currentExpiration or 0) or 0
+
+    if currentHas and not previousHas then
+        return true
+    end
+
+    if currentHas and previousHas and currentExpiration > previousExpiration + 30000 then
+        return true
+    end
+
+    return false
+end
+
+local function RememberImbueSpellForHand(handKey, spellId)
+    if not spellId then
+        return
+    end
+
+    SetImbueReminderSpellId(handKey, spellId)
+    imbueReminderLastState = CaptureImbueReminderState()
+    UpdateImbueReminder()
+end
+
 local function SaveImbueReminderPosition(frame)
     if not frame or not frame.handKey then
         return
@@ -1356,14 +1400,32 @@ local function UpdateImbueReminderFrame(handKey)
     frame:Show()
 end
 
-local function UpdateImbueReminder()
+function UpdateImbueReminder()
     UpdateImbueReminderFrame("main")
     UpdateImbueReminderFrame("off")
+    if not imbueReminderSettleRemaining or imbueReminderSettleRemaining <= 0 then
+        imbueReminderLastState = CaptureImbueReminderState()
+    end
 end
 
 local function DelayImbueReminderRefresh(seconds)
     imbueReminderSettleRemaining = math.max(imbueReminderSettleRemaining or 0, seconds or IMBUE_REMINDER_SETTLE_SECONDS)
     UpdateImbueReminder()
+end
+
+local function UpdateImbueReminderForInventoryChange(forceDelay)
+    local mainLink = GetInventoryItemLink and GetInventoryItemLink("player", 16) or nil
+    local offLink = GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil
+    local itemChanged = forceDelay or mainLink ~= imbueReminderLastMainItemLink or offLink ~= imbueReminderLastOffItemLink
+
+    imbueReminderLastMainItemLink = mainLink
+    imbueReminderLastOffItemLink = offLink
+
+    if itemChanged then
+        DelayImbueReminderRefresh(1.5)
+    else
+        UpdateImbueReminder()
+    end
 end
 
 local function DebugImbueReminder()
@@ -1382,19 +1444,63 @@ local function DebugImbueReminder()
     Print("remembered spells: MH=" .. tostring(db.mainSpellId) .. "; OH=" .. tostring(db.offSpellId) .. "; offhand item=" .. tostring(GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil))
 end
 
-local function StoreLastImbueSpell(spellName, spellId)
+local function ResolveImbueSpellId(spellName, spellId)
     if not IsTrackedImbueSpell(spellId, spellName) then
+        return nil
+    end
+
+    return (spellId and IMBUE_REMINDER_SPELLS[tonumber(spellId)] and tonumber(spellId)) or FindKnownImbueSpellId(spellName)
+end
+
+local function FinalizePendingImbueSpell()
+    local pending = imbueReminderPendingSpell
+    imbueReminderPendingSpell = nil
+    if not pending or not pending.spellId then
         return
     end
 
-    local rememberedSpellId = (spellId and IMBUE_REMINDER_SPELLS[tonumber(spellId)] and tonumber(spellId)) or FindKnownImbueSpellId(spellName)
-    if rememberedSpellId then
-        SetImbueReminderSpellId("main", rememberedSpellId)
-        if GetInventoryItemLink("player", 17) then
-            SetImbueReminderSpellId("off", rememberedSpellId)
-        end
-        UpdateImbueReminder()
+    if pending.handKey then
+        RememberImbueSpellForHand(pending.handKey, pending.spellId)
+        return
     end
+
+    local previous = pending.previousState or imbueReminderLastState or {}
+    local current = CaptureImbueReminderState()
+    local mainChanged = DidImbueHandChange(previous.mainHas, previous.mainExpiration, current.mainHas, current.mainExpiration)
+    local offChanged = DidImbueHandChange(previous.offHas, previous.offExpiration, current.offHas, current.offExpiration)
+
+    if mainChanged then
+        SetImbueReminderSpellId("main", pending.spellId)
+    end
+    if offChanged then
+        SetImbueReminderSpellId("off", pending.spellId)
+    end
+
+    if not mainChanged and not offChanged then
+        if GetInventoryItemLink("player", 17) then
+            SetImbueReminderSpellId("main", pending.spellId)
+        else
+            SetImbueReminderSpellId("main", pending.spellId)
+        end
+    end
+
+    imbueReminderLastState = current
+    UpdateImbueReminder()
+end
+
+local function StoreLastImbueSpell(spellName, spellId)
+    local rememberedSpellId = ResolveImbueSpellId(spellName, spellId)
+    if not rememberedSpellId then
+        return
+    end
+
+    imbueReminderPendingSpell = {
+        spellId = rememberedSpellId,
+        handKey = imbueReminderClickedHand and imbueReminderClickedHand.handKey or nil,
+        previousState = imbueReminderLastState or CaptureImbueReminderState(),
+        remaining = IMBUE_REMINDER_APPLY_SETTLE_SECONDS,
+    }
+    imbueReminderClickedHand = nil
 end
 
 local function CreateImbueReminderFrame(handKey)
@@ -1434,6 +1540,9 @@ local function CreateImbueReminderFrame(handKey)
     imbueReminderFrames[handKey] = frame
     PositionImbueReminder(frame, false)
 
+    frame:SetScript("PreClick", function(self)
+        imbueReminderClickedHand = { handKey = self.handKey, remaining = 2 }
+    end)
     frame:SetScript("PostClick", function()
         UpdateImbueReminder()
     end)
@@ -1642,6 +1751,20 @@ eventFrame:SetScript("OnUpdate", function(_, elapsed)
         end
     end
 
+    if imbueReminderClickedHand then
+        imbueReminderClickedHand.remaining = (imbueReminderClickedHand.remaining or 0) - elapsed
+        if imbueReminderClickedHand.remaining <= 0 then
+            imbueReminderClickedHand = nil
+        end
+    end
+
+    if imbueReminderPendingSpell then
+        imbueReminderPendingSpell.remaining = (imbueReminderPendingSpell.remaining or 0) - elapsed
+        if imbueReminderPendingSpell.remaining <= 0 then
+            FinalizePendingImbueSpell()
+        end
+    end
+
     imbueReminderElapsed = imbueReminderElapsed + elapsed
     if imbueReminderElapsed >= 10 then
         imbueReminderElapsed = 0
@@ -1657,6 +1780,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         CreateOpenButton()
         CreateImbueReminderFrame("main")
         CreateImbueReminderFrame("off")
+        imbueReminderLastMainItemLink = GetInventoryItemLink and GetInventoryItemLink("player", 16) or nil
+        imbueReminderLastOffItemLink = GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil
         DelayImbueReminderRefresh(IMBUE_REMINDER_SETTLE_SECONDS)
         Print("loaded. Click the Hybrid button or use /hybridui.")
     elseif event == "PLAYER_LEVEL_UP" then
@@ -1672,11 +1797,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             StoreLastImbueSpell(spellName, spellId)
         end
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
-        DelayImbueReminderRefresh(1.5)
+        UpdateImbueReminderForInventoryChange(false)
     elseif event == "UNIT_INVENTORY_CHANGED" then
         local unit = ...
         if unit == "player" then
-            DelayImbueReminderRefresh(1.5)
+            UpdateImbueReminderForInventoryChange(false)
         end
     end
 end)
