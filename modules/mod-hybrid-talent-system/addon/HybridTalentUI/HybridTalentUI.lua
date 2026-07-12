@@ -233,6 +233,74 @@ local function GetSpellIcon(spellId)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
+
+local spellDescriptionCache = {}
+local scanTooltip
+
+local function GetSpellDescriptionFromTooltip(spellId)
+    if not CreateFrame or not UIParent then
+        return ""
+    end
+
+    if not scanTooltip then
+        scanTooltip = CreateFrame("GameTooltip", "HybridTalentUIScanTooltip", UIParent, "GameTooltipTemplate")
+        scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    end
+
+    scanTooltip:ClearLines()
+    if scanTooltip.SetHyperlink then
+        scanTooltip:SetHyperlink("spell:" .. spellId)
+    else
+        return ""
+    end
+
+    local lines = {}
+    for index = 2, scanTooltip:NumLines() do
+        local line = _G["HybridTalentUIScanTooltipTextLeft" .. index]
+        local text = line and line.GetText and line:GetText()
+        if text and text ~= "" then
+            table.insert(lines, text)
+        end
+    end
+
+    return table.concat(lines, " ")
+end
+
+local function GetClientSpellDescription(spellId)
+    spellId = tonumber(spellId or 0) or 0
+    if spellId <= 0 then
+        return ""
+    end
+
+    if spellDescriptionCache[spellId] ~= nil then
+        return spellDescriptionCache[spellId]
+    end
+
+    local description = ""
+    if type(GetSpellDescription) == "function" then
+        description = GetSpellDescription(spellId) or ""
+    end
+
+    if description == "" then
+        description = GetSpellDescriptionFromTooltip(spellId)
+    end
+
+    spellDescriptionCache[spellId] = description or ""
+    return spellDescriptionCache[spellId]
+end
+
+local function BuildSearchText(...)
+    local values = {}
+    for index = 1, select("#", ...) do
+        local value = select(index, ...)
+        if value ~= nil and value ~= "" then
+            table.insert(values, tostring(value))
+        end
+    end
+
+    return string.lower(table.concat(values, " "))
+end
+
 local function ShowSpellTooltip(owner, row)
     if not owner or not row then
         return
@@ -459,7 +527,7 @@ local function GetVisibleRows()
                 or (state.filter == "locked" and not row.canLearn and row.knownRank == 0)
 
             local searchMatch = search == ""
-                or string.find(string.lower(row.name or ""), search, 1, true)
+                or string.find(row.searchText or "", search, 1, true)
                 or string.find(string.lower(GetTalentTabName(row)), search, 1, true)
                 or string.find(tostring(row.talentId), search, 1, true)
                 or string.find(tostring(row.spellId), search, 1, true)
@@ -480,8 +548,7 @@ local function GetVisibleRows()
             or (state.filter == "locked" and not row.canLearn and not row.known)
 
         local searchMatch = search == ""
-            or string.find(string.lower(row.name or ""), search, 1, true)
-            or string.find(string.lower(row.description or ""), search, 1, true)
+            or string.find(row.searchText or "", search, 1, true)
             or string.find(tostring(row.spellId), search, 1, true)
 
         local classMatch = state.filter == "known" or row.classIndex == state.selectedClass
@@ -605,7 +672,8 @@ local function UpdateDetails()
     mainFrame.detailName:SetText(row.name)
     if state.mode == "talents" then
         mainFrame.detailMeta:SetText(GetTalentTabName(row) .. "  Row " .. (row.row + 1) .. "  Column " .. (row.col + 1))
-        mainFrame.detailDesc:SetText(GetTalentProgressText(row) .. "\n" .. GetTalentRulesText(row))
+        local talentDescription = row.description ~= "" and row.description or GetTalentRulesText(row)
+        mainFrame.detailDesc:SetText(GetTalentProgressText(row) .. "\n" .. talentDescription)
         mainFrame.detailReason:SetText(GetTalentStateText(row))
     else
         mainFrame.detailMeta:SetText("Spell ID " .. row.spellId .. "  Level " .. row.requiredLevel .. "  Cost " .. row.cost)
@@ -721,6 +789,8 @@ local function AddSpell(parts)
         description = parts[10] or "",
         reason = parts[11] or "",
     }
+    local clientDescription = GetClientSpellDescription(row.spellId)
+    row.searchText = BuildSearchText(row.name, row.description, clientDescription)
 
     if row.spellId > 0 and CLASS_NAMES[classIndex] then
         table.insert(state.rows, row)
@@ -743,6 +813,8 @@ local function AddTalent(parts)
         name = parts[12] or "",
         reason = parts[13] or "",
     }
+    row.description = GetClientSpellDescription(row.spellId)
+    row.searchText = BuildSearchText(row.name, row.description, GetTalentTabName(row))
 
     if row.talentId > 0 and row.spellId > 0 and CLASS_NAMES[classIndex] then
         table.insert(state.talents, row)

@@ -199,9 +199,13 @@ Candidate work:
 - Better empty states for filters.
 - Optional compact/dense view.
 - Better visual distinction for known, available, locked, and unaffordable rows.
+- Add optional suggested-pick helpers for new players, using lightweight curated tags such as melee, caster, pet, healing, survivability, weapon imbue, attack power, spell power, utility, and travel.
+- Let suggested-pick helpers explain why an option may fit a build, without restricting free-pick behavior or trying to become a full automated build planner.
 - Add a lightweight help/about panel with version and branch compatibility.
 
 Why this matters: the addon is already useful. Small UI polish can make it feel intentional and approachable for non-developers.
+
+Suggested-pick notes: free search and free-pick progression should remain the core design. A recommendation layer should be optional, transparent, and easy to ignore. The first version should probably be addon-side metadata and filters rather than server-side rules.
 
 ### 6. Playerbots Hybrid Awareness
 
