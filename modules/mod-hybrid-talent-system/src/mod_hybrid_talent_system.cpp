@@ -799,6 +799,26 @@ namespace
         return false;
     }
 
+    bool IsKnownHybridDependencyActionSpell(ObjectGuid::LowType guid, uint32 actionSpellId, uint32& dependencySpellId)
+    {
+        for (auto const& pair : SpellDependencyGrants)
+        {
+            for (uint32 grantedSpellId : pair.second)
+            {
+                if (!HasAnyHybridSpellDependencyGrant(guid, grantedSpellId))
+                    continue;
+
+                if (IsSameSpellChain(grantedSpellId, actionSpellId))
+                {
+                    dependencySpellId = grantedSpellId;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     void SaveHybridActionButtons(Player* player)
     {
         if (!player)
@@ -824,7 +844,8 @@ namespace
 
             uint32 managedSpellId = 0;
             if (!IsKnownHybridActionSpell(guid, actionButton->GetAction(), managedSpellId) &&
-                !IsKnownHybridTalentActionSpell(guid, actionButton->GetAction(), managedSpellId))
+                !IsKnownHybridTalentActionSpell(guid, actionButton->GetAction(), managedSpellId) &&
+                !IsKnownHybridDependencyActionSpell(guid, actionButton->GetAction(), managedSpellId))
             {
                 CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, spec, button);
                 continue;
@@ -860,6 +881,8 @@ namespace
                 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
             else if (IsKnownHybridTalentActionSpell(guid, spellId, talentSpellId))
                 bestSpellId = talentSpellId;
+            else if (HasAnyHybridSpellDependencyGrant(guid, spellId))
+                bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
             else
                 continue;
 

@@ -162,7 +162,9 @@ local IMBUE_REMINDER_NAMES = {
 local imbueReminderFrames = {}
 local imbueReminderPulse = 0
 local imbueReminderElapsed = 0
+local imbueReminderSettleRemaining = 0
 local IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS = 300
+local IMBUE_REMINDER_SETTLE_SECONDS = 6
 
 local STANCE_RELAXED_SPELLS = {
     [100] = "Charge",
@@ -1316,6 +1318,11 @@ local function UpdateImbueReminderFrame(handKey)
         return
     end
 
+    if imbueReminderSettleRemaining and imbueReminderSettleRemaining > 0 then
+        frame:Hide()
+        return
+    end
+
     local db = GetImbueReminderDB()
     local spellId = tonumber(GetImbueReminderSpellId(handKey))
     if not db.enabled or not spellId or not GetWeaponEnchantInfo then
@@ -1352,6 +1359,11 @@ end
 local function UpdateImbueReminder()
     UpdateImbueReminderFrame("main")
     UpdateImbueReminderFrame("off")
+end
+
+local function DelayImbueReminderRefresh(seconds)
+    imbueReminderSettleRemaining = math.max(imbueReminderSettleRemaining or 0, seconds or IMBUE_REMINDER_SETTLE_SECONDS)
+    UpdateImbueReminder()
 end
 
 local function DebugImbueReminder()
@@ -1621,7 +1633,16 @@ eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 eventFrame:RegisterEvent("UNIT_INVENTORY_CHANGED")
 eventFrame:SetScript("OnUpdate", function(_, elapsed)
-    imbueReminderElapsed = imbueReminderElapsed + (elapsed or 0)
+    elapsed = elapsed or 0
+    if imbueReminderSettleRemaining and imbueReminderSettleRemaining > 0 then
+        imbueReminderSettleRemaining = imbueReminderSettleRemaining - elapsed
+        if imbueReminderSettleRemaining <= 0 then
+            imbueReminderSettleRemaining = 0
+            UpdateImbueReminder()
+        end
+    end
+
+    imbueReminderElapsed = imbueReminderElapsed + elapsed
     if imbueReminderElapsed >= 10 then
         imbueReminderElapsed = 0
         UpdateImbueReminder()
@@ -1636,7 +1657,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         CreateOpenButton()
         CreateImbueReminderFrame("main")
         CreateImbueReminderFrame("off")
-        UpdateImbueReminder()
+        DelayImbueReminderRefresh(IMBUE_REMINDER_SETTLE_SECONDS)
         Print("loaded. Click the Hybrid button or use /hybridui.")
     elseif event == "PLAYER_LEVEL_UP" then
         state.loaded = false
@@ -1651,11 +1672,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             StoreLastImbueSpell(spellName, spellId)
         end
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
-        UpdateImbueReminder()
+        DelayImbueReminderRefresh(1.5)
     elseif event == "UNIT_INVENTORY_CHANGED" then
         local unit = ...
         if unit == "player" then
-            UpdateImbueReminder()
+            DelayImbueReminderRefresh(1.5)
         end
     end
 end)
