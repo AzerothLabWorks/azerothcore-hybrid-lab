@@ -705,6 +705,8 @@ namespace
             return;
 
         bool changed = false;
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        uint8 spec = player->GetActiveSpec();
         std::set<uint32> chainSpellIds;
         uint32 firstRank = GetFirstRankSpellId(spellId);
         for (uint32 currentSpellId = firstRank; currentSpellId; currentSpellId = sSpellMgr->GetNextSpellInChain(currentSpellId))
@@ -725,12 +727,16 @@ namespace
                     continue;
 
                 if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
+                {
+                    CharacterDatabase.Execute("REPLACE INTO character_hybrid_action (guid, spec, button, spell_id) VALUES ({}, {}, {}, {})",
+                        guid, spec, button, spellId);
                     changed = true;
+                }
             }
         }
 
         QueryResult result = CharacterDatabase.Query("SELECT button, action FROM character_action WHERE guid = {} AND spec = {} AND type = {}",
-            player->GetGUID().GetCounter(), player->GetActiveSpec(), ACTION_BUTTON_SPELL);
+            guid, spec, ACTION_BUTTON_SPELL);
 
         if (result)
         {
@@ -748,7 +754,11 @@ namespace
                     continue;
 
                 if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
+                {
+                    CharacterDatabase.Execute("REPLACE INTO character_hybrid_action (guid, spec, button, spell_id) VALUES ({}, {}, {}, {})",
+                        guid, spec, button, spellId);
                     changed = true;
+                }
             } while (result->NextRow());
         }
 
@@ -1782,6 +1792,15 @@ namespace
         }
     }
 
+    void RefreshNativeTalentPoints(Player* player)
+    {
+        if (!player)
+            return;
+
+        player->InitTalentForLevel();
+        player->SendTalentsInfoData(false);
+    }
+
     std::vector<uint32> GetHybridUiTalentIds()
     {
         std::vector<uint32> talentIds;
@@ -2246,8 +2265,9 @@ namespace
         }
 
         RemoveHybridTalentRanks(player, talentInfo);
-        player->learnSpell(spellId, false);
         SaveHybridTalent(guid, talentId, nextRank);
+        player->learnSpell(spellId, false);
+        RefreshNativeTalentPoints(player);
 
         ChatHandler(player->GetSession()).PSendSysMessage("{} learned at hybrid talent rank {}/{}.",
             spellInfo->SpellName[0], nextRank, maxRank);
@@ -2283,14 +2303,16 @@ namespace
             uint32 spellId = talentInfo->RankID[newRank - 1];
             if (spellId && sSpellMgr->GetSpellInfo(spellId))
             {
-                player->learnSpell(spellId, false);
                 SaveHybridTalent(guid, talentId, newRank);
+                player->learnSpell(spellId, false);
             }
             else
                 DeleteHybridTalent(guid, talentId);
         }
         else
             DeleteHybridTalent(guid, talentId);
+
+        RefreshNativeTalentPoints(player);
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(talentInfo->RankID[0]);
         ChatHandler(player->GetSession()).PSendSysMessage("{} hybrid talent rank unlearned. 1 hybrid talent point refunded.",
@@ -2333,6 +2355,7 @@ public:
         {
             RestoreHybridSpells(player);
             RestoreHybridTalents(player);
+            RefreshNativeTalentPoints(player);
             ScheduleHybridActionRestore(player);
         }
     }
@@ -2341,8 +2364,11 @@ public:
     {
         if (Enabled)
         {
+            SaveHybridActionButtons(player);
             RestoreHybridSpells(player);
             RestoreHybridTalents(player);
+            RefreshNativeTalentPoints(player);
+            SaveHybridActionButtons(player);
             ScheduleHybridActionRestore(player);
         }
     }
