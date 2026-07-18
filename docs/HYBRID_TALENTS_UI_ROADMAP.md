@@ -27,9 +27,9 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Area | State | Notes |
 |---|---|---|
 | Addon-first Hybrid UI | Live | `HybridTalentUI` provides the primary spell/talent interface with a movable launcher button and `/hybridui`. |
-| Spell browsing | Live | Class filters, search, availability filters, icons, native tooltips, known/available/locked states, learn, and unlearn are working. |
-| Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. |
-| Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, and use separate hybrid talent points. |
+| Spell browsing | Live | Class filters, availability filters, icons, native tooltips, known/available/locked states, learn, and unlearn are working. Search now includes names, IDs, server descriptions, and client tooltip descriptions. |
+| Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. Dependency-granted support spells such as Mend Pet are now included in hybrid action-bar persistence when tracked. |
+| Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, use separate hybrid talent points, and participate in tooltip-description search. |
 | Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, allow free picks across trees without native tree point requirements, and support dependency checks such as requiring Charge before Improved Charge. |
 | Talent UI clarity | In progress | Talent rows, details, and chat feedback show next rank, max-rank state, locked reasons, and free-pick rules more clearly. |
 | Progression clarity | Live | The addon shows when the next spell point and next talent point will be earned during leveling. |
@@ -38,6 +38,8 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
+| Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
+| Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth while preserving the work as a config-gated, higher-risk QA feature. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -57,9 +59,11 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 
 - Built custom addon-first spell UI.
 - Added class filters, search, status filters, pagination, icons, and native tooltips.
+- Expanded search so spells and talents can be found by client tooltip descriptions, not only names.
 - Added known spell filtering across all classes.
 - Added talent browsing and learning views.
 - Added movable Hybrid launcher button near the microbar.
+- Added optional Shaman weapon imbue reminder buttons with independent main-hand/off-hand memory, mixed imbue support, startup settle timing, and movable UI positions.
 - Moved user-facing addon distribution to `AzerothLabWorks/addons` on the matching dev branch.
 
 ### Spell And Talent Mechanics
@@ -72,6 +76,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added known/available/locked/unaffordable status handling.
 - Added action bar preservation for hybrid spells and talent-granted spells.
 - Added logic to respect intentionally removed action buttons.
+- Added action-bar persistence for tracked dependency-granted support spells, such as Mend Pet granted by Tame Beast.
 - Added stance requirement relaxation and Hybrid UI tooltip notes for selected Warrior abilities only: Charge, Intercept, Overpower, Mocking Blow, Revenge, Disarm, Shield Wall, Retaliation, Recklessness, Berserker Rage, Pummel, and Whirlwind.
 - Added dependency item packages, including automatic Shaman totem tool grants from spell data.
 
@@ -119,6 +124,15 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Verified Undead Hunter gameplay through natural leveling to 5, GM-assisted level 20 testing, Hunter talent selection, Tame Beast, pet combat, pet logout/login retention, and hybrid spell learning.
 - Verified Human Druid creation, starter gear, starter spells, level 2 auto spell learning, GM-assisted level 22 spell learning, Bear Form, Cat Form, default Night Elf druid form models, Hybrid Tame Beast, pet combat, and post-save logout/login retention.
 - Verified Gnome Shaman totem support and active Shaman spell retention across logout/login, including Lightning Shield and Flametongue Weapon.
+
+### QA Quality-Of-Life Prototypes
+
+- Added config-gated reagent-free casting for Hybrid learn-template spells.
+- Added QA client `Spell.dbc` reagent cleanup in `patch-z.mpq` so reagent tooltip text is removed for the tested hybrid spell surface.
+- Added config-gated Azeroth flying support and matching QA client patching so flying mounts work in Eastern Kingdoms and Kalimdor.
+- Added selected Warrior stance requirement relaxation on the server and matching client tooltip/DBC support for the disposable QA client.
+- Added Shaman weapon imbue reminders to Hybrid UI, including independent MH/OH reminders, mixed imbue support, and delayed startup checks to avoid false login reminders.
+- Added tracked dependency action-bar persistence so support spells such as Mend Pet remain on the action bar after relog once placed.
 
 ## Active Planning Lanes
 
@@ -216,6 +230,10 @@ Candidate work:
 - Keep Playerbots roadmap separate for LFG/world behavior.
 - Later, evaluate whether bots should learn or use hybrid spells.
 - Start with diagnostics and passive compatibility before giving bots custom hybrid progression.
+- Later, evaluate config-gated riding and flying skill grants for playerbots after player-facing Azeroth flying is stable.
+- Evaluate a conservative ground/flying mount grant set for bots, preferably level-appropriate and faction-safe.
+- Start with permission, skill, and mount availability only; avoid AI pathing or flight behavior changes until observation proves existing Playerbots movement can use it safely.
+- Keep old-world bot flying behind a QA-only config flag and validate travel, stuck handling, combat, regroup, follow, and teleport recovery behavior.
 
 Why this matters: bots already make the world feel alive. Hybrid-aware bots could be powerful, but it is a larger design problem and should wait until player progression is stable.
 
@@ -264,28 +282,37 @@ Candidate work:
 
 Why this matters: any-race/any-class support is central to class fantasy freedom, but it touches assumptions across both server and client.
 
-### 2. Custom Druid Form Appearances
+### 2. Backported Cosmetics And Visuals
 
-Goal: add custom Bear and Cat form appearances to a WotLK 3.3.5a server/client workflow, beginning with known-compatible form patches and later swapping in custom Ascension-inspired assets where rights and provenance are clear.
+Goal: explore cosmetic-only visual customization for a WotLK 3.3.5a server/client workflow, including custom Druid form appearances, wings, class-fantasy auras, weapon visuals, and other Ascension-inspired presentation features where rights and provenance are clear.
 
 Investigation:
 
+- Which cosmetic effects can be achieved with existing WotLK spell, aura, display, item, or model data.
+- Which later-expansion or custom cosmetic assets can realistically be backported into 3.3.5a-compatible formats.
+- Wings, back attachments, glow effects, class-fantasy auras, weapon visuals, and cosmetic shapeshift/display auras.
 - `SpellShapeshiftForm.dbc` rows for Bear, Dire Bear, and Cat.
 - `CreatureDisplayInfo.dbc` and `CreatureModelData.dbc` display/model linkage.
 - Existing WotLK druid form display IDs.
 - Where TrinityCore/AzerothCore applies shapeshift model IDs.
 - Whether form appearance in 3.3.5a is race, gender, hair, or skin dependent.
 - Client patch requirements for M2, skin, BLP, DBC edits, and MPQ packaging.
+- Whether cosmetic application should be managed through a future Hybrid UI cosmetics tab, server command, item, aura, or persisted character setting.
 
 Candidate work:
 
+- Start with a curated allowlist of existing WotLK cosmetic visuals before importing custom or later-expansion assets.
+- Add a future optional Hybrid UI cosmetics tab for browsing, searching, applying, and removing approved cosmetics.
 - Prototype with a known WotLK-compatible Legion/MoP druid form patch first.
 - Verify the full pipeline in the disposable client: MPQ load order, DBC edits, model display, shapeshift behavior, combat animations, logout/login persistence, and failure recovery.
 - Document the minimum DBC rows and file paths required for a clean patch.
 - Replace known-compatible prototype assets with custom assets only after the pipeline is understood.
 - Prefer config-gated server behavior if server-side shapeshift model selection needs adjustment.
+- Keep all imported asset work limited to the disposable QA client until the patch pipeline is proven safe.
 
-Why this matters: shapeshift appearance work is mostly a client data and asset pipeline risk, but it intersects with server-side form handling and class fantasy polish.
+Risk: medium to high. Some cosmetic visuals are harmless, but many spells or displays carry gameplay effects, scripts, model assumptions, animation gaps, or client-format risks.
+
+Why this matters: cosmetic progression can add a lot of class-fantasy flavor without changing combat balance, but backported visuals are mostly a client data and asset pipeline risk and may intersect with server-side aura, display, shapeshift, and persistence handling.
 
 ### 3. Targeted Ground AoE Usability
 
@@ -373,10 +400,12 @@ Goal: make temporary weapon enchants easier to maintain by visually reminding th
 
 Preferred first approach: addon/client-side detection in Hybrid Talent UI, without changing server spell mechanics.
 
+Current state: Shaman weapon imbue reminders are implemented and validated in QA for main hand, off hand, and mixed imbue use cases. The addon remembers the last imbue used per hand, supports independent reminder buttons, avoids startup false positives, and keeps off-hand reminders visible while main-hand reminders are resolved.
+
 Scope:
 
-- Start with Shaman weapon imbues such as Flametongue Weapon, Rockbiter Weapon, Windfury Weapon, Frostbrand Weapon, and Earthliving Weapon.
-- Add Rogue poisons after the Shaman path is proven, including main-hand and off-hand state where possible.
+- Shaman weapon imbues such as Flametongue Weapon, Rockbiter Weapon, Windfury Weapon, Frostbrand Weapon, and Earthliving Weapon are the proven first scope.
+- Add Rogue poisons next, including main-hand and off-hand state where possible.
 - Focus on temporary weapon enchants first, because normal buffs are already easier to solve with WeakAuras.
 - Keep the reminder optional and easy to disable through addon settings or a QA feature flag.
 
@@ -389,11 +418,11 @@ Investigation:
 
 Candidate work:
 
-- Build a first pass for Shaman imbues during Gnome Shaman playtesting.
-- Add a configurable warning threshold, such as missing or expiring within 60 seconds.
-- Prefer action-bar glow when the spell is present on a bar, with a small Hybrid UI indicator as fallback.
+- Treat Shaman imbues as the validated baseline and continue playtesting during normal Shaman leveling.
+- Add Rogue poisons after a Rogue or poison-using hybrid test character is ready.
+- Revisit action-bar glow only if the standalone reminder buttons feel insufficient.
 - Avoid server changes unless the client API cannot reliably detect the needed state.
-- Later expand to Rogue poisons and any other temporary weapon enchant families that matter for hybrid play.
+- Later expand to any other temporary weapon enchant families that matter for hybrid play.
 
 Risk: low to medium. This should be mostly addon-side, but action-bar glow behavior can be fragile across default bars, custom bars, stances, paging, dual wield, and temporary enchant edge cases.
 
@@ -404,6 +433,8 @@ Why this matters: weapon imbues and poisons are important class-fantasy maintena
 Goal: evaluate allowing flying mounts in Eastern Kingdoms and Kalimdor, similar to later expansions, to make old-world traversal smoother for solo hybrid play.
 
 Preferred first approach: server-side, config-gated QA experiment with no client patching unless testing proves the client needs help.
+
+Current state: Azeroth flying is implemented and working in the isolated QA server/client lane. The QA client patch removes the Outland/Northrend-only tooltip restriction for tested flying mounts, and the QA server allows old-world flying through the configured experiment path.
 
 Scope:
 
@@ -422,9 +453,10 @@ Investigation:
 
 Candidate work:
 
-- Prototype one normal flying mount in Elwynn Forest, Dun Morogh, Stormwind/Ironforge exterior boundaries, and a few open Kalimdor zones.
+- Continue playtesting old-world flying during normal leveling and travel.
 - Test zone transitions, hearth/teleport, death/ghost state, dismounting, landing, swimming, and logout/login while mounted or airborne.
 - Confirm old-world taxi paths, boats, zeppelins, battlegrounds, and instances still behave normally.
+- Later, evaluate playerbot riding/flying support only after player-controlled Azeroth flying is stable; keep bots out of the first validation pass.
 - Keep all changes reversible through config and document whether this should stay QA-only, become an optional dev feature, or be abandoned.
 
 Risk: medium to high. The client may render old-world flying movement, but pre-Cataclysm Azeroth was not built for player flight and may expose terrain holes, invisible walls, exploration gaps, or movement-validation assumptions.
@@ -463,36 +495,64 @@ Current preference:
 - Keep improving the current addon until a concrete limitation justifies a larger rewrite.
 - If we start a large UI rewrite, consider creating a separate branch.
 
+### Playerbot Riding And Azeroth Flying
+
+Potential value: make the QA world feel more alive by allowing playerbots to learn riding/flying skills and use selected mount spells, especially if old-world flying remains part of the hybrid experience.
+
+Risk:
+
+- Granting skills and mount spells is relatively contained, but bot movement, stuck handling, follow behavior, combat behavior, and regroup logic may not understand freeform old-world flying.
+- Bots using flying mounts in pre-Cataclysm Azeroth could expose terrain, navigation, and pathing assumptions faster than player-only testing.
+- A broad bot change could affect server performance or make debugging player-facing flight issues harder.
+
+Current preference:
+
+- Defer until the player-facing Azeroth flying lane has more playthrough validation.
+- If explored, start with a QA-only config flag that grants level-appropriate riding skills and a small mount list, with no AI pathing changes in the first pass.
+- Treat actual bot flight behavior as a separate higher-risk investigation after simple skill/mount availability proves harmless.
+
 ## Suggested Next Iterations
 
 Recommended order for the next few work sessions:
 
 1. **Roadmap and documentation refresh**
-   Keep current/future state accurate as QA findings move from prototype to validation.
+   Keep current/future state accurate as QA findings move from prototype to validation. Current refresh should capture description search, Shaman imbue reminders, dependency action-bar persistence, Azeroth flying, and the cosmetics/backport research lane.
 
 2. **QA any-race/any-class validation pass**
    First smoke pass is successful across pet, form, and totem paths. Keep natural playthrough validation running opportunistically, but do not block the next QA milestone on more race/class combinations.
 
-3. **Expanded reagent-free casting validation**
+3. **Hybrid UI suggested-pick helpers**
+   Add optional curated tags and recommendation hints so new players can discover useful spell/talent synergies without losing free-pick freedom.
+
+4. **Expanded reagent-free casting validation**
    Validate the expanded Hybrid learn-template scope across multiple class families, and confirm profession, crafting, item-created, and item-use reagent behavior remains protected.
 
-4. **Weapon imbue and poison reminder prototype**
-   Start addon-side with Shaman imbues during Gnome Shaman playtesting, then expand to Rogue poisons if the reminder model feels good.
+5. **Rogue poison reminder expansion**
+   Extend the proven Shaman imbue reminder model to Rogue poisons once a Rogue or poison-using hybrid character is ready for focused testing.
 
-5. **Azeroth flying unlock prototype**
-   Add a config-gated QA-only test for old-world flying, then validate movement, map, transport, death, logout/login, and protected-zone behavior.
+6. **Azeroth flying validation**
+   Continue old-world flying validation during normal play, especially movement, map, transport, death, logout/login, and protected-zone behavior.
 
-6. **Hybrid progression balance pass**
+7. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-7. **Talent UI clarity pass**
+8. **Targeted Ground AoE usability prototype**
+   Add a narrow, config-gated Rain of Fire proof of concept only after current addon-side work is stable.
+
+9. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
 
-8. **Class dependency package pass**
+10. **Class dependency package pass**
    Pick one class fantasy after Hunter pets and make it complete end to end.
 
-9. **Persistence/log cleanup pass**
+11. **Backported cosmetics research**
+   Start with existing WotLK-safe visuals and asset pipeline documentation before importing later-expansion/custom assets.
+
+12. **Persistence/log cleanup pass**
    Reduce recurring log noise and harden action-bar/spell restoration edge cases.
+
+13. **Playerbot riding/flying research**
+   Revisit after existing QA items and player-facing Azeroth flying validation. Start with config-gated riding skill and mount availability before considering any bot AI movement changes.
 
 ## Manual Test Checklist
 
