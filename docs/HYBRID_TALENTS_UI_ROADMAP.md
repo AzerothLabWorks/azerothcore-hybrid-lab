@@ -40,6 +40,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth while preserving the work as a config-gated, higher-risk QA feature. |
+| Companion auto-loot / Lootbot QoL | Planned QA prototype | Evaluate an Ascension-inspired companion or lootbot helper that auto-loots nearby eligible creature corpses while preserving normal loot ownership, quest, group, and economy rules. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -463,6 +464,39 @@ Risk: medium to high. The client may render old-world flying movement, but pre-C
 
 Why this matters: old-world traversal can be a major solo-play friction point, and a reversible QA feature could make hybrid leveling feel more modern without changing core class mechanics.
 
+### 7. Companion Auto-Loot / Lootbot QoL
+
+Goal: evaluate an Ascension-inspired quality-of-life helper where an active companion, pet, or future lootbot-style cosmetic can automatically loot nearby eligible creature corpses for the player.
+
+Preferred first approach: server-side, config-gated QA prototype with no client MPQ patching. Start with conservative rules and use normal server loot eligibility paths rather than bypassing ownership or reward checks.
+
+Scope:
+
+- Require an active player companion, controlled pet, or explicit future lootbot trigger before auto-looting starts.
+- Limit the first pass to nearby creature corpses the player is already eligible to loot.
+- Start out of combat only, with a short radius and a modest scan interval.
+- Protect group loot, roll prompts, boss loot, bind prompts, profession gathering, skinning, mining, herb nodes, chests, and item-created mechanics.
+- Keep all behavior disabled unless a QA config flag is enabled.
+
+Investigation:
+
+- Identify the safest server hooks for creature death, player update ticks, and loot eligibility checks.
+- Determine whether the existing loot APIs can transfer money/items using normal player loot paths without opening a client loot window.
+- Confirm quest item drops, party tagging, loot ownership, inventory-full behavior, corpse despawn timing, and playerbot interactions.
+- Decide whether the player-facing trigger should be any active companion, hunter/warlock pet only, a custom item/aura, or a future cosmetic lootbot.
+
+Candidate work:
+
+- Add config such as `Hybrid.CompanionAutoLoot.Enable = 0`, `Hybrid.CompanionAutoLoot.Radius = 10`, and `Hybrid.CompanionAutoLoot.OutOfCombatOnly = 1`.
+- Prototype with one conservative trigger, preferably an active controlled pet or companion-style summon.
+- Add debug logging or player chat feedback while QA testing so skipped corpses are understandable.
+- Validate during normal leveling with inventory near-full, quest drops active, pet dismissed/summoned, logout/login, mounts, flight paths, and party/bot nearby scenarios.
+- Decide after playtesting whether to keep it as a built-in QoL feature, tie it to a custom lootbot item/cosmetic, or defer it.
+
+Risk: medium. Loot is core gameplay and economy behavior, so the prototype must avoid bypassing ownership, group loot, quest handling, item prompts, and special corpse/container mechanics.
+
+Why this matters: solo hybrid play produces a lot of small corpse-looting friction, and a safe companion loot helper could make leveling feel smoother without changing combat balance.
+
 ## Later Experiments
 
 These are interesting but higher risk. They should not be mixed into normal incremental work. Any experiment in this section should start in the QA lane unless it is explicitly reclassified as normal development work.
@@ -521,37 +555,40 @@ Recommended order for the next few work sessions:
 2. **QA any-race/any-class validation pass**
    First smoke pass is successful across pet, form, and totem paths. Keep natural playthrough validation running opportunistically, but do not block the next QA milestone on more race/class combinations.
 
-3. **Hybrid UI suggested-pick helpers**
+3. **Companion auto-loot / Lootbot QoL prototype**
+   Add a conservative, config-gated server prototype that auto-loots nearby eligible creature corpses only when the player has an active companion, controlled pet, or future lootbot-style trigger.
+
+4. **Hybrid UI suggested-pick helpers**
    Add optional curated tags and recommendation hints so new players can discover useful spell/talent synergies without losing free-pick freedom.
 
-4. **Expanded reagent-free casting validation**
+5. **Expanded reagent-free casting validation**
    Validate the expanded Hybrid learn-template scope across multiple class families, and confirm profession, crafting, item-created, and item-use reagent behavior remains protected.
 
-5. **Rogue poison reminder expansion**
+6. **Rogue poison reminder expansion**
    Extend the proven Shaman imbue reminder model to Rogue poisons once a Rogue or poison-using hybrid character is ready for focused testing.
 
-6. **Azeroth flying validation**
+7. **Azeroth flying validation**
    Continue old-world flying validation during normal play, especially movement, map, transport, death, logout/login, and protected-zone behavior.
 
-7. **Hybrid progression balance pass**
+8. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-8. **Targeted Ground AoE usability prototype**
+9. **Targeted Ground AoE usability prototype**
    Add a narrow, config-gated Rain of Fire proof of concept only after current addon-side work is stable.
 
-9. **Talent UI clarity pass**
+10. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
 
-10. **Class dependency package pass**
+11. **Class dependency package pass**
    Pick one class fantasy after Hunter pets and make it complete end to end.
 
-11. **Backported cosmetics research**
+12. **Backported cosmetics research**
    Start with existing WotLK-safe visuals and asset pipeline documentation before importing later-expansion/custom assets.
 
-12. **Persistence/log cleanup pass**
+13. **Persistence/log cleanup pass**
    Reduce recurring log noise and harden action-bar/spell restoration edge cases.
 
-13. **Playerbot riding/flying research**
+14. **Playerbot riding/flying research**
    Revisit after existing QA items and player-facing Azeroth flying validation. Start with config-gated riding skill and mount availability before considering any bot AI movement changes.
 
 ## Manual Test Checklist
