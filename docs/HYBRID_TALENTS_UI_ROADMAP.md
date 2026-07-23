@@ -45,7 +45,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
 | QA race/class unlocks | First smoke pass successful | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Undead Hunter, Human Druid, and Gnome Shaman have passed initial gameplay smoke routes covering pets, shapeshifts, totems, starter spells, action bars, gear, and logout/login retention. |
-| QA client asset experiments | Active in disposable QA client | `C:\Games\WoW-3.3.5a-HD-Test\Data\patch-y.mpq` carries the original any-race/any-class DBC prototype. `patch-z.mpq` carries the current expanded QA client patch with any-race/any-class DBCs plus reagent tooltip cleanup for hybrid learn-template spells. |
+| QA client asset experiments | Active in disposable QA client | Local-only QA patches in `C:\Games\WoW-3.3.5a-HD-Test\Data` carry the any-race/any-class, starter outfit, reagent tooltip, Azeroth flying, and Warrior stance client prototypes. Generated MPQs and extracted client files are not committed to this repo; see `docs/CLIENT_PATCH_POLICY.md`. |
 
 ## Completed Milestones
 
@@ -134,6 +134,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added selected Warrior stance requirement relaxation on the server and matching client tooltip/DBC support for the disposable QA client.
 - Added Shaman weapon imbue reminders to Hybrid UI, including independent MH/OH reminders, mixed imbue support, and delayed startup checks to avoid false login reminders.
 - Added tracked dependency action-bar persistence so support spells such as Mend Pet remain on the action bar after relog once placed.
+- Added a client patch policy documenting that generated MPQs and extracted client files remain local-only QA artifacts and should not be committed or publicly redistributed.
 
 ## Active Planning Lanes
 

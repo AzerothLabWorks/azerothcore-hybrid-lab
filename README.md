@@ -20,6 +20,8 @@ This project is an independent educational and personal-use lab built around ope
 
 This repository does not include, distribute, or provide links to Blizzard game clients, game data, copyrighted assets, account services, or other proprietary game files. Users are responsible for supplying their own legally obtained client and for complying with any laws, licenses, and terms that apply in their jurisdiction.
 
+Client-side QA experiments may be documented for reproducibility, but generated MPQ patches and extracted client files are not distributed from this repository. See [docs/CLIENT_PATCH_POLICY.md](docs/CLIENT_PATCH_POLICY.md) for the client patch policy and local-only QA workflow.
+
 This project is intended for private learning, experimentation, and offline or personal server use. It is not intended to help operate, advertise, monetize, or provide support for public or third-party game servers.
 
 In short, this project:
