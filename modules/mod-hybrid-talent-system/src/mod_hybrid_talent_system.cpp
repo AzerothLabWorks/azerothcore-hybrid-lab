@@ -1,10 +1,13 @@
 #include "Chat.h"
+#include "CellImpl.h"
 #include "CommandScript.h"
 #include "Config.h"
 #include "Creature.h"
 #include "CreatureScript.h"
 #include "DBCStores.h"
 #include "DatabaseEnv.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
 #include "GossipDef.h"
 #include "Group.h"
 #include "Item.h"
@@ -27,6 +30,7 @@
 #include <cctype>
 #include <cstddef>
 #include <exception>
+#include <list>
 #include <map>
 #include <set>
 #include <sstream>
@@ -90,6 +94,11 @@ namespace
     bool MirrorPetBuffs = true;
     bool MirrorGroupBuffs = true;
     float MirrorGroupBuffRange = 100.0f;
+    bool CompanionAutoLoot = false;
+    float CompanionAutoLootRadius = 10.0f;
+    uint32 CompanionAutoLootIntervalMs = 1500;
+    bool CompanionAutoLootOutOfCombatOnly = true;
+    bool CompanionAutoLootRequireNonCombatCompanion = true;
     std::unordered_set<uint32> PetBuffSpellIds;
     std::map<uint32, std::set<uint32>> SpellDependencyGrants;
     std::map<uint32, std::map<uint32, uint32>> SpellDependencyItems;
@@ -97,6 +106,7 @@ namespace
     std::map<uint32, HybridSpellTemplate> SpellTemplates;
     std::vector<HybridSynergyTemplate> SynergyTemplates;
     std::map<ObjectGuid::LowType, uint32> PendingHybridActionRestoreMs;
+    std::map<ObjectGuid::LowType, uint32> CompanionAutoLootTimers;
 
     enum HybridActions : uint32
     {
@@ -940,6 +950,196 @@ namespace
         player->SendActionButtons(1);
     }
 
+    bool HasActiveCompanionAutoLootTrigger(Player* player)
+    {
+        if (!player)
+            return false;
+
+        if (!CompanionAutoLootRequireNonCombatCompanion)
+            return true;
+
+        Creature* companion = player->GetCompanionPet();
+        if (!companion && !player->GetCritterGUID().IsEmpty())
+            companion = ObjectAccessor::GetCreature(*player, player->GetCritterGUID());
+
+        return companion && companion->IsAlive() && companion->IsInWorld()
+            && companion->GetOwnerGUID() == player->GetGUID()
+            && (companion->IsCritter() || companion->GetCreatureType() == CREATURE_TYPE_NON_COMBAT_PET);
+    }
+
+    bool CanCompanionAutoLootCreature(Player* player, Creature* creature)
+    {
+        if (!player || !creature)
+            return false;
+
+        if (!creature->isDead() || creature->IsAlive() || !creature->IsWithinDistInMap(player, CompanionAutoLootRadius))
+            return false;
+
+        if (!creature->IsDamageEnoughForLootingAndReward() || creature->IsLootRewardDisabled())
+            return false;
+
+        if (player->HasPendingBind())
+            return false;
+
+        if (!player->isAllowedToLoot(creature))
+            return false;
+
+        Loot* loot = &creature->loot;
+        if (!loot || loot->isLooted() || loot->loot_type == LOOT_SKINNING || loot->loot_type == LOOT_PICKPOCKETING)
+            return false;
+
+        if (!loot->gold && !loot->hasItemForAll() && !loot->hasItemFor(player))
+            return false;
+
+        return true;
+    }
+
+    void CompanionAutoLootMoney(Player* player, Loot* loot)
+    {
+        if (!player || !loot || !loot->gold)
+            return;
+
+        uint32 gold = loot->gold;
+        sScriptMgr->OnPlayerBeforeLootMoney(player, loot);
+        loot->NotifyMoneyRemoved();
+
+        if (Group* group = player->GetGroup())
+        {
+            std::vector<Player*> playersNear;
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            {
+                Player* member = itr->GetSource();
+                if (member && player->IsAtLootRewardDistance(member))
+                    playersNear.push_back(member);
+            }
+
+            if (!playersNear.empty())
+            {
+                uint32 goldPerPlayer = uint32(gold / playersNear.size());
+                for (Player* member : playersNear)
+                {
+                    member->ModifyMoney(goldPerPlayer);
+                    member->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_MONEY, goldPerPlayer);
+
+                    WorldPacket data(SMSG_LOOT_MONEY_NOTIFY, 4 + 1);
+                    data << uint32(goldPerPlayer);
+                    data << uint8(playersNear.size() > 1 ? 0 : 1);
+                    member->SendDirectMessage(&data);
+                }
+            }
+        }
+        else
+        {
+            sScriptMgr->OnPlayerAfterCreatureLootMoney(player);
+            player->ModifyMoney(gold);
+            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_MONEY, gold);
+
+            WorldPacket data(SMSG_LOOT_MONEY_NOTIFY, 4 + 1);
+            data << uint32(gold);
+            data << uint8(1);
+            player->SendDirectMessage(&data);
+        }
+
+        sScriptMgr->OnLootMoney(player, gold);
+        loot->gold = 0;
+    }
+
+    bool CompanionAutoLootItems(Player* player, Creature* creature)
+    {
+        if (!player || !creature)
+            return false;
+
+        Loot* loot = &creature->loot;
+        bool lootedAny = false;
+        ObjectGuid previousLootGuid = player->GetLootGUID();
+        player->SetLootGUID(creature->GetGUID());
+
+        uint32 maxSlot = loot->GetMaxSlotInLootFor(player);
+        for (uint32 slot = 0; slot < maxSlot; ++slot)
+        {
+            LootItem* lootItem = loot->LootItemInSlot(slot, player);
+            if (!lootItem || lootItem->is_looted || lootItem->is_blocked || !lootItem->AllowedForPlayer(player, loot->sourceWorldObjectGUID))
+                continue;
+
+            // In grouped play, avoid auto-claiming items that should go through roll or master-loot decisions.
+            if (player->GetGroup() && !lootItem->is_underthreshold && !lootItem->freeforall && !lootItem->rollWinnerGUID)
+                continue;
+
+            InventoryResult msg = EQUIP_ERR_OK;
+            LootItem* stored = player->StoreLootItem(static_cast<uint8>(slot), loot, msg);
+            if (stored && msg == EQUIP_ERR_OK)
+                lootedAny = true;
+            else if (msg != EQUIP_ERR_OK)
+                break;
+        }
+
+        player->SetLootGUID(previousLootGuid);
+        return lootedAny;
+    }
+
+    void CleanupCompanionAutoLootCreature(Player* player, Creature* creature)
+    {
+        if (!player || !creature)
+            return;
+
+        Loot* loot = &creature->loot;
+        if (!loot->isLooted())
+            return;
+
+        creature->AllLootRemovedFromCorpse();
+        creature->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+        loot->RemoveLooter(player->GetGUID());
+        loot->clear();
+    }
+
+    bool TryCompanionAutoLootCreature(Player* player, Creature* creature)
+    {
+        if (!CanCompanionAutoLootCreature(player, creature))
+            return false;
+
+        Loot* loot = &creature->loot;
+        CompanionAutoLootMoney(player, loot);
+        bool lootedAny = CompanionAutoLootItems(player, creature);
+        CleanupCompanionAutoLootCreature(player, creature);
+        return lootedAny || loot->isLooted();
+    }
+
+    void ProcessCompanionAutoLoot(Player* player, uint32 diff)
+    {
+        if (!player || !CompanionAutoLoot)
+            return;
+
+        ObjectGuid::LowType guid = player->GetGUID().GetCounter();
+        uint32& timer = CompanionAutoLootTimers[guid];
+        if (timer > diff)
+        {
+            timer -= diff;
+            return;
+        }
+
+        timer = CompanionAutoLootIntervalMs;
+
+        if (!player->IsInWorld() || !player->IsAlive() || player->GetLootGUID())
+            return;
+
+        if (CompanionAutoLootOutOfCombatOnly && player->IsInCombat())
+            return;
+
+        if (!HasActiveCompanionAutoLootTrigger(player))
+            return;
+
+        std::list<Creature*> creatures;
+        Acore::AllWorldObjectsInRange check(player, CompanionAutoLootRadius);
+        Acore::CreatureListSearcher<Acore::AllWorldObjectsInRange> searcher(player, creatures, check);
+        Cell::VisitObjects(player, searcher, CompanionAutoLootRadius);
+
+        for (Creature* creature : creatures)
+        {
+            if (TryCompanionAutoLootCreature(player, creature))
+                break;
+        }
+    }
+
     void RemoveHybridActionButtons(Player* player, uint32 spellId)
     {
         if (!player)
@@ -1338,6 +1538,11 @@ namespace
         MirrorPetBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorPetBuffs", true);
         MirrorGroupBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorGroupBuffs", true);
         MirrorGroupBuffRange = sConfigMgr->GetOption<float>("HybridTalentSystem.MirrorGroupBuffRange", 100.0f);
+        CompanionAutoLoot = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.Enable", false);
+        CompanionAutoLootRadius = std::clamp(sConfigMgr->GetOption<float>("HybridTalentSystem.CompanionAutoLoot.Radius", 10.0f), 1.0f, 40.0f);
+        CompanionAutoLootIntervalMs = std::clamp<uint32>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.CompanionAutoLoot.IntervalMs", 1500), 250, 10000);
+        CompanionAutoLootOutOfCombatOnly = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.OutOfCombatOnly", true);
+        CompanionAutoLootRequireNonCombatCompanion = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.RequireNonCombatCompanion", true);
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
@@ -2344,7 +2549,7 @@ public:
 class HybridTalentPlayerScript : public PlayerScript
 {
 public:
-    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEVEL_CHANGED, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_SAVE, PLAYERHOOK_ON_SPELL_CAST }) { }
+    HybridTalentPlayerScript() : PlayerScript("HybridTalentPlayerScript", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEVEL_CHANGED, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_SAVE, PLAYERHOOK_ON_SPELL_CAST, PLAYERHOOK_ON_LOGOUT }) { }
 
     void OnPlayerLogin(Player* player) override
     {
@@ -2376,7 +2581,10 @@ public:
     void OnPlayerUpdate(Player* player, uint32 diff) override
     {
         if (Enabled)
+        {
             ProcessHybridActionRestore(player, diff);
+            ProcessCompanionAutoLoot(player, diff);
+        }
     }
 
     void OnPlayerSave(Player* player) override
@@ -2388,6 +2596,14 @@ public:
     void OnPlayerSpellCast(Player* player, Spell* spell, bool /*skipCheck*/) override
     {
         MirrorBuffToPetAndGroup(player, spell);
+    }
+
+    void OnPlayerLogout(Player* player) override
+    {
+        if (!player)
+            return;
+
+        CompanionAutoLootTimers.erase(player->GetGUID().GetCounter());
     }
 };
 

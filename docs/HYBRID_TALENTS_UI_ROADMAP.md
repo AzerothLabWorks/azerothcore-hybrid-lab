@@ -40,7 +40,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth while preserving the work as a config-gated, higher-risk QA feature. |
-| Companion auto-loot / Lootbot QoL | Planned QA prototype | Evaluate an Ascension-inspired companion or lootbot helper that auto-loots nearby eligible creature corpses while preserving normal loot ownership, quest, group, and economy rules. |
+| Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. Multiple corpses are handled one at a time, grouped bot play is supported through normal loot eligibility, and protected roll/master-loot behavior is avoided. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -467,24 +467,32 @@ Why this matters: old-world traversal can be a major solo-play friction point, a
 
 ### 7. Companion Auto-Loot / Lootbot QoL
 
-Goal: evaluate an Ascension-inspired quality-of-life helper where an active companion, pet, or future lootbot-style cosmetic can automatically loot nearby eligible creature corpses for the player.
+Goal: evaluate an Ascension-inspired quality-of-life helper where an active non-combat companion/minipet can automatically loot nearby eligible creature corpses for the player.
 
-Preferred first approach: server-side, config-gated QA prototype with no client MPQ patching. Start with conservative rules and use normal server loot eligibility paths rather than bypassing ownership or reward checks.
+Current state: implemented and playtest-stable in QA. The feature is server-side, config-gated, requires an active non-combat companion by default, and does not require client MPQ patching.
 
 Scope:
 
-- Require an active player companion, controlled pet, or explicit future lootbot trigger before auto-looting starts.
+- Require an active player non-combat companion/minipet before auto-looting starts.
 - Limit the first pass to nearby creature corpses the player is already eligible to loot.
-- Start out of combat only, with a short radius and a modest scan interval.
-- Protect group loot, roll prompts, boss loot, bind prompts, profession gathering, skinning, mining, herb nodes, chests, and item-created mechanics.
+- Run out of combat only, with a short radius and a modest scan interval.
+- Support grouped bot play through normal loot eligibility checks while avoiding auto-claim of protected roll/master-loot threshold items.
+- Protect boss loot, bind prompts, profession gathering, skinning, mining, herb nodes, chests, and item-created mechanics.
 - Keep all behavior disabled unless a QA config flag is enabled.
 
-Investigation:
+Validation:
 
-- Identify the safest server hooks for creature death, player update ticks, and loot eligibility checks.
-- Determine whether the existing loot APIs can transfer money/items using normal player loot paths without opening a client loot window.
-- Confirm quest item drops, party tagging, loot ownership, inventory-full behavior, corpse despawn timing, and playerbot interactions.
-- Decide whether the player-facing trigger should be any active companion, hunter/warlock pet only, a custom item/aura, or a future cosmetic lootbot.
+- Confirmed minipet-triggered looting works during normal play.
+- Confirmed multiple nearby corpses are looted one at a time.
+- Confirmed the helper keeps working when the visual companion is resting or away from the corpse, because the radius is anchored to the player.
+- Confirmed grouped bot play can be supported without disabling the helper.
+
+Remaining watch items:
+
+- Quest item drops.
+- Full bags.
+- Uncommon/rare roll-threshold loot in groups.
+- Named mobs and dungeon/boss loot.
 
 Candidate work:
 
@@ -556,8 +564,8 @@ Recommended order for the next few work sessions:
 2. **QA any-race/any-class validation pass**
    First smoke pass is successful across pet, form, and totem paths. Keep natural playthrough validation running opportunistically, but do not block the next QA milestone on more race/class combinations.
 
-3. **Companion auto-loot / Lootbot QoL prototype**
-   Add a conservative, config-gated server prototype that auto-loots nearby eligible creature corpses only when the player has an active companion, controlled pet, or future lootbot-style trigger.
+3. **Rogue poison reminder expansion**
+   Extend the proven Shaman imbue reminder model to Rogue poisons once a Rogue or poison-using hybrid character is ready for focused testing.
 
 4. **Hybrid UI suggested-pick helpers**
    Add optional curated tags and recommendation hints so new players can discover useful spell/talent synergies without losing free-pick freedom.
@@ -565,8 +573,8 @@ Recommended order for the next few work sessions:
 5. **Expanded reagent-free casting validation**
    Validate the expanded Hybrid learn-template scope across multiple class families, and confirm profession, crafting, item-created, and item-use reagent behavior remains protected.
 
-6. **Rogue poison reminder expansion**
-   Extend the proven Shaman imbue reminder model to Rogue poisons once a Rogue or poison-using hybrid character is ready for focused testing.
+6. **Companion auto-loot validation**
+   Continue playthrough validation for quest drops, full bags, grouped loot, named mobs, and dungeon loot.
 
 7. **Azeroth flying validation**
    Continue old-world flying validation during normal play, especially movement, map, transport, death, logout/login, and protected-zone behavior.

@@ -94,3 +94,18 @@ HybridTalentSystem.SpellDependencyItems = ""
 
 # Learn synergy reward spells when requirements are met.
 HybridTalentSystem.EnableSynergies = 1
+
+# QA quality-of-life prototype: automatically loot nearby eligible creature
+# corpses while the player has an active non-combat companion/minipet.
+#
+# The first pass is intentionally conservative:
+# - disabled by default
+# - creature corpses only
+# - out of combat by default
+# - uses normal loot eligibility and avoids auto-claiming protected group-roll/master-loot items
+# - does not touch skinning, chests, gathering nodes, or item-created loot
+HybridTalentSystem.CompanionAutoLoot.Enable = 0
+HybridTalentSystem.CompanionAutoLoot.Radius = 10
+HybridTalentSystem.CompanionAutoLoot.IntervalMs = 1500
+HybridTalentSystem.CompanionAutoLoot.OutOfCombatOnly = 1
+HybridTalentSystem.CompanionAutoLoot.RequireNonCombatCompanion = 1
