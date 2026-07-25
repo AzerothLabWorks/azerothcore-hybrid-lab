@@ -40,6 +40,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth while preserving the work as a config-gated, higher-risk QA feature. |
+| Targeted ground AoE usability | Active in QA | Rain of Fire validated the client/server pattern: client DBC marks selected ground spells as unit-targetable while server config snapshots the selected target position as the spell destination. Expanded player spell-family testing is active. |
 | Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. Multiple corpses are handled one at a time, grouped bot play is supported through normal loot eligibility, and protected roll/master-loot behavior is avoided. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
@@ -320,11 +321,34 @@ Why this matters: cosmetic progression can add a lot of class-fantasy flavor wit
 
 Goal: allow selected ground-targeted hybrid spells to cast at the current target's position instead of requiring manual ground targeting.
 
+Current state: active in QA. Rain of Fire proved the required client/server pattern after an initial unsafe DBC attempt was corrected. The working approach keeps each spell's normal dynamic/destination effect behavior intact, but patches the disposable QA client's `Spell.dbc` so selected spell rows send a unit target. The QA server then uses the configured spell allowlist to snapshot the selected unit's position as the destination at cast start.
+
 Scope:
 
-- Start with one proof-of-concept spell, probably Rain of Fire.
 - Apply only to explicit spell IDs listed in a QA config option.
-- Limit the first pass to player-cast hybrid spells, not creatures, scripts, bots, or all ground-targeted spells globally.
+- Limit the feature to player-facing spell families, not creatures, scripts, bots, engineering items, quest spells, or all destination-targeted spells globally.
+- Keep normal ground-targeting behavior for every spell not explicitly configured and client-patched.
+
+Current QA-tested pattern:
+
+- Server feature flag: `Hybrid.TargetGroundAtTarget.Enable = 1`
+- Server allowlist: `Hybrid.TargetGroundAtTarget.Spells`
+- Client patch: disposable QA `patch-z.mpq` updates selected `Spell.dbc` rows to use `Targets = 2` while preserving original effect targeting such as `TARGET_DEST_DYNOBJ_ENEMY`.
+- Validated proof of concept: Rain of Fire casts at the selected hostile target position without a ground-target prompt and ends normally when channeling ends.
+
+Expanded QA spell-family scope now under test:
+
+- Mage: Blizzard and Flamestrike.
+- Warlock: Rain of Fire and Shadowfury.
+- Hunter: Volley.
+- Druid: Hurricane and Force of Nature.
+- Death Knight: Death and Decay.
+- Priest: Mass Dispel.
+
+Special-case follow-up:
+
+- Flare should probably not use hostile-target placement. Preferred future behavior is a separate caster-position path so Flare can drop at the player's feet without requiring an enemy target.
+- Track this separately from enemy-targeted AoE, likely with a future config such as `Hybrid.TargetGroundAtCaster.Spells = "1543"`.
 
 Investigation:
 
@@ -333,14 +357,16 @@ Investigation:
 - Whether the spell should cast at the selected target, target-of-target, or current hostile unit only.
 - How line of sight, range, map, phase, transport, and indoor/outdoor checks behave with synthesized destination coordinates.
 - Whether Playerbots, scripted boss spells, or spell scripts use the same path and could be affected.
+- Whether each spell family should use enemy-target position, caster position, or remain manual ground-target only.
 
 Candidate work:
 
-- Add an opt-in config such as `Hybrid.TargetedGroundAoe.Spells = 5740`.
-- Convert the selected unit target position into a destination only for configured spell IDs.
-- Preserve normal ground-targeting behavior for every spell not explicitly configured.
-- Add logging or debug feedback during QA so misfires are easy to diagnose.
-- Build manual tests for normal Rain of Fire casting, configured target-position casting, no-target failure, invalid-target failure, line-of-sight/range failure, bot casting, and scripted ground AoE spells.
+- Continue testing the expanded player spell-family allowlist across multiple characters.
+- Validate channeled spells, instant spells, persistent area auras, summoned ground effects, and triggered damage ticks separately.
+- Confirm no-target, invalid-target, out-of-range, line-of-sight, dead target, moving target, and despawned target behavior.
+- Remove or split out any spell that feels awkward with enemy-target placement, starting with Flare.
+- Add a separate caster-position path only if the Flare use case stays desirable after more testing.
+- Document the final client patch rows and server config together before considering promotion.
 
 Risk: medium to high. Ground-target spells are a shared core mechanic, so this must stay narrow, opt-in, and covered by regression checks before any promotion.
 
@@ -582,8 +608,8 @@ Recommended order for the next few work sessions:
 8. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-9. **Targeted Ground AoE usability prototype**
-   Add a narrow, config-gated Rain of Fire proof of concept only after current addon-side work is stable.
+9. **Targeted Ground AoE usability validation**
+   Rain of Fire proved the working client/server pattern. Continue testing the expanded player spell-family allowlist, and split Flare into a separate caster-position follow-up if enemy-target placement feels wrong.
 
 10. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
