@@ -37,6 +37,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
+| Multi-resource hybrid support | Planning | Cross-class builds may learn spells that assume mana, rage, energy, combo points, runic power, stance, form, weapon, or pet state. This needs a dedicated QA pass so abilities such as Sinister Strike on non-Rogue classes are usable without breaking native class resource rules. |
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth while preserving the work as a config-gated, higher-risk QA feature. |
@@ -190,7 +191,24 @@ Candidate work:
 
 Why this matters: Tame Beast showed that one iconic spell often needs a supporting kit. Other class fantasies may need similar packages.
 
-### 4. Stability And Persistence Hardening
+### 4. Multi-Resource Hybrid Support
+
+Goal: make learned hybrid spells usable when they depend on a resource or class state the player's native class does not normally have.
+
+Candidate work:
+
+- Test Rogue energy abilities such as Sinister Strike on non-Rogue classes.
+- Test combo point builders and finishers on classes that do not normally use Rogue/Druid combo-point flows.
+- Test Warrior rage abilities on mana or energy classes.
+- Test Death Knight runic power assumptions if DK abilities become part of normal hybrid progression.
+- Review mana, rage, energy, runic power, combo points, stance, form, weapon, pet, and shapeshift requirements separately instead of treating all restrictions as one switch.
+- Prefer narrow, spell-family-specific fixes over global resource removal.
+- Keep each relaxation config-gated where possible, with QA-only defaults until playtesting proves it is stable.
+- Add Hybrid UI notes for spells that require a special resource or where QA behavior intentionally differs from stock WotLK.
+
+Why this matters: free spell learning only feels good if learned spells can actually be used. Resource and class-state assumptions are core gameplay rules, so this needs careful, targeted work rather than broad bypasses.
+
+### 5. Stability And Persistence Hardening
 
 Goal: reduce edge-case bugs after relog, death, reset, unlearn, or server restart.
 
@@ -205,7 +223,7 @@ Candidate work:
 
 Why this matters: this project touches core assumptions in AzerothCore. Persistence bugs are the ones players notice most.
 
-### 5. Addon Polish
+### 6. Addon Polish
 
 Goal: keep the current lightweight addon-first approach but make it feel cleaner.
 
@@ -224,7 +242,7 @@ Why this matters: the addon is already useful. Small UI polish can make it feel 
 
 Suggested-pick notes: free search and free-pick progression should remain the core design. A recommendation layer should be optional, transparent, and easy to ignore. The first version should probably be addon-side metadata and filters rather than server-side rules.
 
-### 6. Playerbots Hybrid Awareness
+### 7. Playerbots Hybrid Awareness
 
 Goal: eventually let bots interact better with the custom hybrid world.
 
@@ -580,6 +598,29 @@ Current preference:
 - If explored, start with a QA-only config flag that grants level-appropriate riding skills and a small mount list, with no AI pathing changes in the first pass.
 - Treat actual bot flight behavior as a separate higher-risk investigation after simple skill/mount availability proves harmless.
 
+### Original Hybrid Synergy And Enchant System
+
+Potential value: create deeper buildcraft, similar in spirit to Ascension-style classless synergy, while keeping the design original to this project.
+
+Candidate direction:
+
+- Add curated build tags such as melee, caster, pet, dot, burst, sustain, healing, shield, weapon imbue, poison, holy, fire, frost, nature, shadow, rage, energy, and mana.
+- Tune selected talents so they support hybrid builds instead of assuming a pure original class context.
+- Explore an original "hybrid enchant" or "mystic enchant-inspired" module that grants build-defining passive effects through custom items, auras, account unlocks, or Hybrid UI selections.
+- Use broad gameplay inspiration only. Do not copy third-party database rows, text, icons, assets, or exact effect packages.
+- Start with a small hand-authored proof of concept rather than importing a large ruleset.
+
+Risk:
+
+- Deeper synergy systems can quickly become balance-heavy and hard to explain.
+- Imported or copied data/assets would create legal, provenance, and support concerns.
+- Passive effects may interact with spell scripts, auras, pets, and item procs in surprising ways.
+
+Current preference:
+
+- Keep this as a later-stage QA design lane until baseline hybrid spell/talent usability, multi-resource support, persistence, and class dependency packages are more stable.
+- If we pursue it seriously, consider a separate planning chat or branch so the large design work does not obscure active QA bug fixing.
+
 ## Suggested Next Iterations
 
 Recommended order for the next few work sessions:
@@ -608,23 +649,29 @@ Recommended order for the next few work sessions:
 8. **Hybrid progression balance pass**
    Review point gain, costs, unlock pacing, and early-level feel.
 
-9. **Targeted Ground AoE usability validation**
+9. **Multi-resource hybrid support pass**
+   Validate whether learned abilities that require energy, rage, combo points, runic power, stance, form, weapon, or pet state are usable on cross-class builds, starting with concrete examples such as Sinister Strike on non-Rogue classes.
+
+10. **Targeted Ground AoE usability validation**
    Rain of Fire proved the working client/server pattern. Continue testing the expanded player spell-family allowlist, and split Flare into a separate caster-position follow-up if enemy-target placement feels wrong.
 
-10. **Talent UI clarity pass**
+11. **Talent UI clarity pass**
    Improve learned rank, dependency, and locked-state messaging.
 
-11. **Class dependency package pass**
+12. **Class dependency package pass**
    Pick one class fantasy after Hunter pets and make it complete end to end.
 
-12. **Backported cosmetics research**
+13. **Backported cosmetics research**
    Start with existing WotLK-safe visuals and asset pipeline documentation before importing later-expansion/custom assets.
 
-13. **Persistence/log cleanup pass**
+14. **Persistence/log cleanup pass**
    Reduce recurring log noise and harden action-bar/spell restoration edge cases.
 
-14. **Playerbot riding/flying research**
+15. **Playerbot riding/flying research**
    Revisit after existing QA items and player-facing Azeroth flying validation. Start with config-gated riding skill and mount availability before considering any bot AI movement changes.
+
+16. **Original hybrid synergy/enchant planning**
+   Explore original Ascension-inspired buildcraft concepts after the safer resource, dependency, and persistence work is stable.
 
 ## Manual Test Checklist
 
