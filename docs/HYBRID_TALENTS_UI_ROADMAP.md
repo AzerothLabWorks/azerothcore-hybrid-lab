@@ -37,7 +37,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
-| Multi-resource hybrid support | Planning | Cross-class builds may learn spells that assume mana, rage, energy, combo points, runic power, stance, form, weapon, or pet state. This needs a dedicated QA pass so abilities such as Sinister Strike on non-Rogue classes are usable without breaking native class resource rules. |
+| Multi-resource hybrid support | Live in QA | QA can grant baseline mana, energy, and rage pools through `Hybrid.Resources.*` config so cross-class spells have their expected resource pools available. Ongoing playtesting should validate edge cases such as Rogue abilities on non-Rogues and Warrior abilities on caster classes. |
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth. Server-side QA support now also permits Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle. These starter zones remain a known client-terrain edge case: mounting/flying works, but movement can feel constrained, so terrain/ADT patching is deferred as too risky for now. |
@@ -104,6 +104,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added Shaman totem item dependency support so hybrid totem spells can grant their required Earth, Fire, Water, or Air totem tool items.
 - Added Shaman totem model fallback support so hybrid totems cast by non-Shaman races render as valid Dwarf or Orc totems instead of missing-model placeholders.
 - Added Rogue dependency packages: Stealth grants Pick Pocket, Sap, and Pick Lock, while Poisons grants Instant Poison as a starter poison application.
+- Added Blood Elf Warrior startup support so QA-created Blood Elf Warriors receive Arcane Torrent through player creation spell/action data.
 
 ### QA Environment
 
