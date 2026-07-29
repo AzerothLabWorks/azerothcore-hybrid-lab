@@ -44,6 +44,8 @@ The QA branch currently tracks several experiments that may require a local clie
 - Azeroth flying tooltip and client-side mount restriction cleanup.
 - Selected Warrior stance tooltip/client data cleanup.
 
+Known QA finding: Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle can be permitted server-side for flying, but local `AreaTable.dbc` flyable-flag experiments did not fully remove the client movement constraint in those zones. Further work would likely require terrain/ADT investigation and is deferred because it carries higher risk than the current QA client patch model.
+
 These are documented so the work can be understood and reproduced by someone using their own legally obtained client copy. The patch binaries themselves should remain local unless a separate private distribution decision is made with the related IP risk understood.
 
 ## Future Installer Guidance
