@@ -766,6 +766,11 @@ core_patch_already_present() {
       [[ -f "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp" ]] || return 1
       grep -q "!HasSpell(action) && !IsHybridManagedSpell" "$SERVER_DIR/src/server/game/Entities/Player/Player.cpp"
       ;;
+    0015-hybrid-melee-auto-attack-recovery.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Spells/Spell.cpp" ]] || return 1
+      grep -q "melee-class player spells should keep white swings active" "$SERVER_DIR/src/server/game/Spells/Spell.cpp" && \
+        grep -q "manual attack should recover" "$SERVER_DIR/src/server/game/Handlers/CombatHandler.cpp"
+      ;;
     *)
       return 1
       ;;

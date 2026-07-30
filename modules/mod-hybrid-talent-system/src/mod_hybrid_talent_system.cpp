@@ -99,6 +99,7 @@ namespace
     uint32 CompanionAutoLootIntervalMs = 1500;
     bool CompanionAutoLootOutOfCombatOnly = true;
     bool CompanionAutoLootRequireNonCombatCompanion = true;
+    bool CompanionAutoLootPrioritizePlayerInGroups = false;
     std::unordered_set<uint32> PetBuffSpellIds;
     std::map<uint32, std::set<uint32>> SpellDependencyGrants;
     std::map<uint32, std::map<uint32, uint32>> SpellDependencyItems;
@@ -839,6 +840,42 @@ namespace
         return false;
     }
 
+    bool IsKnownTemplateActionSpell(Player const* player, uint32 actionSpellId, uint32& templateSpellId)
+    {
+        if (!player)
+            return false;
+
+        for (auto const& pair : SpellTemplates)
+        {
+            uint32 spellId = pair.first;
+            if (!IsSameSpellChain(spellId, actionSpellId))
+                continue;
+
+            if (!PlayerHasSpellInChain(player, spellId))
+                continue;
+
+            templateSpellId = spellId;
+            return true;
+        }
+
+        return false;
+    }
+
+    bool PlayerHasActionSpell(Player* player, uint32 spellId)
+    {
+        if (!player)
+            return false;
+
+        for (uint8 button = 0; button < MAX_ACTION_BUTTONS; ++button)
+        {
+            ActionButton const* actionButton = player->GetActionButton(button);
+            if (actionButton && actionButton->GetType() == ACTION_BUTTON_SPELL && actionButton->GetAction() == spellId)
+                return true;
+        }
+
+        return false;
+    }
+
     void SaveHybridActionButtons(Player* player)
     {
         if (!player)
@@ -865,7 +902,8 @@ namespace
             uint32 managedSpellId = 0;
             if (!IsKnownHybridActionSpell(guid, actionButton->GetAction(), managedSpellId) &&
                 !IsKnownHybridTalentActionSpell(guid, actionButton->GetAction(), managedSpellId) &&
-                !IsKnownHybridDependencyActionSpell(guid, actionButton->GetAction(), managedSpellId))
+                !IsKnownHybridDependencyActionSpell(guid, actionButton->GetAction(), managedSpellId) &&
+                !IsKnownTemplateActionSpell(player, actionButton->GetAction(), managedSpellId))
             {
                 CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, spec, button);
                 continue;
@@ -903,6 +941,8 @@ namespace
                 bestSpellId = talentSpellId;
             else if (HasAnyHybridSpellDependencyGrant(guid, spellId))
                 bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
+            else if (PlayerHasSpellInChain(player, spellId))
+                bestSpellId = AutoUpgradeRanks ? GetBestHybridSpellRankForPlayer(player, spellId) : spellId;
             else
                 continue;
 
@@ -912,6 +952,22 @@ namespace
             ActionButton const* actionButton = player->GetActionButton(button);
             if (actionButton && actionButton->GetType() == ACTION_BUTTON_SPELL && actionButton->GetAction() == bestSpellId)
                 continue;
+
+            if (actionButton)
+            {
+                if (actionButton->GetType() == ACTION_BUTTON_SPELL && IsSameSpellChain(actionButton->GetAction(), bestSpellId))
+                {
+                    if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
+                        changed = true;
+                    continue;
+                }
+
+                if (!PlayerHasActionSpell(player, bestSpellId))
+                    continue;
+
+                CharacterDatabase.Execute("DELETE FROM character_hybrid_action WHERE guid = {} AND spec = {} AND button = {}", guid, player->GetActiveSpec(), button);
+                continue;
+            }
 
             if (player->addActionButton(button, bestSpellId, ACTION_BUTTON_SPELL))
                 changed = true;
@@ -1061,8 +1117,8 @@ namespace
             if (!lootItem || lootItem->is_looted || lootItem->is_blocked || !lootItem->AllowedForPlayer(player, loot->sourceWorldObjectGUID))
                 continue;
 
-            // In grouped play, avoid auto-claiming items that should go through roll or master-loot decisions.
-            if (player->GetGroup() && !lootItem->is_underthreshold && !lootItem->freeforall && !lootItem->rollWinnerGUID)
+            // In grouped play, keep roll/master-loot protections unless QA explicitly prioritizes the player over bots.
+            if (!CompanionAutoLootPrioritizePlayerInGroups && player->GetGroup() && !lootItem->is_underthreshold && !lootItem->freeforall && !lootItem->rollWinnerGUID)
                 continue;
 
             InventoryResult msg = EQUIP_ERR_OK;
@@ -1543,6 +1599,7 @@ namespace
         CompanionAutoLootIntervalMs = std::clamp<uint32>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.CompanionAutoLoot.IntervalMs", 1500), 250, 10000);
         CompanionAutoLootOutOfCombatOnly = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.OutOfCombatOnly", true);
         CompanionAutoLootRequireNonCombatCompanion = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.RequireNonCombatCompanion", true);
+        CompanionAutoLootPrioritizePlayerInGroups = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.PrioritizePlayerInGroups", false);
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",

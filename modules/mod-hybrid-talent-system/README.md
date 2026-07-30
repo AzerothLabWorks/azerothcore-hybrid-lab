@@ -18,7 +18,9 @@ Addon-first hybrid spell and talent system for AzerothCore 3.3.5a.
 - Configurable dependency packages can grant support spells or items for class-defining hybrid spells.
 - Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
 - The legacy Hybrid Talent Master and beacon flow has been retired in favor of the addon UI and `/hybridui` command path.
+- Hybrid action-bar persistence tracks learned hybrid spells, dependency-granted support spells, hybrid talent actives, and known spells from the Hybrid UI template pool so rank changes/relog cleanup do not silently remove placed buttons.
 - The client addon includes a tested shaman weapon imbue reminder for main-hand and off-hand temporary weapon enchants.
+- Optional non-combat companion auto-loot can loot nearby eligible creature corpses as a QoL feature for solo and bot-group play.
 
 ## Install
 
@@ -79,6 +81,18 @@ When `HybridTalentSystem.MirrorPetBuffs` is enabled, selected self-cast friendly
 When `HybridTalentSystem.MirrorGroupBuffs` is enabled, the same selected self-cast buff families also apply to nearby party or raid members within `HybridTalentSystem.MirrorGroupBuffRange` yards. This makes hybrid group play smoother without requiring every single buff to be manually targeted.
 
 The default `HybridTalentSystem.PetBuffSpellIds` list includes common buff families such as Power Word: Fortitude, Divine Spirit, Shadow Protection, Arcane Intellect, Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift of the Wild, and Thorns. Add only the first rank of a spell family; higher ranks are matched automatically.
+
+## Companion Auto-Loot
+
+When `HybridTalentSystem.CompanionAutoLoot.Enable` is enabled, an active non-combat companion can loot nearby eligible creature corpses for the player. The feature uses normal server loot eligibility and leaves protected loot checks in place.
+
+Key options:
+
+- `HybridTalentSystem.CompanionAutoLoot.Radius`
+- `HybridTalentSystem.CompanionAutoLoot.IntervalMs`
+- `HybridTalentSystem.CompanionAutoLoot.OutOfCombatOnly`
+- `HybridTalentSystem.CompanionAutoLoot.RequireNonCombatCompanion`
+- `HybridTalentSystem.CompanionAutoLoot.PrioritizePlayerInGroups`
 
 ## Spell Dependency Grants
 

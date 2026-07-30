@@ -109,3 +109,4 @@ HybridTalentSystem.CompanionAutoLoot.Radius = 10
 HybridTalentSystem.CompanionAutoLoot.IntervalMs = 1500
 HybridTalentSystem.CompanionAutoLoot.OutOfCombatOnly = 1
 HybridTalentSystem.CompanionAutoLoot.RequireNonCombatCompanion = 1
+HybridTalentSystem.CompanionAutoLoot.PrioritizePlayerInGroups = 0

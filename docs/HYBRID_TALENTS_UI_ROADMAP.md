@@ -28,7 +28,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 |---|---|---|
 | Addon-first Hybrid UI | Live | `HybridTalentUI` provides the primary spell/talent interface with a movable launcher button and `/hybridui`. |
 | Spell browsing | Live | Class filters, availability filters, icons, native tooltips, known/available/locked states, learn, and unlearn are working. Search now includes names, IDs, server descriptions, and client tooltip descriptions. |
-| Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. Dependency-granted support spells such as Mend Pet are now included in hybrid action-bar persistence when tracked. |
+| Spell persistence | Live | Learned hybrid spells persist through relog and restart, upgrade to best rank where configured, and action bars are preserved where possible. Dependency-granted support spells such as Mend Pet and known Hybrid UI template spells such as Battle Shout are now included in action-bar persistence when tracked. |
 | Talent browsing | Live | Talents can be browsed by class, show native descriptions/tooltips, use separate hybrid talent points, and participate in tooltip-description search. |
 | Talent learning | Live | Hybrid talents can be learned/unlearned, persist through relog, allow free picks across trees without native tree point requirements, and support dependency checks such as requiring Charge before Improved Charge. |
 | Talent UI clarity | In progress | Talent rows, details, and chat feedback show next rank, max-rank state, locked reasons, and free-pick rules more clearly. |
@@ -43,7 +43,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth. Server-side QA support now also permits Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle. These starter zones remain a known client-terrain edge case: mounting/flying works, but movement can feel constrained, so terrain/ADT patching is deferred as too risky for now. |
 | Targeted ground AoE usability | Active in QA | Rain of Fire validated the client/server pattern: client DBC marks selected ground spells as unit-targetable while server config snapshots the selected target position as the spell destination. Expanded player spell-family testing is active. |
-| Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. Multiple corpses are handled one at a time, grouped bot play is supported through normal loot eligibility, and protected roll/master-loot behavior is avoided. |
+| Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. Multiple corpses are handled one at a time. Grouped bot play is supported, with an opt-in QA flag to prioritize the player on eligible group loot while still respecting protected loot checks. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
 | Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
@@ -644,7 +644,7 @@ Recommended order for the next few work sessions:
    Validate the expanded Hybrid learn-template scope across multiple class families, and confirm profession, crafting, item-created, and item-use reagent behavior remains protected.
 
 6. **Companion auto-loot validation**
-   Continue playthrough validation for quest drops, full bags, grouped loot, named mobs, and dungeon loot.
+   Continue playthrough validation for quest drops, full bags, grouped loot, named mobs, dungeon loot, and the player-priority grouped-loot QA option.
 
 7. **Azeroth flying validation**
    Continue old-world flying validation during normal play, especially movement, map, transport, death, logout/login, and protected-zone behavior.
