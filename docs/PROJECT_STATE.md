@@ -76,6 +76,7 @@ git pull
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-qa-rates
 
 AHBOT_ACCOUNT=ahbot AHBOT_CHARACTER=Auctioneer \
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot

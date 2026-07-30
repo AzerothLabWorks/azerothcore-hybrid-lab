@@ -29,6 +29,7 @@ Commands:
   setup-profession-master
                          Install Profession Master config and create trainer NPC.
   setup-startup-qol    Install Startup QoL config.
+  setup-qa-rates        Apply QA gameplay rates for XP, reputation, professions, and rare/epic drops.
   rebuild               Rebuild and restart Docker services.
 
 Known modules are defined in configs/modules.conf.
@@ -46,6 +47,7 @@ Examples:
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-hybrid
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-profession-master
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
+  ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-qa-rates
   ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 USAGE
 }
@@ -58,7 +60,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --server-dir) SERVER_DIR="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    list|installed|install|import-sql|apply-core-patches|apply-playerbots-patches|setup-ahbot|setup-playerbots|diagnose-playerbots-lfg|diagnose-playerbots-pvp|setup-hybrid|setup-profession-master|setup-startup-qol|rebuild)
+    list|installed|install|import-sql|apply-core-patches|apply-playerbots-patches|setup-ahbot|setup-playerbots|diagnose-playerbots-lfg|diagnose-playerbots-pvp|setup-hybrid|setup-profession-master|setup-startup-qol|setup-qa-rates|rebuild)
       COMMAND="$1"
       shift
       break
@@ -640,6 +642,36 @@ setup_startup_qol() {
   log "Startup QoL setup complete. Rebuild and restart the server, then create a new character to test."
 }
 
+setup_qa_rates() {
+  require_server_dir
+
+  local world_conf="$SERVER_DIR/env/dist/etc/worldserver.conf"
+  [[ -f "$world_conf" ]] || die "Could not find worldserver.conf at: $world_conf"
+
+  set_conf_value "$world_conf" "Rate.XP.Kill" "3"
+  set_conf_value "$world_conf" "Rate.XP.Quest" "3"
+  set_conf_value "$world_conf" "Rate.XP.Quest.DF" "3"
+  set_conf_value "$world_conf" "Rate.XP.Explore" "3"
+  set_conf_value "$world_conf" "Rate.XP.Pet" "3"
+
+  set_conf_value "$world_conf" "Rate.Reputation.Gain" "5"
+  set_conf_value "$world_conf" "Rate.Reputation.LowLevel.Kill" "5"
+  set_conf_value "$world_conf" "Rate.Reputation.LowLevel.Quest" "5"
+
+  set_conf_value "$world_conf" "SkillGain.Crafting" "4"
+  set_conf_value "$world_conf" "SkillGain.Gathering" "4"
+
+  set_conf_value "$world_conf" "Rate.Drop.Item.Rare" "2"
+  set_conf_value "$world_conf" "Rate.Drop.Item.Epic" "1.5"
+
+  log "Applied QA gameplay rates to $world_conf"
+  log "XP: 3x kill/quest/DF/explore/pet"
+  log "Reputation: 5x global, low-level kill, and low-level quest"
+  log "Professions: 4x crafting and gathering skill gain"
+  log "Drops: rare 2x, epic 1.5x"
+  log "Restart ac-worldserver after setup: cd \"$SERVER_DIR\" && docker compose restart ac-worldserver"
+}
+
 import_module_sql() {
   require_server_dir
   local key="$1"
@@ -833,6 +865,9 @@ case "$COMMAND" in
     ;;
   setup-startup-qol)
     setup_startup_qol
+    ;;
+  setup-qa-rates)
+    setup_qa_rates
     ;;
   rebuild)
     rebuild_server

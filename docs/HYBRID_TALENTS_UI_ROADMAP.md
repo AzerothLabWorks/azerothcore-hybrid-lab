@@ -34,6 +34,7 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Talent UI clarity | In progress | Talent rows, details, and chat feedback show next rank, max-rank state, locked reasons, and free-pick rules more clearly. |
 | Progression clarity | Live | The addon shows when the next spell point and next talent point will be earned during leveling. |
 | Progression balance | Playtesting | Current defaults are playable, but point cadence, costs, level gates, and long-term leveling feel still need more character progression data. |
+| QA gameplay pacing | Live in QA | `setup-qa-rates` applies the current QA pacing profile: `3x` player XP, `5x` reputation, `4x` crafting/gathering skill gain, `2x` rare drops, and `1.5x` epic drops. |
 | Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |

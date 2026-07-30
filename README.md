@@ -132,12 +132,13 @@ cd ~/azerothcore-hybrid-lab-dev
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-startup-qol
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-ahbot
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-playerbots
+./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev setup-qa-rates
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-lfg
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev diagnose-playerbots-pvp
 ./scripts/manage-wow-modules.sh --server-dir ~/wow-server-playerbots-hybrid-dev rebuild
 ```
 
-The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead, adds an LFG dungeon teleport retry watchdog, and lets grouped bots offer low-priority tradable items when a real player opens trade with them. The Playerbots setup step writes `playerbots.conf`, aligns Docker overrides, and tunes the random bot population to `1500` online bots, player-level-synced leveling density, starter-zone relief, LFG participation, rated 3v3 seeding, instance strategies, summon-on-group behavior, role-biased tank/healer specs, quiet greetings, and active bot chat/broadcasts. The LFG and PvP diagnostic commands print relevant config and recent worldserver log lines after failed dungeon or arena queue attempts. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
+The Playerbots patch step prevents bots from explicitly declining LFG proposals simply because they are in combat or dead, adds an LFG dungeon teleport retry watchdog, and lets grouped bots offer low-priority tradable items when a real player opens trade with them. The Playerbots setup step writes `playerbots.conf`, aligns Docker overrides, and tunes the random bot population to `1500` online bots, player-level-synced leveling density, starter-zone relief, LFG participation, rated 3v3 seeding, instance strategies, summon-on-group behavior, role-biased tank/healer specs, quiet greetings, and active bot chat/broadcasts. The `setup-qa-rates` step applies the QA pacing profile: `3x` player XP, `5x` reputation, `4x` crafting/gathering skill gain, `2x` rare drops, and `1.5x` epic drops. The LFG and PvP diagnostic commands print relevant config and recent worldserver log lines after failed dungeon or arena queue attempts. The improvement roadmap tracks dungeon progression across Vanilla, Burning Crusade, and Wrath of the Lich King.
 
 Playerbot improvement planning lives in [docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md](docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md).
 
