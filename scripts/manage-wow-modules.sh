@@ -771,6 +771,10 @@ core_patch_already_present() {
       grep -q "melee-class player spells should keep white swings active" "$SERVER_DIR/src/server/game/Spells/Spell.cpp" && \
         grep -q "manual attack should recover" "$SERVER_DIR/src/server/game/Handlers/CombatHandler.cpp"
       ;;
+    0016-hybrid-resource-login-restore.patch)
+      [[ -f "$SERVER_DIR/src/server/game/Entities/Player/PlayerStorage.cpp" ]] || return 1
+      grep -q "ApplyHybridResourceSupport(true);" "$SERVER_DIR/src/server/game/Entities/Player/PlayerStorage.cpp"
+      ;;
     *)
       return 1
       ;;

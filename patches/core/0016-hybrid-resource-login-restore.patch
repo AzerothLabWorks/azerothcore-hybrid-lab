@@ -1,0 +1,96 @@
+diff --git a/src/server/game/Entities/Player/Player.h b/src/server/game/Entities/Player/Player.h
+index 000000000..000000000 100644
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -1190,6 +1190,7 @@ class Player : public Unit, public GridObject<Player>
+     void GiveLevel(uint8 level);
+ 
+     void InitStatsForLevel(bool reapplyMods = false);
++    void ApplyHybridResourceSupport(bool fillCurrent);
+ 
+     [[nodiscard]] bool HasActivePowerType(Powers power) override;
+ 
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 000000000..000000000 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -140,47 +140,47 @@ static bool CanUseHybridEquipmentSkillLine(uint32 skillLine)
+     return sWorld->getBoolConfig(CONFIG_HYBRID_EQUIPMENT_PROFICIENCY) && IsHybridEquipmentSkillLine(skillLine);
+ }
+ 
+-static void ApplyHybridResourceSupport(Player* player, bool fillCurrent)
++void Player::ApplyHybridResourceSupport(bool fillCurrent)
+ {
+     if (!sWorld->getBoolConfig(CONFIG_HYBRID_RESOURCES_ENABLE))
+         return;
+ 
+     uint32 const minMana = sWorld->getIntConfig(CONFIG_HYBRID_RESOURCES_MIN_MANA);
+     if (minMana)
+     {
+-        if (player->GetCreateMana() < minMana)
+-            player->SetCreateMana(minMana);
++        if (GetCreateMana() < minMana)
++            SetCreateMana(minMana);
+ 
+-        if (player->GetMaxPower(POWER_MANA) < minMana)
+-            player->SetMaxPower(POWER_MANA, minMana);
++        if (GetMaxPower(POWER_MANA) < minMana)
++            SetMaxPower(POWER_MANA, minMana);
+         else
+-            player->UpdateMaxPower(POWER_MANA);
++            UpdateMaxPower(POWER_MANA);
+ 
+-        if (fillCurrent || player->GetPower(POWER_MANA) > player->GetMaxPower(POWER_MANA))
+-            player->SetPower(POWER_MANA, player->GetMaxPower(POWER_MANA));
++        if (fillCurrent || GetPower(POWER_MANA) > GetMaxPower(POWER_MANA))
++            SetPower(POWER_MANA, GetMaxPower(POWER_MANA));
+     }
+ 
+     uint32 const maxEnergy = sWorld->getIntConfig(CONFIG_HYBRID_RESOURCES_MAX_ENERGY);
+-    if (maxEnergy && player->GetMaxPower(POWER_ENERGY) < maxEnergy)
++    if (maxEnergy && GetMaxPower(POWER_ENERGY) < maxEnergy)
+     {
+-        player->SetMaxPower(POWER_ENERGY, maxEnergy);
++        SetMaxPower(POWER_ENERGY, maxEnergy);
+ 
+-        if (fillCurrent || player->GetPower(POWER_ENERGY) > maxEnergy)
+-            player->SetPower(POWER_ENERGY, maxEnergy);
++        if (fillCurrent || GetPower(POWER_ENERGY) > maxEnergy)
++            SetPower(POWER_ENERGY, maxEnergy);
+     }
+ 
+     uint32 const maxRage = sWorld->getIntConfig(CONFIG_HYBRID_RESOURCES_MAX_RAGE);
+-    if (maxRage && player->GetMaxPower(POWER_RAGE) < maxRage)
+-        player->SetMaxPower(POWER_RAGE, maxRage);
++    if (maxRage && GetMaxPower(POWER_RAGE) < maxRage)
++        SetMaxPower(POWER_RAGE, maxRage);
+ }
+@@ -2775,7 +2775,7 @@ void Player::GiveLevel(uint8 level)
+ 
+     UpdateAllStats();
+-    ApplyHybridResourceSupport(this, true);
++    ApplyHybridResourceSupport(true);
+ 
+     if (sWorld->getBoolConfig(CONFIG_ALWAYS_MAXSKILL)) // Max weapon skill when leveling up
+         UpdateSkillsToMaxSkillsForLevel();
+@@ -3000,7 +3000,7 @@ void Player::InitStatsForLevel(bool reapplyMods)
+     for (uint8 i = POWER_MANA; i < MAX_POWERS; ++i)
+         SetMaxPower(Powers(i),  uint32(GetCreatePowers(Powers(i))));
+ 
+-    ApplyHybridResourceSupport(this, true);
++    ApplyHybridResourceSupport(true);
+ 
+     SetMaxHealth(classInfo.basehealth);                     // stamina bonus will applied later
+ 
+diff --git a/src/server/game/Entities/Player/PlayerStorage.cpp b/src/server/game/Entities/Player/PlayerStorage.cpp
+index 000000000..000000000 100644
+--- a/src/server/game/Entities/Player/PlayerStorage.cpp
++++ b/src/server/game/Entities/Player/PlayerStorage.cpp
+@@ -5616,6 +5616,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder const& holder)
+         uint32 savedPower = fields[56 + i].Get<uint32>();
+         SetPower(Powers(i), savedPower > GetMaxPower(Powers(i)) ? GetMaxPower(Powers(i)) : savedPower);
+     }
++    ApplyHybridResourceSupport(true);
+ 
+     LOG_DEBUG("entities.player.loading", "The value of player {} after load item and aura is: ", m_name);
+     outDebugValues();
