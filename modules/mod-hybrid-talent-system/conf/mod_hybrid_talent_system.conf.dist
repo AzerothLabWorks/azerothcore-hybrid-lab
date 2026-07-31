@@ -70,6 +70,14 @@ HybridTalentSystem.MirrorGroupBuffRange = 100
 # Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift, and Thorns.
 HybridTalentSystem.PetBuffSpellIds = "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"
 
+# QA quality-of-life prototype: normalize selected class maintenance buffs to
+# a consistent duration. This intentionally targets long-lived maintenance
+# buffs and excludes short tactical cooldowns such as Blessing of Freedom or
+# Blessing of Protection.
+HybridTalentSystem.NormalizeClassBuffDuration.Enable = 1
+HybridTalentSystem.NormalizeClassBuffDuration.Seconds = 1800
+HybridTalentSystem.NormalizeClassBuffDuration.SpellIds = "469,6673,1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1038,19977,20911,25899,1126,21849,467"
+
 # Semicolon-separated dependency grant rules. Each rule is trigger:grant,grant.
 # When a hybrid spell is learned, listed support spells are learned for free and
 # tracked so they can be safely removed if the trigger spell is unlearned.
@@ -102,11 +110,18 @@ HybridTalentSystem.EnableSynergies = 1
 # - disabled by default
 # - creature corpses only
 # - out of combat by default
-# - uses normal loot eligibility and avoids auto-claiming protected group-roll/master-loot items
+# - preserves grouped roll/master-loot rules by default
 # - does not touch skinning, chests, gathering nodes, or item-created loot
+# Radius is clamped between 1 and 40 yards. QA defaults to a caster-friendly
+# 30 yards so ranged play does not require running to every corpse.
 HybridTalentSystem.CompanionAutoLoot.Enable = 0
-HybridTalentSystem.CompanionAutoLoot.Radius = 10
+HybridTalentSystem.CompanionAutoLoot.Radius = 30
 HybridTalentSystem.CompanionAutoLoot.IntervalMs = 1500
 HybridTalentSystem.CompanionAutoLoot.OutOfCombatOnly = 1
 HybridTalentSystem.CompanionAutoLoot.RequireNonCombatCompanion = 1
+
+# QA bot-play option. When enabled, companion auto-loot attempts to claim any
+# corpse item the player is personally eligible to loot, even while grouped.
+# This is useful when bots are helpers and the player should receive quest drops
+# first. Keep disabled on shared-player servers unless deliberately testing.
 HybridTalentSystem.CompanionAutoLoot.PrioritizePlayerInGroups = 0

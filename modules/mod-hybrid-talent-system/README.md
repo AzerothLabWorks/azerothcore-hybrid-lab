@@ -15,6 +15,7 @@ Addon-first hybrid spell and talent system for AzerothCore 3.3.5a.
 - Login restore also works for playerbots that load as normal `Player` objects.
 - Reset removes all hybrid spells and can cost gold.
 - Selected self-cast buffs can mirror onto active hunter pets, warlock demons, and nearby group members.
+- Selected class maintenance buffs can be normalized to a configurable duration for smoother solo/hybrid play.
 - Configurable dependency packages can grant support spells or items for class-defining hybrid spells.
 - Spell choices come from curated `hybrid_spell_template` rows plus missing class-trainer spells imported from AzerothCore trainer data.
 - The legacy Hybrid Talent Master and beacon flow has been retired in favor of the addon UI and `/hybridui` command path.
@@ -81,6 +82,12 @@ When `HybridTalentSystem.MirrorPetBuffs` is enabled, selected self-cast friendly
 When `HybridTalentSystem.MirrorGroupBuffs` is enabled, the same selected self-cast buff families also apply to nearby party or raid members within `HybridTalentSystem.MirrorGroupBuffRange` yards. This makes hybrid group play smoother without requiring every single buff to be manually targeted.
 
 The default `HybridTalentSystem.PetBuffSpellIds` list includes common buff families such as Power Word: Fortitude, Divine Spirit, Shadow Protection, Arcane Intellect, Arcane Brilliance, Dampen/Amplify Magic, Blessings, Mark/Gift of the Wild, and Thorns. Add only the first rank of a spell family; higher ranks are matched automatically.
+
+## Class Buff Duration
+
+When `HybridTalentSystem.NormalizeClassBuffDuration.Enable` is enabled, selected class maintenance buff families are normalized to `HybridTalentSystem.NormalizeClassBuffDuration.Seconds`. QA defaults to 30 minutes for upkeep buffs such as Battle Shout, Commanding Shout, Paladin blessings, Fortitude, Spirit, Shadow Protection, Arcane Intellect, Mark/Gift of the Wild, Thorns, Dampen Magic, and Amplify Magic.
+
+Only maintenance buff families should be listed. Short tactical cooldowns such as Blessing of Freedom, Blessing of Protection, Divine Shield, and similar defensive buttons should keep their native durations.
 
 ## Companion Auto-Loot
 

@@ -20,6 +20,7 @@
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
+#include "SpellAuras.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "WorldSession.h"
@@ -94,6 +95,8 @@ namespace
     bool MirrorPetBuffs = true;
     bool MirrorGroupBuffs = true;
     float MirrorGroupBuffRange = 100.0f;
+    bool NormalizeClassBuffDuration = false;
+    uint32 NormalizeClassBuffDurationSeconds = 1800;
     bool CompanionAutoLoot = false;
     float CompanionAutoLootRadius = 10.0f;
     uint32 CompanionAutoLootIntervalMs = 1500;
@@ -101,6 +104,7 @@ namespace
     bool CompanionAutoLootRequireNonCombatCompanion = true;
     bool CompanionAutoLootPrioritizePlayerInGroups = false;
     std::unordered_set<uint32> PetBuffSpellIds;
+    std::unordered_set<uint32> NormalizeClassBuffSpellIds;
     std::map<uint32, std::set<uint32>> SpellDependencyGrants;
     std::map<uint32, std::map<uint32, uint32>> SpellDependencyItems;
 
@@ -429,6 +433,55 @@ namespace
         return PetBuffSpellIds.count(spellId) != 0 || PetBuffSpellIds.count(GetFirstRankSpellId(spellId)) != 0;
     }
 
+    bool IsNormalizedClassBuffSpell(uint32 spellId)
+    {
+        return NormalizeClassBuffSpellIds.count(spellId) != 0 || NormalizeClassBuffSpellIds.count(GetFirstRankSpellId(spellId)) != 0;
+    }
+
+    void NormalizeBuffDuration(Unit* target, uint32 spellId)
+    {
+        if (!NormalizeClassBuffDuration || !target || !IsNormalizedClassBuffSpell(spellId))
+            return;
+
+        Aura* aura = target->GetAura(spellId);
+        if (!aura)
+            return;
+
+        int32 duration = static_cast<int32>(NormalizeClassBuffDurationSeconds * IN_MILLISECONDS);
+        if (duration <= 0 || aura->GetMaxDuration() < 0)
+            return;
+
+        aura->SetMaxDuration(duration);
+        aura->SetDuration(duration);
+    }
+
+    void NormalizeBuffDurationForAffectedTargets(Player* player, Unit* explicitTarget, uint32 spellId)
+    {
+        if (!player)
+            return;
+
+        NormalizeBuffDuration(explicitTarget ? explicitTarget : player, spellId);
+
+        if (explicitTarget != player)
+            NormalizeBuffDuration(player, spellId);
+
+        if (Pet* pet = player->GetPet())
+            NormalizeBuffDuration(pet, spellId);
+
+        Group* group = player->GetGroup();
+        if (!group)
+            return;
+
+        for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            Player* member = itr->GetSource();
+            if (!member || member == player || member == explicitTarget)
+                continue;
+
+            NormalizeBuffDuration(member, spellId);
+        }
+    }
+
     void CastMirroredBuff(Player* caster, Unit* target, uint32 spellId, bool checkRange)
     {
         if (!caster || !target || !target->IsAlive())
@@ -441,6 +494,7 @@ namespace
             return;
 
         caster->CastSpell(target, spellId, true);
+        NormalizeBuffDuration(target, spellId);
     }
 
     void MirrorBuffToPetAndGroup(Player* player, Spell* spell)
@@ -449,10 +503,15 @@ namespace
             return;
 
         SpellInfo const* spellInfo = spell->GetSpellInfo();
-        if (!spellInfo || !IsMirroredBuffSpell(spellInfo->Id))
+        if (!spellInfo)
             return;
 
         Unit* target = spell->m_targets.GetUnitTarget();
+        NormalizeBuffDurationForAffectedTargets(player, target, spellInfo->Id);
+
+        if (!IsMirroredBuffSpell(spellInfo->Id))
+            return;
+
         if (target && target != player)
             return;
 
@@ -1594,6 +1653,8 @@ namespace
         MirrorPetBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorPetBuffs", true);
         MirrorGroupBuffs = sConfigMgr->GetOption<bool>("HybridTalentSystem.MirrorGroupBuffs", true);
         MirrorGroupBuffRange = sConfigMgr->GetOption<float>("HybridTalentSystem.MirrorGroupBuffRange", 100.0f);
+        NormalizeClassBuffDuration = sConfigMgr->GetOption<bool>("HybridTalentSystem.NormalizeClassBuffDuration.Enable", false);
+        NormalizeClassBuffDurationSeconds = std::clamp<uint32>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.NormalizeClassBuffDuration.Seconds", 1800), 60, 7200);
         CompanionAutoLoot = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.Enable", false);
         CompanionAutoLootRadius = std::clamp(sConfigMgr->GetOption<float>("HybridTalentSystem.CompanionAutoLoot.Radius", 10.0f), 1.0f, 40.0f);
         CompanionAutoLootIntervalMs = std::clamp<uint32>(sConfigMgr->GetOption<uint32>("HybridTalentSystem.CompanionAutoLoot.IntervalMs", 1500), 250, 10000);
@@ -1602,6 +1663,8 @@ namespace
         CompanionAutoLootPrioritizePlayerInGroups = sConfigMgr->GetOption<bool>("HybridTalentSystem.CompanionAutoLoot.PrioritizePlayerInGroups", false);
         PetBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.PetBuffSpellIds",
             "1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1126,21849,467"));
+        NormalizeClassBuffSpellIds = ParseSpellIdSet(sConfigMgr->GetOption<std::string>("HybridTalentSystem.NormalizeClassBuffDuration.SpellIds",
+            "469,6673,1243,21562,14752,27681,976,27683,1459,23028,604,1008,19740,25782,19742,25894,20217,25898,1038,19977,20911,25899,1126,21849,467"));
         SpellDependencyGrants = ParseSpellDependencyGrantMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyGrants",
             "1515:883,2641,982,6991,5149,1002,136;697:1120;712:1120;691:1120"));
         SpellDependencyItems = ParseSpellDependencyItemMap(sConfigMgr->GetOption<std::string>("HybridTalentSystem.SpellDependencyItems",
