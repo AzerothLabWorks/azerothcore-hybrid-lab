@@ -39,17 +39,34 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class buff duration QoL | Live in QA | Selected class maintenance buff families are normalized to 30 minutes through `HybridTalentSystem.NormalizeClassBuffDuration.*`, covering upkeep buffs such as Warrior shouts and Paladin blessings while avoiding short tactical cooldowns. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
-| Multi-resource hybrid support | Live in QA | QA can grant baseline mana, energy, and rage pools through `Hybrid.Resources.*` config so cross-class spells have their expected resource pools available. Hidden resource pools are refreshed after login power restore so existing characters such as rage-primary Warriors can use mana-based hybrid heals after relog. Ongoing playtesting should validate edge cases such as Rogue abilities on non-Rogues and Warrior abilities on caster classes. |
+| Multi-resource hybrid support | Live in QA | QA can grant baseline mana, energy, and rage pools through `Hybrid.Resources.*` config so cross-class spells have their expected resource pools available. Hidden resource pools are refreshed after login power restore so existing characters such as rage-primary Warriors can use mana-based hybrid heals after relog. Hybrid UI now includes a movable multi-resource frame for mana, rage, and energy visibility. Passive mana recovery for non-native mana users is active in QA. Ongoing playtesting should validate edge cases such as Rogue abilities on non-Rogues and Warrior abilities on caster classes. |
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
 | Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth. Server-side QA support now also permits Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle. These starter zones remain a known client-terrain edge case: mounting/flying works, but movement can feel constrained, so terrain/ADT patching is deferred as too risky for now. |
 | Targeted ground AoE usability | Active in QA | Rain of Fire validated the client/server pattern: client DBC marks selected ground spells as unit-targetable while server config snapshots the selected target position as the spell destination. Expanded player spell-family testing is active. |
-| Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. Multiple corpses are handled one at a time. Grouped bot play is supported, with an opt-in QA flag to prioritize the player on eligible group loot while still respecting protected loot checks. |
+| Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. The QA radius has been increased for caster-friendly play, multiple corpses are handled one at a time, and grouped bot play is supported with an opt-in QA flag to prioritize the player on eligible group loot while still respecting protected loot checks. New QA characters receive starter companion items so the feature is available immediately. |
 | Legacy trainer/beacon | Retired | Hybrid Talent Master and Hybrid Talent Beacon are disabled on this path. Hybrid progression is addon-first. |
 | Profession Master | Live | Profession Master remains NPC/beacon based and is not retired. |
-| Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. |
+| Playerbots support | Live separately | Playerbot population, LFG, role, and social tuning are tracked in `docs/PLAYERBOTS_IMPROVEMENT_ROADMAP.md`. The experimental playerbot relevel/sync window was removed after startup and performance concerns; QA is back on the stable high-population 1500-bot flow with BG/arena/LFG behavior preserved. |
 | QA race/class unlocks | First smoke pass successful | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Undead Hunter, Human Druid, and Gnome Shaman have passed initial gameplay smoke routes covering pets, shapeshifts, totems, starter spells, action bars, gear, and logout/login retention. |
 | QA client asset experiments | Active in disposable QA client | Local-only QA patches in `C:\Games\WoW-3.3.5a-HD-Test\Data` carry the any-race/any-class, starter outfit, reagent tooltip, Azeroth flying, and Warrior stance client prototypes. Generated MPQs and extracted client files are not committed to this repo; see `docs/CLIENT_PATCH_POLICY.md`. |
+
+## QA State Refresh - 2026-08-01
+
+The current QA lane is playable and stable enough for extended leveling playthroughs. The following items are considered live in QA, while still needing normal smoke checks before any promotion toward `codex/hybrid-talents-ui` or `main`:
+
+- Any-race/any-class creation, starter gear, starter spells, racial spell fallback, native talent point recovery, action-bar preservation, and core spell learning.
+- Hybrid pet workflows, including Tame Beast, Hunter pet persistence, pet action bars, pet spellbook/autocast persistence, and Warlock demon autocast persistence after mount/relog.
+- Reagent-free hybrid spell casting for the Hybrid learn-template spell surface, with local QA client tooltip cleanup.
+- Azeroth flying in Eastern Kingdoms and Kalimdor, plus server-side allowance for Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle. The Burning Crusade starter zones still have a known airborne movement/sound constraint, so deeper terrain/client patching is deferred.
+- Targeted ground AoE at target position for the current configured spell-family allowlist. Rain of Fire has been validated, including the channeled cleanup fix. Wider spell-family testing is still active before expanding or promoting.
+- Companion auto-loot for active non-combat companions, including grouped bot play, larger caster-friendly radius, full-bag retry behavior, and starter companion items for new characters.
+- QA pacing profile through `setup-qa-rates`: `3x` XP, `5x` reputation, `4x` profession skill gain, slightly increased rare/epic drops, and five-minute save interval.
+- Multi-resource hybrid support with baseline mana/rage/energy pools, passive mana recovery for non-native mana users, and a movable Hybrid UI resource frame.
+- Thirty-minute server-side class maintenance buffs for selected buff families. Some client tooltip text, such as Battle Shout still saying two minutes, remains cosmetic DBC text until a matching client patch is chosen.
+- Stable high-population Playerbots behavior after rolling back the experimental relevel/sync-window work.
+
+Before promotion, continue watching for duplicate spell-save log noise, action-bar changes after hybrid learn/unlearn, grouped loot edge cases, non-native resource edge cases, and client cache/icon artifacts after DBC patch changes.
 
 ## Completed Milestones
 
@@ -140,6 +157,10 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 - Added selected Warrior stance requirement relaxation on the server and matching client tooltip/DBC support for the disposable QA client.
 - Added Shaman weapon imbue reminders to Hybrid UI, including independent MH/OH reminders, mixed imbue support, and delayed startup checks to avoid false login reminders.
 - Added tracked dependency action-bar persistence so support spells such as Mend Pet remain on the action bar after relog once placed.
+- Added multi-resource QA support for mana, rage, and energy, including Hybrid UI resource visibility and passive mana recovery for non-native mana users.
+- Added companion auto-loot support for active non-combat companions, increased the loot radius for caster play, added grouped-bot loot support, and granted starter companion items to new QA characters.
+- Added QA pacing setup for XP, reputation, profession skill gain, rare/epic drop rates, and shorter player save intervals.
+- Restored Playerbots to the stable 1500-bot high-population flow after removing the experimental bot relevel/sync-window path.
 - Added a client patch policy documenting that generated MPQs and extracted client files remain local-only QA artifacts and should not be committed or publicly redistributed.
 
 ## Active Planning Lanes
@@ -199,6 +220,8 @@ Why this matters: Tame Beast showed that one iconic spell often needs a supporti
 
 Goal: make learned hybrid spells usable when they depend on a resource or class state the player's native class does not normally have.
 
+Current state: live in QA for baseline mana, energy, and rage pools. The Hybrid UI resource frame provides visibility for hidden resource pools, and passive mana recovery is active for non-native mana users.
+
 Candidate work:
 
 - Test Rogue energy abilities such as Sinister Strike on non-Rogue classes.
@@ -206,7 +229,7 @@ Candidate work:
 - Test Warrior rage abilities on mana or energy classes.
 - Test Death Knight runic power assumptions if DK abilities become part of normal hybrid progression.
 - Review mana, rage, energy, runic power, combo points, stance, form, weapon, pet, and shapeshift requirements separately instead of treating all restrictions as one switch.
-- Prefer narrow, spell-family-specific fixes over global resource removal.
+- Keep the current baseline resource grant configurable and continue using narrower spell-family fixes for stance, form, combo point, rune, pet, and weapon restrictions.
 - Keep each relaxation config-gated where possible, with QA-only defaults until playtesting proves it is stable.
 - Add Hybrid UI notes for spells that require a special resource or where QA behavior intentionally differs from stock WotLK.
 
@@ -250,6 +273,8 @@ Suggested-pick notes: free search and free-pick progression should remain the co
 
 Goal: eventually let bots interact better with the custom hybrid world.
 
+Current state: normal high-population Playerbots behavior is stable again after rolling back the experimental relevel/sync-window work. Keep broad bot progression changes separate from normal QA gameplay unless there is a clear, reversible test plan.
+
 Candidate work:
 
 - Keep Playerbots roadmap separate for LFG/world behavior.
@@ -261,6 +286,23 @@ Candidate work:
 - Keep old-world bot flying behind a QA-only config flag and validate travel, stuck handling, combat, regroup, follow, and teleport recovery behavior.
 
 Why this matters: bots already make the world feel alive. Hybrid-aware bots could be powerful, but it is a larger design problem and should wait until player progression is stable.
+
+### 8. Companion Vendor / Sell QoL
+
+Goal: reduce inventory friction after companion auto-loot by adding a safe way to sell junk while leveling.
+
+Current state: no companion vendor behavior is implemented. A neutral vendor macro using an existing vendor NPC is the current low-risk workaround for QA play.
+
+Candidate work:
+
+- Keep the neutral vendor macro workaround available for immediate playtesting.
+- Explore a QA-only summonable neutral vendor item before modifying companion gossip or vendor windows.
+- Later evaluate whether an active companion can expose a sell-only or normal vendor interaction without affecting pet/companion ownership, gossip, combat, group, or vendor database assumptions.
+- Add strict protections so the feature cannot sell quest items, equipped gear, soulbound keepers, or quality thresholds unless the player chooses to do so manually.
+
+Risk: medium. Inventory/vendor behavior is safer than loot ownership, but automatic selling or companion gossip changes could create frustrating item-loss bugs if implemented too broadly.
+
+Why this matters: companion auto-loot has made leveling smoother, and selling friction is the next natural inventory quality-of-life issue.
 
 ## QA Experiment Lanes
 
