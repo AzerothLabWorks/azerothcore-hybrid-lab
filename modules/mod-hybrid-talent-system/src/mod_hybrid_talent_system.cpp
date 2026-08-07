@@ -23,6 +23,7 @@
 #include "SpellAuras.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
+#include "UnitScript.h"
 #include "WorldSession.h"
 #include "WorldScript.h"
 
@@ -2727,6 +2728,20 @@ public:
     }
 };
 
+class HybridTalentUnitScript : public UnitScript
+{
+public:
+    HybridTalentUnitScript() : UnitScript("HybridTalentUnitScript", true, { UNITHOOK_ON_AURA_APPLY }) { }
+
+    void OnAuraApply(Unit* unit, Aura* aura) override
+    {
+        if (!unit || !aura)
+            return;
+
+        NormalizeBuffDuration(unit, aura->GetId());
+    }
+};
+
 class HybridTalentTrainerScript : public CreatureScript
 {
 public:
@@ -3008,5 +3023,6 @@ void AddHybridTalentSystemScripts()
 {
     new HybridTalentWorldScript();
     new HybridTalentPlayerScript();
+    new HybridTalentUnitScript();
     new HybridTalentCommandScript();
 }

@@ -149,6 +149,32 @@ local IMBUE_REMINDER_SPELLS = {
     [51992] = true,
     [51993] = true,
     [51994] = true,
+    [8681] = true,  -- Instant Poison
+    [8687] = true,
+    [8691] = true,
+    [11341] = true,
+    [11342] = true,
+    [11343] = true,
+    [26891] = true,
+    [57964] = true,
+    [2823] = true,  -- Deadly Poison
+    [2824] = true,
+    [11355] = true,
+    [11356] = true,
+    [25351] = true,
+    [26967] = true,
+    [57969] = true,
+    [3408] = true,  -- Crippling Poison
+    [5761] = true,  -- Mind-numbing Poison
+    [8694] = true,
+    [11400] = true,
+    [13220] = true, -- Wound Poison
+    [13228] = true,
+    [13229] = true,
+    [13230] = true,
+    [27283] = true,
+    [57974] = true,
+    [26785] = true, -- Anesthetic Poison
 }
 
 local IMBUE_REMINDER_NAMES = {
@@ -157,6 +183,12 @@ local IMBUE_REMINDER_NAMES = {
     ["Frostbrand Weapon"] = 8033,
     ["Windfury Weapon"] = 8232,
     ["Earthliving Weapon"] = 51730,
+    ["Instant Poison"] = 8681,
+    ["Deadly Poison"] = 2823,
+    ["Crippling Poison"] = 3408,
+    ["Mind-numbing Poison"] = 5761,
+    ["Wound Poison"] = 13220,
+    ["Anesthetic Poison"] = 26785,
 }
 
 local imbueReminderFrames = {}
@@ -171,6 +203,15 @@ local imbueReminderLastOffItemLink = nil
 local IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS = 300
 local IMBUE_REMINDER_SETTLE_SECONDS = 6
 local IMBUE_REMINDER_APPLY_SETTLE_SECONDS = 0.4
+local resourceFrame
+local RESOURCE_BARS = {
+    { key = "mana", label = "Mana", powerType = 0, color = { 0.0, 0.45, 1.0 } },
+    { key = "rage", label = "Rage", powerType = 1, color = { 0.85, 0.12, 0.12 } },
+    { key = "energy", label = "Energy", powerType = 3, color = { 1.0, 0.82, 0.0 } },
+}
+local RESOURCE_FRAME_DEFAULT_WIDTH = 119
+local RESOURCE_BAR_HEIGHT = 10
+local RESOURCE_BAR_GAP = 2
 
 local STANCE_RELAXED_SPELLS = {
     [100] = "Charge",
@@ -210,6 +251,33 @@ local STANCE_RELAXED_SPELLS = {
     [1680] = "Whirlwind",
 }
 
+local NORMALIZED_DURATION_BUFF_NAMES = {
+    ["Arcane Brilliance"] = true,
+    ["Arcane Intellect"] = true,
+    ["Amplify Magic"] = true,
+    ["Battle Shout"] = true,
+    ["Blessing of Kings"] = true,
+    ["Blessing of Might"] = true,
+    ["Blessing of Sanctuary"] = true,
+    ["Blessing of Wisdom"] = true,
+    ["Commanding Shout"] = true,
+    ["Dampen Magic"] = true,
+    ["Devotion Aura"] = true,
+    ["Divine Spirit"] = true,
+    ["Gift of the Wild"] = true,
+    ["Greater Blessing of Kings"] = true,
+    ["Greater Blessing of Might"] = true,
+    ["Greater Blessing of Sanctuary"] = true,
+    ["Greater Blessing of Wisdom"] = true,
+    ["Mark of the Wild"] = true,
+    ["Prayer of Fortitude"] = true,
+    ["Prayer of Shadow Protection"] = true,
+    ["Prayer of Spirit"] = true,
+    ["Power Word: Fortitude"] = true,
+    ["Shadow Protection"] = true,
+    ["Thorns"] = true,
+}
+
 local function RemoveTooltipStanceRequirementLines(tooltip)
     if not tooltip or not tooltip.NumLines then
         return
@@ -234,6 +302,23 @@ local function ApplyHybridTooltipNotes(tooltip, spellId)
         RemoveTooltipStanceRequirementLines(tooltip)
         tooltip:AddLine("Hybrid rule: stance is not required for " .. spellName .. ".", 0.6, 0.8, 1)
     end
+
+    local normalizedName = GetSpellInfo and GetSpellInfo(spellId) or nil
+    if normalizedName and NORMALIZED_DURATION_BUFF_NAMES[normalizedName] then
+        tooltip:AddLine("Hybrid rule: duration is normalized to 30 minutes on cast.", 0.6, 0.8, 1)
+    end
+end
+
+local function HookGlobalSpellTooltipNotes()
+    if not GameTooltip or GameTooltip.HybridTalentUINotesHooked then
+        return
+    end
+
+    GameTooltip.HybridTalentUINotesHooked = true
+    GameTooltip:HookScript("OnTooltipSetSpell", function(self)
+        local _, _, spellId = self:GetSpell()
+        ApplyHybridTooltipNotes(self, spellId)
+    end)
 end
 
 local function GetSpellIcon(spellId)
@@ -307,6 +392,45 @@ local function BuildSearchText(...)
     end
 
     return string.lower(table.concat(values, " "))
+end
+
+local function IsServerFallbackDescription(description)
+    if not description or description == "" then
+        return true
+    end
+
+    if string.find(description, " - Trainer", 1, true) then
+        return true
+    end
+
+    return description == "Hybrid spell"
+end
+
+local function ResolveSpellDescription(serverDescription, clientDescription)
+    if IsServerFallbackDescription(serverDescription) and clientDescription and clientDescription ~= "" then
+        return clientDescription
+    end
+
+    return serverDescription or ""
+end
+
+local function CompactListDescription(description)
+    description = description or ""
+    description = string.gsub(description, "%s+", " ")
+    description = string.gsub(description, "^%s+", "")
+    description = string.gsub(description, "%s+$", "")
+
+    local firstSentence = string.match(description, "^(.-%.)%s")
+    if firstSentence and string.len(firstSentence) >= 24 then
+        description = firstSentence
+    end
+
+    local maxLength = 82
+    if string.len(description) > maxLength then
+        description = string.sub(description, 1, maxLength - 3) .. "..."
+    end
+
+    return description
 end
 
 local function ShowSpellTooltip(owner, row)
@@ -739,7 +863,7 @@ local function UpdateRows()
                 end
             else
                 button.meta:SetText("Level " .. data.requiredLevel .. "  Cost " .. data.cost)
-                button.desc:SetText(data.description ~= "" and data.description or "No description available.")
+                button.desc:SetText(data.listDescription ~= "" and data.listDescription or "No description available.")
                 button.reason:SetText(data.reason or "")
 
                 if data.known then
@@ -785,19 +909,22 @@ local function UpdateRows()
 end
 
 local function AddSpell(parts)
+    local spellId = tonumber(parts[3] or "0") or 0
+    local serverDescription = parts[10] or ""
+    local clientDescription = GetClientSpellDescription(spellId)
     local classIndex = (tonumber(parts[4] or "0") or 0) + 1
     local row = {
-        spellId = tonumber(parts[3] or "0") or 0,
+        spellId = spellId,
         classIndex = classIndex,
         requiredLevel = tonumber(parts[5] or "1") or 1,
         cost = tonumber(parts[6] or "1") or 1,
         known = parts[7] == "1",
         canLearn = parts[8] == "1",
         name = parts[9] or "",
-        description = parts[10] or "",
+        description = ResolveSpellDescription(serverDescription, clientDescription),
         reason = parts[11] or "",
     }
-    local clientDescription = GetClientSpellDescription(row.spellId)
+    row.listDescription = CompactListDescription(row.description)
     row.searchText = BuildSearchText(row.name, row.description, clientDescription)
 
     if row.spellId > 0 and CLASS_NAMES[classIndex] then
@@ -1173,8 +1300,13 @@ local function EnsureSavedVariables()
     HybridTalentUIDB = HybridTalentUIDB or {}
     HybridTalentUIDB.openButton = HybridTalentUIDB.openButton or {}
     HybridTalentUIDB.imbueReminder = HybridTalentUIDB.imbueReminder or {}
+    HybridTalentUIDB.imbueReminder.characters = HybridTalentUIDB.imbueReminder.characters or {}
+    HybridTalentUIDB.resourceFrame = HybridTalentUIDB.resourceFrame or {}
     if HybridTalentUIDB.imbueReminder.enabled == nil then
         HybridTalentUIDB.imbueReminder.enabled = true
+    end
+    if HybridTalentUIDB.resourceFrame.enabled == nil then
+        HybridTalentUIDB.resourceFrame.enabled = true
     end
     HybridTalentUIDB.imbueReminder.thresholdSeconds = HybridTalentUIDB.imbueReminder.thresholdSeconds or IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS
 end
@@ -1182,6 +1314,19 @@ end
 local function GetImbueReminderDB()
     EnsureSavedVariables()
     return HybridTalentUIDB.imbueReminder
+end
+
+local function GetImbueReminderCharacterKey()
+    local name = UnitName and UnitName("player") or "Unknown"
+    local realm = GetRealmName and GetRealmName() or "Unknown"
+    return tostring(realm or "Unknown") .. "::" .. tostring(name or "Unknown")
+end
+
+local function GetImbueReminderCharacterDB()
+    local db = GetImbueReminderDB()
+    local key = GetImbueReminderCharacterKey()
+    db.characters[key] = db.characters[key] or {}
+    return db.characters[key]
 end
 
 local function IsTrackedImbueSpell(spellId, spellName)
@@ -1241,7 +1386,7 @@ local function GetImbueReminderPositionDB(handKey)
 end
 
 local function GetImbueReminderSpellId(handKey)
-    local db = GetImbueReminderDB()
+    local db = GetImbueReminderCharacterDB()
     if handKey == "off" then
         return db.offSpellId
     end
@@ -1250,7 +1395,7 @@ local function GetImbueReminderSpellId(handKey)
 end
 
 local function SetImbueReminderSpellId(handKey, spellId)
-    local db = GetImbueReminderDB()
+    local db = GetImbueReminderCharacterDB()
     if handKey == "off" then
         db.offSpellId = spellId
     else
@@ -1395,8 +1540,8 @@ local function UpdateImbueReminderFrame(handKey)
     end
     frame.icon:SetTexture(GetSpellIcon(spellId))
     frame.label:SetText(hasEnchant and FormatDuration((tonumber(expiration or 0) or 0) / 1000) or "!")
-    frame.tooltipTitle = (handKey == "off" and "Off-hand " or "Main-hand ") .. (spellName or "Weapon Imbue")
-    frame.tooltipBody = hasEnchant and "Weapon imbue is close to expiring." or "Weapon imbue is missing."
+    frame.tooltipTitle = (handKey == "off" and "Off-hand " or "Main-hand ") .. (spellName or "Weapon Effect")
+    frame.tooltipBody = hasEnchant and "Weapon effect is close to expiring." or "Weapon effect is missing."
     frame:Show()
 end
 
@@ -1406,6 +1551,165 @@ function UpdateImbueReminder()
     if not imbueReminderSettleRemaining or imbueReminderSettleRemaining <= 0 then
         imbueReminderLastState = CaptureImbueReminderState()
     end
+end
+
+local function GetResourceFrameWidth()
+    if PlayerFrameManaBar and PlayerFrameManaBar.GetWidth then
+        local width = PlayerFrameManaBar:GetWidth()
+        if width and width > 20 then
+            return width
+        end
+    end
+
+    if PlayerFrameHealthBar and PlayerFrameHealthBar.GetWidth then
+        local width = PlayerFrameHealthBar:GetWidth()
+        if width and width > 20 then
+            return width
+        end
+    end
+
+    return RESOURCE_FRAME_DEFAULT_WIDTH
+end
+
+local function FormatResourceValue(powerType, current, maximum)
+    current = tonumber(current or 0) or 0
+    maximum = tonumber(maximum or 0) or 0
+
+    if powerType == 1 and maximum > 100 then
+        return string.format("%d/%d", math.floor(current / 10 + 0.5), math.floor(maximum / 10 + 0.5))
+    end
+
+    return string.format("%d/%d", current, maximum)
+end
+
+local function SaveResourceFramePosition()
+    if not resourceFrame then
+        return
+    end
+
+    EnsureSavedVariables()
+    local point, _, relativePoint, x, y = resourceFrame:GetPoint(1)
+    local db = HybridTalentUIDB.resourceFrame
+    db.point = point
+    db.relativePoint = relativePoint
+    db.x = x
+    db.y = y
+end
+
+local function PositionResourceFrame(useDefault)
+    if not resourceFrame then
+        return
+    end
+
+    EnsureSavedVariables()
+    resourceFrame:ClearAllPoints()
+    local db = HybridTalentUIDB.resourceFrame
+    if not useDefault and db.point and db.relativePoint and db.x and db.y then
+        resourceFrame:SetPoint(db.point, UIParent, db.relativePoint, db.x, db.y)
+    else
+        resourceFrame:SetPoint("CENTER", UIParent, "CENTER", -8, -86)
+    end
+end
+
+local function ResetResourceFramePosition()
+    EnsureSavedVariables()
+    HybridTalentUIDB.resourceFrame.point = nil
+    HybridTalentUIDB.resourceFrame.relativePoint = nil
+    HybridTalentUIDB.resourceFrame.x = nil
+    HybridTalentUIDB.resourceFrame.y = nil
+    PositionResourceFrame(true)
+    Print("resource bars position reset.")
+end
+
+local function UpdateResourceFrame()
+    if not resourceFrame then
+        return
+    end
+
+    EnsureSavedVariables()
+    if not HybridTalentUIDB.resourceFrame.enabled then
+        resourceFrame:Hide()
+        return
+    end
+
+    local width = GetResourceFrameWidth()
+    local shown = 0
+    for _, info in ipairs(RESOURCE_BARS) do
+        local bar = resourceFrame.bars[info.key]
+        local current = UnitPower and UnitPower("player", info.powerType) or 0
+        local maximum = UnitPowerMax and UnitPowerMax("player", info.powerType) or 0
+
+        current = tonumber(current or 0) or 0
+        maximum = tonumber(maximum or 0) or 0
+        bar:SetMinMaxValues(0, math.max(maximum, 1))
+        bar:SetValue(math.min(current, maximum))
+        bar:SetWidth(width)
+        bar.text:SetText(info.label .. " " .. FormatResourceValue(info.powerType, current, maximum))
+        bar:Show()
+        shown = shown + 1
+    end
+
+    resourceFrame:SetWidth(width)
+    resourceFrame:SetHeight(shown * RESOURCE_BAR_HEIGHT + math.max(0, shown - 1) * RESOURCE_BAR_GAP)
+    resourceFrame:Show()
+end
+
+local function CreateResourceFrame()
+    if resourceFrame then
+        return
+    end
+
+    resourceFrame = CreateFrame("Frame", "HybridTalentUIResourceFrame", UIParent)
+    resourceFrame:SetMovable(true)
+    resourceFrame:EnableMouse(true)
+    resourceFrame:SetClampedToScreen(true)
+    resourceFrame:RegisterForDrag("LeftButton")
+    resourceFrame.bars = {}
+
+    local previous
+    for _, info in ipairs(RESOURCE_BARS) do
+        local bar = CreateFrame("StatusBar", nil, resourceFrame)
+        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        bar:SetStatusBarColor(info.color[1], info.color[2], info.color[3])
+        SetFrameSize(bar, RESOURCE_FRAME_DEFAULT_WIDTH, RESOURCE_BAR_HEIGHT)
+        if previous then
+            bar:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -RESOURCE_BAR_GAP)
+        else
+            bar:SetPoint("TOPLEFT", resourceFrame, "TOPLEFT", 0, 0)
+        end
+
+        bar.bg = bar:CreateTexture(nil, "BACKGROUND")
+        bar.bg:SetAllPoints(bar)
+        bar.bg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        bar.bg:SetVertexColor(info.color[1] * 0.35, info.color[2] * 0.35, info.color[3] * 0.35, 0.85)
+
+        bar.text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        bar.text:SetPoint("CENTER", bar, "CENTER", 0, 0)
+        bar.text:SetTextColor(1, 1, 1)
+
+        resourceFrame.bars[info.key] = bar
+        previous = bar
+    end
+
+    PositionResourceFrame(false)
+    resourceFrame:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    resourceFrame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        SaveResourceFramePosition()
+    end)
+    resourceFrame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Hybrid Resources")
+        GameTooltip:AddLine("Drag to move. Use /hyui resources off to hide.", 0.6, 0.8, 1)
+        GameTooltip:Show()
+    end)
+    resourceFrame:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
+    UpdateResourceFrame()
 end
 
 local function DelayImbueReminderRefresh(seconds)
@@ -1437,11 +1741,11 @@ local function DebugImbueReminder()
     local a, b, c, d, e, f, g, h = GetWeaponEnchantInfo()
     local mainHas, mainExpiration = GetImbueReminderHandState("main")
     local offHas, offExpiration = GetImbueReminderHandState("off")
-    local db = GetImbueReminderDB()
+    local characterDB = GetImbueReminderCharacterDB()
 
     Print("raw weapon enchants: 1=" .. tostring(a) .. ", 2=" .. tostring(b) .. ", 3=" .. tostring(c) .. ", 4=" .. tostring(d) .. ", 5=" .. tostring(e) .. ", 6=" .. tostring(f) .. ", 7=" .. tostring(g) .. ", 8=" .. tostring(h))
     Print("parsed imbues: MH=" .. tostring(mainHas) .. " exp=" .. tostring(mainExpiration) .. "; OH=" .. tostring(offHas) .. " exp=" .. tostring(offExpiration))
-    Print("remembered spells: MH=" .. tostring(db.mainSpellId) .. "; OH=" .. tostring(db.offSpellId) .. "; offhand item=" .. tostring(GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil))
+    Print("remembered spells: character=" .. tostring(GetImbueReminderCharacterKey()) .. "; MH=" .. tostring(characterDB.mainSpellId) .. "; OH=" .. tostring(characterDB.offSpellId) .. "; offhand item=" .. tostring(GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil))
 end
 
 local function ResolveImbueSpellId(spellName, spellId)
@@ -1555,8 +1859,8 @@ local function CreateImbueReminderFrame(handKey)
     end)
     frame:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(self.tooltipTitle or "Weapon Imbue")
-        GameTooltip:AddLine(self.tooltipBody or "Your remembered weapon imbue needs attention.", 0.95, 0.82, 0.35)
+        GameTooltip:SetText(self.tooltipTitle or "Weapon Effect")
+        GameTooltip:AddLine(self.tooltipBody or "Your remembered weapon effect needs attention.", 0.95, 0.82, 0.35)
         GameTooltip:AddLine("Click to cast. Drag to move.", 0.6, 0.8, 1)
         GameTooltip:Show()
     end)
@@ -1667,37 +1971,71 @@ local function HandleSlash(input)
         return
     end
 
-    if input == "imbue" then
-        local db = GetImbueReminderDB()
-        local mainSpellName = db.mainSpellId and GetSpellInfo(db.mainSpellId) or "none remembered"
-        local offSpellName = db.offSpellId and GetSpellInfo(db.offSpellId) or "none remembered"
-        Print("imbue reminder is " .. (db.enabled and "on" or "off") .. "; main-hand spell: " .. tostring(mainSpellName) .. "; off-hand spell: " .. tostring(offSpellName) .. "; threshold: " .. tostring(db.thresholdSeconds) .. " seconds.")
+    if input == "resources" or input == "resource" then
+        EnsureSavedVariables()
+        local db = HybridTalentUIDB.resourceFrame
+        Print("resource bars are " .. (db.enabled and "on" or "off") .. ".")
         return
     end
 
-    if input == "imbue debug" then
+    if input == "resources on" or input == "resource on" then
+        EnsureSavedVariables()
+        HybridTalentUIDB.resourceFrame.enabled = true
+        CreateResourceFrame()
+        UpdateResourceFrame()
+        Print("resource bars enabled.")
+        return
+    end
+
+    if input == "resources off" or input == "resource off" then
+        EnsureSavedVariables()
+        HybridTalentUIDB.resourceFrame.enabled = false
+        if resourceFrame then
+            resourceFrame:Hide()
+        end
+        Print("resource bars disabled.")
+        return
+    end
+
+    if input == "resources reset" or input == "resource reset" then
+        ResetResourceFramePosition()
+        UpdateResourceFrame()
+        return
+    end
+
+    if input == "imbue" or input == "poison" or input == "weapon" then
+        local db = GetImbueReminderDB()
+        local characterDB = GetImbueReminderCharacterDB()
+        local mainSpellName = characterDB.mainSpellId and GetSpellInfo(characterDB.mainSpellId) or "none remembered"
+        local offSpellName = characterDB.offSpellId and GetSpellInfo(characterDB.offSpellId) or "none remembered"
+        Print("weapon reminder is " .. (db.enabled and "on" or "off") .. "; main-hand spell: " .. tostring(mainSpellName) .. "; off-hand spell: " .. tostring(offSpellName) .. "; threshold: " .. tostring(db.thresholdSeconds) .. " seconds.")
+        return
+    end
+
+    if input == "imbue debug" or input == "poison debug" or input == "weapon debug" then
         DebugImbueReminder()
         return
     end
 
-    if input == "imbue on" then
+    if input == "imbue on" or input == "poison on" or input == "weapon on" then
         GetImbueReminderDB().enabled = true
         UpdateImbueReminder()
-        Print("imbue reminder enabled.")
+        Print("weapon reminder enabled.")
         return
     end
 
-    if input == "imbue off" then
+    if input == "imbue off" or input == "poison off" or input == "weapon off" then
         GetImbueReminderDB().enabled = false
         UpdateImbueReminder()
-        Print("imbue reminder disabled.")
+        Print("weapon reminder disabled.")
         return
     end
 
-    if input == "imbue reset" then
+    if input == "imbue reset" or input == "poison reset" or input == "weapon reset" then
         local db = GetImbueReminderDB()
-        db.mainSpellId = nil
-        db.offSpellId = nil
+        local characterDB = GetImbueReminderCharacterDB()
+        characterDB.mainSpellId = nil
+        characterDB.offSpellId = nil
         db.point = nil
         db.relativePoint = nil
         db.x = nil
@@ -1706,16 +2044,16 @@ local function HandleSlash(input)
         PositionImbueReminder(imbueReminderFrames.main, true)
         PositionImbueReminder(imbueReminderFrames.off, true)
         UpdateImbueReminder()
-        Print("imbue reminder reset.")
+        Print("weapon reminder reset.")
         return
     end
 
-    local imbueThreshold = string.match(input, "^imbue%s+threshold%s+(%d+)$")
+    local imbueThreshold = string.match(input, "^imbue%s+threshold%s+(%d+)$") or string.match(input, "^poison%s+threshold%s+(%d+)$") or string.match(input, "^weapon%s+threshold%s+(%d+)$")
     if imbueThreshold then
         local seconds = math.max(30, tonumber(imbueThreshold) or IMBUE_REMINDER_DEFAULT_THRESHOLD_SECONDS)
         GetImbueReminderDB().thresholdSeconds = seconds
         UpdateImbueReminder()
-        Print("imbue reminder threshold set to " .. seconds .. " seconds.")
+        Print("weapon reminder threshold set to " .. seconds .. " seconds.")
         return
     end
 
@@ -1741,6 +2079,14 @@ eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 eventFrame:RegisterEvent("UNIT_INVENTORY_CHANGED")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("UNIT_DISPLAYPOWER")
+eventFrame:RegisterEvent("UNIT_MANA")
+eventFrame:RegisterEvent("UNIT_RAGE")
+eventFrame:RegisterEvent("UNIT_ENERGY")
+eventFrame:RegisterEvent("UNIT_MAXMANA")
+eventFrame:RegisterEvent("UNIT_MAXRAGE")
+eventFrame:RegisterEvent("UNIT_MAXENERGY")
 eventFrame:SetScript("OnUpdate", function(_, elapsed)
     elapsed = elapsed or 0
     if imbueReminderSettleRemaining and imbueReminderSettleRemaining > 0 then
@@ -1769,6 +2115,7 @@ eventFrame:SetScript("OnUpdate", function(_, elapsed)
     if imbueReminderElapsed >= 10 then
         imbueReminderElapsed = 0
         UpdateImbueReminder()
+        UpdateResourceFrame()
     end
 end)
 
@@ -1777,15 +2124,20 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         SLASH_HYBRIDTALENTUI1 = "/hybridui"
         SLASH_HYBRIDTALENTUI2 = "/hyui"
         SlashCmdList.HYBRIDTALENTUI = HandleSlash
+        HookGlobalSpellTooltipNotes()
         CreateOpenButton()
         CreateImbueReminderFrame("main")
         CreateImbueReminderFrame("off")
+        CreateResourceFrame()
         imbueReminderLastMainItemLink = GetInventoryItemLink and GetInventoryItemLink("player", 16) or nil
         imbueReminderLastOffItemLink = GetInventoryItemLink and GetInventoryItemLink("player", 17) or nil
         DelayImbueReminderRefresh(IMBUE_REMINDER_SETTLE_SECONDS)
         Print("loaded. Click the Hybrid button or use /hybridui.")
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        UpdateResourceFrame()
     elseif event == "PLAYER_LEVEL_UP" then
         state.loaded = false
+        UpdateResourceFrame()
         if mainFrame and mainFrame:IsVisible() then
             Refresh()
         end
@@ -1802,6 +2154,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         local unit = ...
         if unit == "player" then
             UpdateImbueReminderForInventoryChange(false)
+        end
+    elseif event == "UNIT_DISPLAYPOWER" or event == "UNIT_MANA" or event == "UNIT_RAGE" or event == "UNIT_ENERGY" or event == "UNIT_MAXMANA" or event == "UNIT_MAXRAGE" or event == "UNIT_MAXENERGY" then
+        local unit = ...
+        if unit == "player" then
+            UpdateResourceFrame()
         end
     end
 end)
