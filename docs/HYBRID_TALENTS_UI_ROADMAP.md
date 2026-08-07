@@ -35,13 +35,13 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | Progression clarity | Live | The addon shows when the next spell point and next talent point will be earned during leveling. |
 | Progression balance | Playtesting | Current defaults are playable, but point cadence, costs, level gates, and long-term leveling feel still need more character progression data. |
 | QA gameplay pacing | Live in QA | `setup-qa-rates` applies the current QA pacing profile: `3x` player XP, `5x` reputation, `4x` crafting/gathering skill gain, `2x` rare drops, and `1.5x` epic drops. |
-| Hunter pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. |
+| Hybrid pet support | Live | Tame Beast works for hybrid characters, grants the required pet toolkit, supports pet persistence, pet action bar restoration, pet spellbook tab, and autocast persistence. Hybrid-learned Warlock demons are also treated as persistent summon pets, including autocast retention after mount/dismount and logout/login. |
 | Buff mirroring | Live | Selected self-cast buff families can mirror to active pets and nearby group members. |
 | Class buff duration QoL | Live in QA | Selected class maintenance buff families are normalized to 30 minutes through `HybridTalentSystem.NormalizeClassBuffDuration.*`, covering upkeep buffs such as Warrior shouts and Paladin blessings while avoiding short tactical cooldowns. |
 | Class dependency packages | In progress | Hunter pet support is live. Warlock demon summons now grant Drain Soul support, Shaman totem spells automatically grant required Earth, Fire, Water, and Air totem tools from spell data, and Rogue Stealth/Poisons now grant starter utility support. Hybrid totems also use faction-safe fallback models when a non-Shaman race has no native totem model. |
 | Multi-resource hybrid support | Live in QA | QA can grant baseline mana, energy, and rage pools through `Hybrid.Resources.*` config so cross-class spells have their expected resource pools available. Hidden resource pools are refreshed after login power restore so existing characters such as rage-primary Warriors can use mana-based hybrid heals after relog. Hybrid UI now includes a movable multi-resource frame for mana, rage, and energy visibility. Passive mana recovery for non-native mana users is active in QA. Ongoing playtesting should validate edge cases such as Rogue abilities on non-Rogues and Warrior abilities on caster classes. |
 | Equipment skill persistence | Live | Hybrid weapon/armor skills and Dual Wield are allowed to persist across class restrictions, reducing repeated login cleanup and duplicate spell-save noise. |
-| Weapon imbue reminders | Live in QA addon | Shaman weapon imbue reminders support main hand and off hand independently, including mixed imbues such as Flametongue plus Frostbrand. Login/equipment-change settle timing prevents false startup reminders. |
+| Weapon effect reminders | Live in QA addon | Shaman weapon imbues and Rogue poisons use the same main-hand/off-hand reminder system. Shaman mixed-imbue play is validated, and Rogue poison reminders are implemented for focused poison-user testing. Login/equipment-change settle timing prevents false startup reminders. |
 | Azeroth flying unlock | Live in QA | QA client/server patches allow flying mounts in old-world Azeroth. Server-side QA support now also permits Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle. These starter zones remain a known client-terrain edge case: mounting/flying works, but movement can feel constrained, so terrain/ADT patching is deferred as too risky for now. |
 | Targeted ground AoE usability | Active in QA | Rain of Fire validated the client/server pattern: client DBC marks selected ground spells as unit-targetable while server config snapshots the selected target position as the spell destination. Expanded player spell-family testing is active. |
 | Companion auto-loot / Lootbot QoL | Live in QA | Active non-combat companions/minipets can auto-loot nearby eligible creature corpses. The QA radius has been increased for caster-friendly play, multiple corpses are handled one at a time, and grouped bot play is supported with an opt-in QA flag to prioritize the player on eligible group loot while still respecting protected loot checks. New QA characters receive starter companion items so the feature is available immediately. |
@@ -51,20 +51,21 @@ Status after PR #1 promotion to `main` and resync of `codex/hybrid-talents-ui`:
 | QA race/class unlocks | First smoke pass successful | `Hybrid.AllowAnyRaceClass` is active on the isolated QA server. Undead Hunter, Human Druid, and Gnome Shaman have passed initial gameplay smoke routes covering pets, shapeshifts, totems, starter spells, action bars, gear, and logout/login retention. |
 | QA client asset experiments | Active in disposable QA client | Local-only QA patches in `C:\Games\WoW-3.3.5a-HD-Test\Data` carry the any-race/any-class, starter outfit, reagent tooltip, Azeroth flying, and Warrior stance client prototypes. Generated MPQs and extracted client files are not committed to this repo; see `docs/CLIENT_PATCH_POLICY.md`. |
 
-## QA State Refresh - 2026-08-01
+## QA State Refresh - 2026-08-07
 
 The current QA lane is playable and stable enough for extended leveling playthroughs. The following items are considered live in QA, while still needing normal smoke checks before any promotion toward `codex/hybrid-talents-ui` or `main`:
 
 - Any-race/any-class creation, starter gear, starter spells, racial spell fallback, native talent point recovery, action-bar preservation, and core spell learning.
-- Hybrid pet workflows, including Tame Beast, Hunter pet persistence, pet action bars, pet spellbook/autocast persistence, and Warlock demon autocast persistence after mount/relog.
+- Hybrid pet workflows, including Tame Beast, Hunter pet persistence, pet action bars, pet spellbook/autocast persistence, and hybrid-learned Warlock demon autocast persistence after mount/dismount and relog.
 - Reagent-free hybrid spell casting for the Hybrid learn-template spell surface, with local QA client tooltip cleanup.
 - Azeroth flying in Eastern Kingdoms and Kalimdor, plus server-side allowance for Eversong Woods, Ghostlands, Azuremyst Isle, and Bloodmyst Isle. The Burning Crusade starter zones still have a known airborne movement/sound constraint, so deeper terrain/client patching is deferred.
 - Targeted ground AoE at target position for the current configured spell-family allowlist. Rain of Fire has been validated, including the channeled cleanup fix. Wider spell-family testing is still active before expanding or promoting.
 - Companion auto-loot for active non-combat companions, including grouped bot play, larger caster-friendly radius, full-bag retry behavior, and starter companion items for new characters.
 - QA pacing profile through `setup-qa-rates`: `3x` XP, `5x` reputation, `4x` profession skill gain, slightly increased rare/epic drops, and five-minute save interval.
-- Multi-resource hybrid support with baseline mana/rage/energy pools, passive mana recovery for non-native mana users, and a movable Hybrid UI resource frame.
+- Multi-resource hybrid support with baseline mana/rage/energy pools, passive mana recovery for non-native mana users, and a movable Hybrid UI resource frame now committed in the QA addon branch.
 - Thirty-minute server-side class maintenance buffs for selected buff families. Some client tooltip text, such as Battle Shout still saying two minutes, remains cosmetic DBC text until a matching client patch is chosen.
 - Stable high-population Playerbots behavior after rolling back the experimental relevel/sync-window work.
+- Rogue poison reminder support is implemented in the QA addon and ready for focused testing when a Rogue or poison-using hybrid character reaches the right point.
 
 Before promotion, continue watching for duplicate spell-save log noise, action-bar changes after hybrid learn/unlearn, grouped loot edge cases, non-native resource edge cases, and client cache/icon artifacts after DBC patch changes.
 
@@ -85,7 +86,8 @@ Before promotion, continue watching for duplicate spell-save log noise, action-b
 - Added known spell filtering across all classes.
 - Added talent browsing and learning views.
 - Added movable Hybrid launcher button near the microbar.
-- Added optional Shaman weapon imbue reminder buttons with independent main-hand/off-hand memory, mixed imbue support, startup settle timing, and movable UI positions.
+- Added optional weapon effect reminder buttons with independent main-hand/off-hand memory, Shaman mixed-imbue support, Rogue poison coverage, startup settle timing, and movable UI positions.
+- Added movable Hybrid Resources frame for mana, rage, and energy visibility on multi-resource hybrid characters.
 - Moved user-facing addon distribution to `AzerothLabWorks/addons` on the matching dev branch.
 
 ### Spell And Talent Mechanics
@@ -110,6 +112,7 @@ Before promotion, continue watching for duplicate spell-save log noise, action-b
 - Completed Tame Beast behavior on aura expiration.
 - Loaded hybrid tamed pets as Hunter pets.
 - Restored pet action bars, pet spell slots, pet spellbook tab, and autocast state.
+- Treated hybrid-learned Warlock demons as persistent summon pets so Imp and other demon autocast state can survive mount/dismount and logout/login on non-Warlock classes.
 
 ### Buff And Group Quality Of Life
 
@@ -492,12 +495,12 @@ Goal: make temporary weapon enchants easier to maintain by visually reminding th
 
 Preferred first approach: addon/client-side detection in Hybrid Talent UI, without changing server spell mechanics.
 
-Current state: Shaman weapon imbue reminders are implemented and validated in QA for main hand, off hand, and mixed imbue use cases. The addon remembers the last imbue used per hand, supports independent reminder buttons, avoids startup false positives, and keeps off-hand reminders visible while main-hand reminders are resolved.
+Current state: Shaman weapon imbue reminders are implemented and validated in QA for main hand, off hand, and mixed imbue use cases. Rogue poison reminders are implemented using the same weapon-effect reminder path and are ready for focused poison-user testing. The addon remembers the last supported weapon effect used per hand, supports independent reminder buttons, avoids startup false positives, and keeps off-hand reminders visible while main-hand reminders are resolved.
 
 Scope:
 
 - Shaman weapon imbues such as Flametongue Weapon, Rockbiter Weapon, Windfury Weapon, Frostbrand Weapon, and Earthliving Weapon are the proven first scope.
-- Add Rogue poisons next, including main-hand and off-hand state where possible.
+- Validate Rogue poisons next, including main-hand and off-hand state during normal poison-user play.
 - Focus on temporary weapon enchants first, because normal buffs are already easier to solve with WeakAuras.
 - Keep the reminder optional and easy to disable through addon settings or a QA feature flag.
 
@@ -511,7 +514,7 @@ Investigation:
 Candidate work:
 
 - Treat Shaman imbues as the validated baseline and continue playtesting during normal Shaman leveling.
-- Add Rogue poisons after a Rogue or poison-using hybrid test character is ready.
+- Validate Rogue poisons after a Rogue or poison-using hybrid test character is ready.
 - Revisit action-bar glow only if the standalone reminder buttons feel insufficient.
 - Avoid server changes unless the client API cannot reliably detect the needed state.
 - Later expand to any other temporary weapon enchant families that matter for hybrid play.
@@ -671,14 +674,14 @@ Current preference:
 
 Recommended order for the next few work sessions:
 
-1. **Roadmap and documentation refresh**
-   Keep current/future state accurate as QA findings move from prototype to validation. Current refresh should capture description search, Shaman imbue reminders, dependency action-bar persistence, Azeroth flying, and the cosmetics/backport research lane.
+1. **Rogue poison reminder validation**
+   Rogue poison reminder support is implemented in the QA addon. Validate main-hand, off-hand, relog, reload, mixed poison, and expiration behavior once a Rogue or poison-using hybrid character is ready.
 
 2. **QA any-race/any-class validation pass**
    First smoke pass is successful across pet, form, and totem paths. Keep natural playthrough validation running opportunistically, but do not block the next QA milestone on more race/class combinations.
 
-3. **Rogue poison reminder expansion**
-   Extend the proven Shaman imbue reminder model to Rogue poisons once a Rogue or poison-using hybrid character is ready for focused testing.
+3. **Companion vendor / vendor beacon prototype**
+   Replace risky add/delete vendor macros with a controlled QA-only vendor beacon or summonable neutral vendor item for safe inventory cleanup during auto-loot play.
 
 4. **Hybrid UI suggested-pick helpers**
    Add optional curated tags and recommendation hints so new players can discover useful spell/talent synergies without losing free-pick freedom.
