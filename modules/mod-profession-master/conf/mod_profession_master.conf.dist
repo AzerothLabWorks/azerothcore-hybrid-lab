@@ -16,6 +16,13 @@ ProfessionMaster.BeaconItemEntry = 3500
 ProfessionMaster.GrantBeaconOnLogin = 1
 ProfessionMaster.BeaconSummonDurationSeconds = 300
 
+# Optional quality-of-life item that summons a temporary neutral vendor near
+# the player for selling and basic supplies.
+ProfessionMaster.VendorNpcEntry = 190021
+ProfessionMaster.VendorBeaconItemEntry = 3501
+ProfessionMaster.GrantVendorBeaconOnLogin = 1
+ProfessionMaster.VendorBeaconSummonDurationSeconds = 300
+
 # WotLK profession cap.
 ProfessionMaster.MaxSkill = 450
 

@@ -14,6 +14,7 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
+#include "WorldSession.h"
 #include "WorldScript.h"
 
 #include <algorithm>
@@ -28,6 +29,8 @@ constexpr uint32 ACTION_SKILL_UP = 2000;
 constexpr uint32 ACTION_LEARN_RECIPES = 3000;
 constexpr uint32 ACTION_BACK = 9000;
 constexpr uint32 ACTION_DISMISS = 9001;
+constexpr uint32 ACTION_VENDOR_BROWSE = 9100;
+constexpr uint32 ACTION_VENDOR_DISMISS = 9101;
 
 struct ProfessionTemplate
 {
@@ -63,6 +66,10 @@ uint32 TrainerNpcEntry = 190020;
 uint32 BeaconItemEntry = 3500;
 bool GrantBeaconOnLogin = true;
 uint32 BeaconSummonDurationSeconds = 300;
+uint32 VendorNpcEntry = 190021;
+uint32 VendorBeaconItemEntry = 3501;
+bool GrantVendorBeaconOnLogin = true;
+uint32 VendorBeaconSummonDurationSeconds = 300;
 uint32 MaxSkill = 450;
 uint32 SkillStep = 25;
 uint32 LearnProfessionCost = 10000;
@@ -230,6 +237,15 @@ void GrantProfessionBeacon(Player* player)
         player->AddItem(BeaconItemEntry, 1);
 }
 
+void GrantVendorBeacon(Player* player)
+{
+    if (!player || !GrantVendorBeaconOnLogin || !VendorBeaconItemEntry)
+        return;
+
+    if (!player->HasItemCount(VendorBeaconItemEntry, 1, true))
+        player->AddItem(VendorBeaconItemEntry, 1);
+}
+
 bool SummonProfessionMaster(Player* player)
 {
     if (!player || !TrainerNpcEntry)
@@ -257,6 +273,46 @@ bool SummonProfessionMaster(Player* player)
 
     Notify(player, "Profession Master summoned.");
     return true;
+}
+
+bool SummonVendor(Player* player)
+{
+    if (!player || !VendorNpcEntry)
+        return false;
+
+    if (Creature* existing = player->FindNearestCreature(VendorNpcEntry, 15.0f, true))
+        if (existing->IsSummon())
+            if (TempSummon* summon = existing->ToTempSummon())
+                if (summon->GetSummonerGUID() == player->GetGUID())
+                    existing->DespawnOrUnsummon();
+
+    float x = player->GetPositionX();
+    float y = player->GetPositionY();
+    float z = player->GetPositionZ();
+    player->GetClosePoint(x, y, z, player->GetObjectSize(), 2.0f);
+    float orientation = player->GetOrientation() + 3.14159f;
+    uint32 durationMs = VendorBeaconSummonDurationSeconds * 1000;
+
+    Creature* summon = player->SummonCreature(VendorNpcEntry, x, y, z, orientation, TEMPSUMMON_TIMED_DESPAWN, durationMs);
+    if (!summon)
+    {
+        Notify(player, "The traveling vendor could not be summoned.");
+        return false;
+    }
+
+    Notify(player, "Traveling vendor summoned.");
+    return true;
+}
+
+void ShowVendorMenu(Player* player, Creature* creature)
+{
+    ClearGossipMenuFor(player);
+    AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Browse goods", GOSSIP_SENDER_MAIN, ACTION_VENDOR_BROWSE);
+    if (creature->IsSummon())
+        if (TempSummon* summon = creature->ToTempSummon())
+            if (summon->GetSummonerGUID() == player->GetGUID())
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Dismiss summoned vendor", GOSSIP_SENDER_MAIN, ACTION_VENDOR_DISMISS);
+    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
 }
 
 void ShowProfessionMenu(Player* player, Creature* creature, uint32 actionBase)
@@ -383,6 +439,10 @@ public:
         BeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconItemEntry", 3500);
         GrantBeaconOnLogin = sConfigMgr->GetOption<bool>("ProfessionMaster.GrantBeaconOnLogin", true);
         BeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("ProfessionMaster.BeaconSummonDurationSeconds", 300);
+        VendorNpcEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.VendorNpcEntry", 190021);
+        VendorBeaconItemEntry = sConfigMgr->GetOption<uint32>("ProfessionMaster.VendorBeaconItemEntry", 3501);
+        GrantVendorBeaconOnLogin = sConfigMgr->GetOption<bool>("ProfessionMaster.GrantVendorBeaconOnLogin", true);
+        VendorBeaconSummonDurationSeconds = sConfigMgr->GetOption<uint32>("ProfessionMaster.VendorBeaconSummonDurationSeconds", 300);
         MaxSkill = std::min<uint32>(sConfigMgr->GetOption<uint32>("ProfessionMaster.MaxSkill", 450), 450);
         SkillStep = std::max<uint32>(sConfigMgr->GetOption<uint32>("ProfessionMaster.SkillStep", 25), 1);
         LearnProfessionCost = sConfigMgr->GetOption<uint32>("ProfessionMaster.LearnProfessionCostCopper", 10000);
@@ -400,7 +460,10 @@ public:
     void OnPlayerLogin(Player* player) override
     {
         if (Enabled)
+        {
             GrantProfessionBeacon(player);
+            GrantVendorBeacon(player);
+        }
     }
 };
 
@@ -478,6 +541,54 @@ public:
     }
 };
 
+class npc_profession_vendor : public CreatureScript
+{
+public:
+    npc_profession_vendor() : CreatureScript("npc_profession_vendor") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (!Enabled || creature->GetEntry() != VendorNpcEntry)
+            return false;
+
+        ShowVendorMenu(player, creature);
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        if (!Enabled || creature->GetEntry() != VendorNpcEntry)
+            return false;
+
+        ClearGossipMenuFor(player);
+
+        switch (action)
+        {
+            case ACTION_VENDOR_BROWSE:
+                CloseGossipMenuFor(player);
+                player->GetSession()->SendListInventory(creature->GetGUID());
+                return true;
+            case ACTION_VENDOR_DISMISS:
+                if (creature->IsSummon())
+                    if (TempSummon* summon = creature->ToTempSummon())
+                        if (summon->GetSummonerGUID() == player->GetGUID())
+                        {
+                            CloseGossipMenuFor(player);
+                            creature->DespawnOrUnsummon();
+                            return true;
+                        }
+
+                ShowVendorMenu(player, creature);
+                return true;
+            default:
+                break;
+        }
+
+        CloseGossipMenuFor(player);
+        return true;
+    }
+};
+
 class item_profession_master_beacon : public ItemScript
 {
 public:
@@ -494,10 +605,28 @@ public:
     }
 };
 
+class item_profession_vendor_beacon : public ItemScript
+{
+public:
+    item_profession_vendor_beacon() : ItemScript("item_profession_vendor_beacon") { }
+
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
+    {
+        if (!Enabled)
+            return true;
+
+        SummonVendor(player);
+        player->CastStop();
+        return true;
+    }
+};
+
 void AddProfessionMasterScripts()
 {
     new profession_master_worldscript();
     new profession_master_playerscript();
     new npc_profession_master();
+    new npc_profession_vendor();
     new item_profession_master_beacon();
+    new item_profession_vendor_beacon();
 }

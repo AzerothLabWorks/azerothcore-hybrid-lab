@@ -615,8 +615,56 @@ WHERE CreatureID = @model_source;
   model_count="$(mysql_query acore_world "SELECT COUNT(*) FROM creature_template_model WHERE CreatureID = 190020;" | tr -d '\r')"
   [[ "$model_count" != "0" ]] || die "Profession Master entry 190020 has no creature_template_model rows."
 
+  log "Normalizing Traveling Vendor creature_template entry 190021..."
+  mysql_query acore_world "
+UPDATE creature_template
+SET
+  name = 'Mira Packwhistle',
+  subname = 'Traveling Vendor',
+  npcflag = 129,
+  gossip_menu_id = 0,
+  faction = 35,
+  \`rank\` = 0,
+  unit_flags = 0,
+  unit_flags2 = 0,
+  dynamicflags = 0,
+  type_flags = 0,
+  flags_extra = 0,
+  AIName = '',
+  ScriptName = 'npc_profession_vendor'
+WHERE entry = 190021;
+
+DELETE FROM creature_template_model
+WHERE CreatureID = 190021;
+
+INSERT INTO creature_template_model (CreatureID, Idx, CreatureDisplayID, DisplayScale, Probability, VerifiedBuild)
+SELECT 190021, Idx, CreatureDisplayID, DisplayScale, Probability, VerifiedBuild
+FROM creature_template_model
+WHERE CreatureID = 12959;
+
+DELETE FROM npc_vendor
+WHERE entry = 190021;
+
+INSERT INTO npc_vendor (entry, slot, item, maxcount, incrtime, ExtendedCost, VerifiedBuild)
+SELECT 190021, slot, item, maxcount, incrtime, ExtendedCost, VerifiedBuild
+FROM npc_vendor
+WHERE entry = 12959;
+"
+
+  local vendor_script_name
+  vendor_script_name="$(mysql_query acore_world "SELECT ScriptName FROM creature_template WHERE entry = 190021;" | tr -d '\r')"
+  [[ "$vendor_script_name" == "npc_profession_vendor" ]] || die "Traveling Vendor entry 190021 was not found or could not be updated."
+
+  local vendor_item_script
+  vendor_item_script="$(mysql_query acore_world "SELECT ScriptName FROM item_template WHERE entry = 3501;" | tr -d '\r')"
+  [[ "$vendor_item_script" == "item_profession_vendor_beacon" ]] || die "Traveling Vendor Beacon item 3501 was not found or could not be updated."
+
+  local vendor_item_count
+  vendor_item_count="$(mysql_query acore_world "SELECT COUNT(*) FROM npc_vendor WHERE entry = 190021;" | tr -d '\r')"
+  [[ "$vendor_item_count" != "0" ]] || die "Traveling Vendor entry 190021 has no vendor items."
+
   log "Profession Master setup complete."
-  log "Restart ac-worldserver after rebuilding, then spawn the NPC with: .npc add 190020"
+  log "Restart ac-worldserver after rebuilding. Players receive Profession Master Beacon (3500) and Traveling Vendor Beacon (3501) on login."
 }
 
 setup_startup_qol() {
